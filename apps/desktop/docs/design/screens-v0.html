@@ -1,0 +1,2481 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corivo · Screens v0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ════════════════════════════════════════════════
+     TOKENS — 与 system-v0 对齐
+     ════════════════════════════════════════════════ */
+  :root {
+    --paper-50:  #FDFCF9;
+    --paper-100: #F8F7F3;
+    --paper-200: #F0EEE6;
+    --paper-300: #E8E5DA;
+    --paper-400: #DAD5C7;
+
+    --night-50:  #2F2B22;
+    --night-100: #272319;
+    --night-200: #1E1B16;
+    --night-300: #161410;
+    --night-400: #0F0E0B;
+
+    --ink-1000: #1A1916;
+    --ink-900:  #2B2925;
+    --ink-800:  #423E37;
+    --ink-700:  #5A574F;
+    --ink-600:  #7A746A;
+    --ink-500:  #98917E;
+    --ink-400:  #B5AE9C;
+    --ink-300:  #CFCABE;
+    --ink-200:  #E5E0D2;
+    --ink-100:  #F0EAD9;
+    --ink-50:   #F5F2E9;
+    --ink-25:   #FFFEFB;
+
+    --amber-700: #6B4216;
+    --amber-600: #8E5A1F;
+    --amber-500: #A86B22;
+    --amber-400: #C0894A;
+    --amber-300: #D5A878;
+    --amber-200: #E6C19A;
+    --amber-100: #ECDFC5;
+
+    --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 20px; --r-pill: 999px;
+
+    --font-sans: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+    --font-display: -apple-system, "SF Pro Display", "PingFang SC", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+
+    --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --dur-quick: 120ms;
+    --dur-base: 180ms;
+    --dur-slow: 280ms;
+  }
+
+  :root, [data-theme="light"] {
+    --bg: var(--paper-100);
+    --bg-elevated: var(--ink-25);
+    --bg-subtle: var(--paper-200);
+    --bg-deep: var(--paper-300);
+    --bg-deeper: var(--paper-400);
+    --fg: var(--ink-1000);
+    --fg-strong: var(--ink-1000);
+    --fg-muted: var(--ink-700);
+    --fg-subtle: var(--ink-500);
+    --fg-faint: var(--ink-400);
+    --fg-on-accent: #FFFFFF;
+    --fg-on-ink: var(--paper-100);
+    --accent: var(--amber-500);
+    --accent-hover: var(--amber-600);
+    --accent-soft: var(--amber-100);
+    --accent-tint: rgba(168, 107, 34, 0.06);
+    --accent-fg-on-soft: var(--amber-700);
+    --border: rgba(28, 26, 23, 0.07);
+    --border-strong: rgba(28, 26, 23, 0.13);
+    --focus-ring: rgba(28, 26, 23, 0.10);
+    --shadow-sm: 0 0 0 0.5px rgba(28, 26, 23, 0.05), 0 1px 2px rgba(28, 26, 23, 0.04);
+    --shadow-md: 0 0 0 0.5px rgba(28, 26, 23, 0.06), 0 2px 4px rgba(28, 26, 23, 0.04), 0 12px 32px rgba(28, 26, 23, 0.06);
+    --shadow-lg: 0 0 0 0.5px rgba(28, 26, 23, 0.07), 0 4px 8px rgba(28, 26, 23, 0.05), 0 24px 64px rgba(28, 26, 23, 0.10);
+    --shadow-window: 0 0 0 0.5px rgba(28, 26, 23, 0.10), 0 24px 64px rgba(28, 26, 23, 0.18), 0 8px 24px rgba(28, 26, 23, 0.10);
+    --grain-opacity: 0.035;
+    --grain-blend: multiply;
+    --glass-bg: rgba(252, 251, 248, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.20);
+  }
+
+  [data-theme="dark"] {
+    --bg: var(--night-300);
+    --bg-elevated: var(--night-200);
+    --bg-subtle: var(--night-100);
+    --bg-deep: var(--night-50);
+    --bg-deeper: #383428;
+    --fg: var(--ink-50);
+    --fg-strong: var(--ink-25);
+    --fg-muted: var(--ink-300);
+    --fg-subtle: var(--ink-500);
+    --fg-faint: var(--ink-600);
+    --fg-on-accent: var(--night-300);
+    --fg-on-ink: var(--night-300);
+    --accent: var(--amber-400);
+    --accent-hover: var(--amber-300);
+    --accent-soft: rgba(192, 137, 74, 0.14);
+    --accent-tint: rgba(192, 137, 74, 0.10);
+    --accent-fg-on-soft: var(--amber-300);
+    --border: rgba(245, 242, 233, 0.07);
+    --border-strong: rgba(245, 242, 233, 0.13);
+    --focus-ring: rgba(245, 242, 233, 0.14);
+    --shadow-sm: inset 0 0.5px 0 rgba(245,242,233,0.05), 0 0 0 0.5px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35);
+    --shadow-md: inset 0 0.5px 0 rgba(245,242,233,0.07), 0 0 0 0.5px rgba(0,0,0,0.45), 0 4px 10px rgba(0,0,0,0.40), 0 16px 40px rgba(0,0,0,0.35);
+    --shadow-lg: inset 0 0.5px 0 rgba(245,242,233,0.09), 0 0 0 0.5px rgba(0,0,0,0.50), 0 8px 16px rgba(0,0,0,0.45), 0 32px 80px rgba(0,0,0,0.50);
+    --shadow-window: inset 0 0.5px 0 rgba(245,242,233,0.09), 0 0 0 0.5px rgba(0,0,0,0.55), 0 32px 80px rgba(0,0,0,0.55), 0 12px 24px rgba(0,0,0,0.40);
+    --grain-opacity: 0.06;
+    --grain-blend: screen;
+    --glass-bg: rgba(28, 26, 21, 0.62);
+    --glass-border: rgba(245, 242, 233, 0.10);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: var(--grain-opacity);
+    mix-blend-mode: var(--grain-blend);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+  }
+  [data-theme="dark"] body::before {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+  }
+
+  main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 96px 40px 200px;
+    position: relative;
+  }
+
+  /* ════════════════════════════════════════════════
+     Theme toggle (fixed)
+     ════════════════════════════════════════════════ */
+  .theme-toggle {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 100;
+    display: inline-flex;
+    padding: 3px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-pill);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .tt-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--fg-subtle);
+    letter-spacing: -0.005em;
+    transition: all var(--dur-quick) var(--ease-out);
+  }
+  .tt-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .tt-btn:hover { color: var(--fg-muted); }
+  .tt-btn.active { background: var(--bg-deep); color: var(--fg-strong); }
+
+  /* ════════════════════════════════════════════════
+     Hero + section structure
+     ════════════════════════════════════════════════ */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    font-weight: 500;
+  }
+  .display {
+    font-family: var(--font-display);
+    font-size: 56px;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    margin: 24px 0 28px;
+    color: var(--fg-strong);
+  }
+  .lede {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--fg-muted);
+    max-width: 620px;
+    margin: 0;
+  }
+
+  .brand-lockup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 40px;
+    color: var(--fg-muted);
+  }
+  .brand-lockup svg.fm { width: 24px; height: 24px; color: var(--fg-muted); flex-shrink: 0; }
+  .brand-lockup .wordmark {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--fg-strong);
+  }
+  .brand-lockup .sep { color: var(--border-strong); }
+
+  /* Anchor nav */
+  .anchors {
+    margin-top: 48px;
+    padding: 16px 24px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+  }
+  .anchors .a-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-right: 8px;
+  }
+  .anchors a {
+    font-size: 12px;
+    color: var(--fg-muted);
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: var(--r-sm);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    transition: all var(--dur-quick) var(--ease-out);
+  }
+  .anchors a:hover { background: var(--bg-subtle); color: var(--fg-strong); }
+  .anchors .num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-subtle);
+    margin-right: 4px;
+  }
+
+  section { margin-top: 128px; }
+  section > header { margin-bottom: 36px; }
+  section > header .eyebrow { display: block; margin-bottom: 12px; }
+  section > header h2 {
+    font-family: var(--font-display);
+    font-size: 32px;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--fg-strong);
+  }
+  section > header p {
+    color: var(--fg-muted);
+    margin: 0;
+    max-width: 620px;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  h3.sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin: 0 0 18px;
+    font-weight: 500;
+  }
+
+  code, .mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--fg-subtle);
+  }
+
+  /* Focus mark */
+  svg.fm { display: inline-block; flex-shrink: 0; }
+
+  /* @keyframes */
+  @keyframes breathe {
+    0%, 100% { opacity: 0.35; transform: scaleY(0.92); }
+    50%      { opacity: 1;    transform: scaleY(1.05); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* ════════════════════════════════════════════════
+     macOS window chrome (used by main window)
+     ════════════════════════════════════════════════ */
+  .win {
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-window);
+    background: var(--bg);
+  }
+  .win-titlebar {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 10px;
+    -webkit-user-select: none; user-select: none;
+    background: linear-gradient(180deg, var(--bg-subtle), var(--bg));
+    border-bottom: 0.5px solid var(--border);
+    position: relative;
+  }
+  [data-theme="dark"] .win-titlebar { background: linear-gradient(180deg, var(--bg-deep), var(--bg-elevated)); }
+  .tl-dots { display: inline-flex; gap: 8px; align-items: center; }
+  .tl-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    border: 0.5px solid rgba(0,0,0,0.12);
+  }
+  .tl-close { background: #FF5F57; }
+  .tl-min   { background: #FEBC2E; }
+  .tl-max   { background: #28C840; }
+  .win-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: var(--fg-subtle);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+
+  /* ════════════════════════════════════════════════
+     SCREEN 1 · Quick Ask
+     ════════════════════════════════════════════════ */
+  .scr-stage {
+    border-radius: var(--r-xl);
+    border: 0.5px solid var(--border);
+    padding: 72px 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse at 18% 22%, rgba(168, 107, 34, 0.18) 0%, transparent 45%),
+      radial-gradient(ellipse at 82% 78%, rgba(75, 65, 50, 0.30) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(120, 105, 80, 0.10) 0%, transparent 60%),
+      linear-gradient(135deg, #C9BC9A 0%, #A89B7A 50%, #8B7E5E 100%);
+    transition: background var(--dur-slow) var(--ease-out);
+  }
+  [data-theme="dark"] .scr-stage {
+    background:
+      radial-gradient(ellipse at 22% 25%, rgba(192, 137, 74, 0.22) 0%, transparent 45%),
+      radial-gradient(ellipse at 78% 75%, rgba(50, 40, 25, 0.55) 0%, transparent 55%),
+      radial-gradient(ellipse at 50% 50%, rgba(80, 65, 45, 0.30) 0%, transparent 60%),
+      linear-gradient(135deg, #2E2820 0%, #1F1A14 50%, #15110C 100%);
+  }
+  .stage-label {
+    position: absolute;
+    top: 16px; left: 22px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .qa {
+    width: 100%;
+    max-width: 640px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(28px) saturate(1.6);
+    -webkit-backdrop-filter: blur(28px) saturate(1.6);
+    border-radius: var(--r-lg);
+    border: 0.5px solid var(--glass-border);
+    box-shadow:
+      0 0 0 0.5px rgba(255, 255, 255, 0.10),
+      0 0 0 0.5px rgba(28, 26, 23, 0.08),
+      0 24px 64px rgba(28, 26, 23, 0.30),
+      0 8px 16px rgba(28, 26, 23, 0.18);
+    overflow: hidden;
+  }
+  [data-theme="dark"] .qa {
+    box-shadow:
+      inset 0 0.5px 0 rgba(245,242,233,0.10),
+      0 0 0 0.5px rgba(0,0,0,0.55),
+      0 32px 80px rgba(0,0,0,0.55),
+      0 12px 24px rgba(0,0,0,0.40);
+  }
+  .qa-context {
+    padding: 12px 18px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(252, 251, 248, 0.10);
+  }
+  [data-theme="dark"] .qa-context { background: rgba(245, 242, 233, 0.04); }
+  .qa-context svg.fm { width: 16px; height: 16px; color: var(--fg-muted); }
+  .qa-context .qa-app {
+    font-size: 12px;
+    color: var(--fg);
+    font-weight: 500;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.005em;
+  }
+  .qa-context .qa-app span { color: var(--fg-subtle); font-weight: 400; }
+  .qa-pulse {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-tint);
+    flex-shrink: 0;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+
+  .qa-thread {
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 16px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .qa-msg-user {
+    align-self: flex-end;
+    max-width: 80%;
+    padding: 9px 14px;
+    background: rgba(28, 26, 23, 0.06);
+    border-radius: var(--r-md);
+    font-size: 13.5px;
+    color: var(--fg);
+    line-height: 1.5;
+    letter-spacing: -0.005em;
+  }
+  [data-theme="dark"] .qa-msg-user { background: rgba(245, 242, 233, 0.07); }
+  .qa-msg-assistant {
+    font-size: 13.5px;
+    color: var(--fg);
+    line-height: 1.6;
+    letter-spacing: 0;
+  }
+  .qa-msg-assistant code { background: var(--bg-deep); color: var(--fg); padding: 1px 5px; border-radius: 3px; font-size: 11.5px; }
+
+  .qa-input {
+    padding: 16px 22px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .qa-text {
+    font-size: 14.5px;
+    color: var(--fg-strong);
+    line-height: 1.5;
+    min-height: 22px;
+    letter-spacing: 0;
+  }
+  .qa-text.placeholder { color: var(--fg-subtle); }
+  .qa-text .breath {
+    display: inline-block;
+    width: 1.5px;
+    height: 15px;
+    background: var(--accent);
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: breathe 1.6s ease-in-out infinite;
+    border-radius: 1px;
+    transform-origin: center;
+  }
+  .qa-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10.5px;
+    color: var(--fg-subtle);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .qa-meta .qa-actions { display: flex; align-items: center; gap: 12px; }
+  .qa-meta .open-in-app {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    color: var(--accent-fg-on-soft);
+    background: var(--accent-soft);
+    padding: 3px 8px;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    letter-spacing: -0.005em;
+    border: 0.5px solid transparent;
+  }
+  .qa-meta .open-in-app:hover { border-color: var(--accent); }
+
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: rgba(28, 26, 23, 0.08);
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    border-radius: 4px;
+    line-height: 1;
+  }
+  [data-theme="dark"] .kbd { background: rgba(245,242,233,0.10); }
+
+  /* Side-by-side states */
+  .qa-states {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .qa-state-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.65);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* ════════════════════════════════════════════════
+     SCREEN 2 · 主窗口 Ask
+     ════════════════════════════════════════════════ */
+  .mw {
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-window);
+    background: var(--bg);
+    height: 720px;
+    display: grid;
+    grid-template-rows: 36px 1fr;
+  }
+  .mw-body {
+    display: grid;
+    grid-template-columns: 232px 1fr;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sb {
+    background: var(--bg-subtle);
+    border-right: 0.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sb-top {
+    padding: 14px 14px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .sb-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+  }
+  .sb-brand svg.fm { width: 16px; height: 16px; color: var(--fg-muted); }
+  .sb-brand .wm {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg-strong);
+    letter-spacing: -0.01em;
+  }
+
+  .sb-newbtn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--bg);
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--r-sm);
+    font-size: 12.5px;
+    color: var(--fg);
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    transition: all var(--dur-quick) var(--ease-out);
+  }
+  .sb-newbtn:hover { border-color: var(--fg-muted); }
+  .sb-newbtn svg { width: 13px; height: 13px; color: var(--fg-muted); }
+
+  .sb-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-sm);
+    font-size: 12.5px;
+    color: var(--fg-subtle);
+    cursor: pointer;
+    transition: all var(--dur-quick) var(--ease-out);
+  }
+  .sb-search:hover { border-color: var(--border-strong); }
+  .sb-search svg { width: 12px; height: 12px; flex-shrink: 0; }
+  .sb-search .label { flex: 1; letter-spacing: -0.005em; }
+  .sb-search .kb { display: inline-flex; gap: 2px; }
+  .sb-search .kbsm {
+    height: 16px; min-width: 16px; padding: 0 4px;
+    background: rgba(28,26,23,0.06);
+    color: var(--fg-subtle);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    border-radius: 3px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  [data-theme="dark"] .sb-search .kbsm { background: rgba(245,242,233,0.07); }
+
+  .sb-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 10px 12px;
+  }
+  .sb-section {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    padding: 12px 6px 6px;
+    font-weight: 500;
+  }
+  .sb-thread {
+    padding: 6px 8px;
+    border-radius: var(--r-xs);
+    font-size: 12.5px;
+    color: var(--fg-muted);
+    cursor: default;
+    line-height: 1.45;
+    letter-spacing: -0.005em;
+    transition: all var(--dur-quick) var(--ease-out);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sb-thread:hover { background: var(--bg-deep); color: var(--fg); }
+  .sb-thread.active { background: var(--bg-deep); color: var(--fg-strong); font-weight: 500; }
+  .sb-thread.active .pin {
+    display: inline-block; width: 4px; height: 4px;
+    background: var(--accent); border-radius: 50%;
+    margin-right: 6px; vertical-align: middle;
+  }
+  .sb-archive {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    color: var(--fg-subtle);
+    font-size: 11.5px;
+    cursor: default;
+  }
+  .sb-archive svg { width: 11px; height: 11px; }
+
+  /* Sidebar bottom · user + capture */
+  .sb-bottom {
+    border-top: 0.5px solid var(--border);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .sb-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border-radius: var(--r-xs);
+    cursor: default;
+    transition: background var(--dur-quick) var(--ease-out);
+  }
+  .sb-user:hover { background: var(--bg-deep); }
+  .avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--amber-300), var(--amber-500));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 10.5px;
+    color: #FFFFFF;
+    border: 0.5px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sb-user .u-info { flex: 1; min-width: 0; }
+  .sb-user .u-name {
+    font-size: 12px;
+    color: var(--fg-strong);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sb-user .u-tier {
+    font-size: 10.5px;
+    color: var(--fg-subtle);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .sb-capture {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border-radius: var(--r-xs);
+    font-size: 11px;
+    color: var(--fg-muted);
+    cursor: pointer;
+    letter-spacing: -0.005em;
+    transition: background var(--dur-quick) var(--ease-out);
+  }
+  .sb-capture:hover { background: var(--bg-deep); }
+  .sb-capture .cap-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-tint);
+    flex-shrink: 0;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  /* Conversation pane */
+  .conv {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .conv-head {
+    padding: 16px 32px 12px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .conv-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--fg-strong);
+    letter-spacing: -0.01em;
+  }
+  .conv-meta {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.04em;
+  }
+
+  .conv-body {
+    overflow-y: auto;
+    padding: 28px 32px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .turn {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .turn-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    color: var(--fg-subtle);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .turn-head svg.fm { width: 13px; height: 13px; color: var(--fg-muted); }
+  .turn-head .name {
+    font-family: var(--font-sans);
+    color: var(--fg-strong);
+    font-weight: 600;
+    font-size: 12.5px;
+    letter-spacing: -0.005em;
+  }
+  .turn-head .time { letter-spacing: 0.06em; }
+  .turn-content {
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: var(--fg);
+    letter-spacing: 0;
+  }
+  .turn-content code {
+    background: var(--bg-subtle);
+    color: var(--fg);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 12.5px;
+  }
+  .turn-content p { margin: 0 0 10px; }
+  .turn-content p:last-child { margin-bottom: 0; }
+  .turn-content .breath {
+    display: inline-block;
+    width: 1.5px;
+    height: 16px;
+    background: var(--accent);
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: breathe 1.6s ease-in-out infinite;
+    border-radius: 1px;
+  }
+
+  /* Cited frames */
+  .cites {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .cite {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--bg-subtle);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-pill);
+    font-size: 11.5px;
+    color: var(--fg-muted);
+    cursor: pointer;
+    letter-spacing: -0.005em;
+    transition: all var(--dur-quick) var(--ease-out);
+  }
+  .cite:hover { background: var(--bg-deep); border-color: var(--border-strong); color: var(--fg-strong); }
+  .cite svg.fm { width: 11px; height: 11px; color: var(--fg-subtle); }
+  .cite .cite-name { font-weight: 500; }
+  .cite .cite-time { color: var(--fg-faint); font-family: var(--font-mono); font-size: 10.5px; }
+
+  /* Tool call viz */
+  .tool-call {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--accent-soft);
+    border-radius: var(--r-pill);
+    font-size: 11.5px;
+    color: var(--accent-fg-on-soft);
+    letter-spacing: -0.005em;
+    border: 0.5px solid transparent;
+  }
+  .tool-call .tc-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+
+  /* Input */
+  .conv-input {
+    padding: 16px 32px 22px;
+    border-top: 0.5px solid var(--border);
+    background: var(--bg);
+  }
+  .conv-input-shell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--r-md);
+    background: var(--bg-elevated);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--dur-quick) var(--ease-out);
+  }
+  .conv-input-shell:focus-within {
+    border-color: var(--fg-muted);
+    box-shadow: 0 0 0 4px var(--focus-ring);
+  }
+  .conv-input-shell .ci-text {
+    flex: 1;
+    font-size: 14.5px;
+    color: var(--fg-strong);
+    line-height: 1.5;
+    letter-spacing: 0;
+  }
+  .conv-input-shell .ci-text.placeholder { color: var(--fg-subtle); }
+  .conv-input-shell .ci-send {
+    width: 30px; height: 30px;
+    border-radius: var(--r-sm);
+    background: var(--bg-subtle);
+    color: var(--fg-subtle);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--dur-quick) var(--ease-out);
+  }
+  .conv-input-shell .ci-send.active {
+    background: var(--fg-strong);
+    color: var(--fg-on-ink);
+  }
+  .conv-input-shell .ci-send svg { width: 14px; height: 14px; }
+  .conv-input-foot {
+    margin-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.04em;
+  }
+
+  /* ════════════════════════════════════════════════
+     SCREEN 3 · Frame Drawer (in main window)
+     ════════════════════════════════════════════════ */
+  .mw-with-drawer .mw-body {
+    grid-template-columns: 232px 1fr 440px;
+  }
+  .drawer {
+    border-left: 0.5px solid var(--border);
+    background: var(--bg-elevated);
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    overflow: hidden;
+  }
+  .drw-head {
+    padding: 14px 18px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .drw-head .drw-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg-strong);
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .drw-head .drw-close {
+    width: 26px; height: 26px;
+    border-radius: var(--r-xs);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--fg-subtle);
+    cursor: pointer;
+    transition: all var(--dur-quick) var(--ease-out);
+  }
+  .drw-head .drw-close:hover { background: var(--bg-subtle); color: var(--fg-strong); }
+  .drw-image-wrap {
+    padding: 14px 18px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .drw-image {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    border-radius: var(--r-sm);
+    border: 0.5px solid var(--border-strong);
+    overflow: hidden;
+    position: relative;
+    background:
+      linear-gradient(180deg, #1F2937 0%, #111827 100%);
+    box-shadow: var(--shadow-sm);
+  }
+  /* Fake browser frame inside the screenshot */
+  .drw-image .fake-chrome {
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 22px;
+    background: rgba(255,255,255,0.06);
+    border-bottom: 0.5px solid rgba(255,255,255,0.10);
+    display: flex; align-items: center; padding: 0 8px; gap: 5px;
+  }
+  .drw-image .fake-chrome .fc-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.30); }
+  .drw-image .fake-content {
+    position: absolute;
+    top: 32px; left: 12px; right: 12px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .drw-image .fc-line {
+    height: 5px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 2px;
+  }
+  .drw-image .fc-line.short { width: 50%; }
+  .drw-image .fc-line.medium { width: 75%; }
+  .drw-image .fc-line.amber { background: rgba(192, 137, 74, 0.5); width: 30%; }
+
+  .drw-meta {
+    padding: 10px 18px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.06em;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .drw-meta .strategy {
+    background: var(--bg-subtle);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+  }
+
+  .drw-tabs {
+    display: flex;
+    border-bottom: 0.5px solid var(--border);
+    padding: 0 18px;
+  }
+  .drw-tab {
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--fg-muted);
+    cursor: pointer;
+    position: relative;
+    letter-spacing: -0.005em;
+  }
+  .drw-tab.active { color: var(--fg-strong); font-weight: 500; }
+  .drw-tab.active::after {
+    content: '';
+    position: absolute;
+    left: 12px; right: 12px;
+    bottom: -0.5px;
+    height: 1.5px;
+    background: var(--fg-strong);
+    border-radius: 1px;
+  }
+
+  .drw-text {
+    padding: 16px 18px;
+    overflow-y: auto;
+    font-size: 12.5px;
+    color: var(--fg-muted);
+    line-height: 1.65;
+    letter-spacing: 0;
+  }
+  .drw-text mark {
+    background: var(--accent-soft);
+    color: var(--accent-fg-on-soft);
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+
+  /* ════════════════════════════════════════════════
+     SCREEN 4 · Onboarding
+     ════════════════════════════════════════════════ */
+  .ob-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .ob-step {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    height: 640px;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    background: var(--bg);
+    box-shadow: var(--shadow-window);
+    display: grid;
+    grid-template-rows: 36px 56px 1fr 80px;
+    position: relative;
+  }
+
+  .ob-progress {
+    padding: 16px 36px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .ob-progress .ob-brand {
+    display: flex; align-items: center; gap: 8px;
+    margin-right: auto;
+  }
+  .ob-progress .ob-brand svg.fm { width: 16px; height: 16px; color: var(--fg-muted); }
+  .ob-progress .ob-brand .wm {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg-strong);
+    letter-spacing: -0.01em;
+  }
+  .ob-steps-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.06em;
+  }
+  .ob-step-pill {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--bg-deep);
+    border: 0.5px solid var(--border-strong);
+  }
+  .ob-step-pill.done { background: var(--fg-strong); border-color: var(--fg-strong); }
+  .ob-step-pill.active { background: var(--accent); border-color: var(--accent); }
+
+  .ob-content {
+    padding: 56px 64px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .ob-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+  }
+  .ob-title {
+    font-family: var(--font-display);
+    font-size: 40px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    color: var(--fg-strong);
+    max-width: 680px;
+    margin: 0;
+  }
+  .ob-desc {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--fg-muted);
+    max-width: 560px;
+    margin: 0;
+    letter-spacing: 0;
+  }
+
+  .ob-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    width: 100%;
+    max-width: 760px;
+    margin-top: 16px;
+  }
+  .ob-card {
+    padding: 22px 20px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-md);
+    text-align: left;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .ob-card svg.fm,
+  .ob-card svg.icon {
+    width: 18px; height: 18px;
+    color: var(--accent);
+  }
+  .ob-card .obc-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fg-strong);
+    letter-spacing: -0.005em;
+  }
+  .ob-card .obc-desc {
+    font-size: 12.5px;
+    color: var(--fg-muted);
+    line-height: 1.55;
+    letter-spacing: 0;
+  }
+
+  /* Permission step UI */
+  .ob-permission {
+    width: 100%;
+    max-width: 540px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 24px 26px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    text-align: left;
+  }
+  .perm-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .perm-icon {
+    width: 36px; height: 36px;
+    border-radius: var(--r-sm);
+    background: var(--accent-soft);
+    color: var(--accent-fg-on-soft);
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .perm-icon svg { width: 18px; height: 18px; }
+  .perm-info { flex: 1; }
+  .perm-info .pi-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--fg-strong);
+    letter-spacing: -0.005em;
+    margin-bottom: 4px;
+  }
+  .perm-info .pi-desc {
+    font-size: 12.5px;
+    color: var(--fg-muted);
+    line-height: 1.55;
+    letter-spacing: 0;
+  }
+  .perm-status {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border-radius: var(--r-pill);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .perm-status.granted { background: rgba(74, 107, 45, 0.10); color: #4A6B2D; }
+  [data-theme="dark"] .perm-status.granted { background: rgba(124, 165, 80, 0.16); color: #B8D88A; }
+  .perm-status.granted::before {
+    content: '';
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .perm-status.pending { background: var(--bg-subtle); color: var(--fg-muted); }
+
+  .ob-foot {
+    padding: 18px 36px;
+    border-top: 0.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-subtle);
+  }
+
+  .mascot {
+    display: block;
+    width: 96px;
+    height: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .mascot-sm { width: 64px; }
+  .mascot-md { width: 120px; }
+  .mascot-lg { width: 160px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 18px;
+    border-radius: var(--r-sm);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    border: 0.5px solid transparent;
+    transition: all var(--dur-quick) var(--ease-out);
+    background: transparent;
+    color: var(--fg);
+  }
+  .btn-primary { background: var(--fg-strong); color: var(--fg-on-ink); }
+  .btn-primary:hover { background: var(--ink-900); }
+  [data-theme="dark"] .btn-primary:hover { background: var(--ink-100); }
+  .btn-ghost { border-color: var(--border-strong); color: var(--fg); }
+  .btn-ghost:hover { background: var(--bg-subtle); }
+  .btn-text { color: var(--fg-muted); padding: 0 8px; }
+  .btn-text:hover { color: var(--fg-strong); }
+  .btn-destructive { color: #B85450; border-color: rgba(184, 84, 80, 0.3); }
+  [data-theme="dark"] .btn-destructive { color: #E68682; border-color: rgba(230, 134, 130, 0.3); }
+  .btn-sm { height: 28px; padding: 0 12px; font-size: 12px; }
+
+  /* ════════════════════════════════════════════════
+     SCREEN 5 · Settings · Capture & Privacy
+     ════════════════════════════════════════════════ */
+  .settings-frame {
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+    background: var(--bg-elevated);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-window);
+    display: grid;
+    grid-template-rows: 40px 1fr;
+    height: 600px;
+  }
+  .settings-tab-bar {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 10px;
+    border-bottom: 0.5px solid var(--border);
+    background: linear-gradient(180deg, var(--bg-subtle), var(--bg-elevated));
+  }
+  [data-theme="dark"] .settings-tab-bar { background: linear-gradient(180deg, var(--bg-deep), var(--bg-elevated)); }
+
+  .settings-body {
+    display: grid;
+    grid-template-columns: 196px 1fr;
+    overflow: hidden;
+  }
+
+  .settings-nav {
+    border-right: 0.5px solid var(--border);
+    padding: 14px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--bg-subtle);
+  }
+  .sn-item {
+    padding: 8px 12px;
+    border-radius: var(--r-sm);
+    font-size: 12.5px;
+    color: var(--fg-muted);
+    cursor: pointer;
+    letter-spacing: -0.005em;
+    transition: all var(--dur-quick) var(--ease-out);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sn-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .sn-item:hover { background: var(--bg-deep); color: var(--fg); }
+  .sn-item.active { background: var(--bg); color: var(--fg-strong); font-weight: 500; box-shadow: var(--shadow-sm); }
+  .sn-item .star {
+    margin-left: auto;
+    font-size: 9px;
+    color: var(--accent-fg-on-soft);
+    background: var(--accent-soft);
+    padding: 1px 5px;
+    border-radius: 999px;
+    letter-spacing: 0.04em;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+
+  .settings-content {
+    overflow-y: auto;
+    padding: 28px 32px 32px;
+  }
+  .sc-header { margin-bottom: 24px; }
+  .sc-header h3 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--fg-strong);
+    margin: 0 0 4px;
+  }
+  .sc-header p {
+    font-size: 13px;
+    color: var(--fg-muted);
+    margin: 0;
+    line-height: 1.55;
+  }
+
+  .sc-section {
+    border-top: 0.5px solid var(--border);
+    padding: 20px 0;
+  }
+  .sc-section:first-of-type { border-top: none; padding-top: 0; }
+  .sc-section-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin-bottom: 14px;
+    font-weight: 500;
+  }
+
+  /* The "最近 24h 抓到的" inspector card */
+  .inspector {
+    padding: 18px 20px;
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .insp-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .insp-head .ih-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg-strong);
+    letter-spacing: -0.005em;
+  }
+  .insp-head .ih-link {
+    font-size: 11.5px;
+    color: var(--accent-fg-on-soft);
+    cursor: pointer;
+    letter-spacing: -0.005em;
+  }
+  .insp-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+  }
+  .insp-stat {
+    background: var(--bg-elevated);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .insp-stat .v {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--fg-strong);
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+  }
+  .insp-stat .l {
+    font-size: 10.5px;
+    color: var(--fg-subtle);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .insp-spark {
+    height: 28px;
+    display: flex;
+    align-items: end;
+    gap: 2px;
+  }
+  .insp-spark .bar {
+    flex: 1;
+    background: var(--accent-soft);
+    border-radius: 1px;
+    min-height: 2px;
+  }
+  .insp-spark .bar.peak { background: var(--accent); }
+
+  /* setting row (label + control) */
+  .setrow {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .setrow:last-child { border-bottom: none; }
+  .setrow .sr-label {
+    font-size: 13px;
+    color: var(--fg);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .setrow .sr-desc {
+    font-size: 11.5px;
+    color: var(--fg-subtle);
+    margin-top: 2px;
+    line-height: 1.5;
+    letter-spacing: 0;
+  }
+
+  /* toggle */
+  .toggle {
+    width: 36px; height: 22px;
+    background: var(--bg-deep);
+    border-radius: var(--r-pill);
+    position: relative;
+    cursor: pointer;
+    border: 0.5px solid var(--border-strong);
+    transition: all var(--dur-base) var(--ease-out);
+    flex-shrink: 0;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    background: var(--bg-elevated);
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    transition: all var(--dur-base) var(--ease-out);
+  }
+  .toggle.on { background: var(--fg-strong); border-color: var(--fg-strong); }
+  .toggle.on::after { left: 17px; background: var(--fg-on-ink); }
+
+  .num-input {
+    width: 80px;
+    height: 28px;
+    padding: 0 10px;
+    border: 0.5px solid var(--border-strong);
+    background: var(--bg);
+    border-radius: var(--r-xs);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--fg);
+    text-align: right;
+    outline: none;
+  }
+
+  .slider-shell { display: flex; align-items: center; gap: 12px; min-width: 220px; }
+  .slider-track {
+    flex: 1;
+    height: 4px;
+    background: var(--bg-deep);
+    border-radius: 2px;
+    position: relative;
+  }
+  .slider-fill {
+    position: absolute;
+    inset: 0 40% 0 0;
+    background: var(--fg-strong);
+    border-radius: 2px;
+  }
+  .slider-thumb {
+    position: absolute;
+    top: 50%; left: 60%;
+    width: 14px; height: 14px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border-strong);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: var(--shadow-sm);
+  }
+  .slider-shell .sv {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--fg-muted);
+    min-width: 40px;
+    text-align: right;
+  }
+
+  /* exclusion list */
+  .excl-list {
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--bg);
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .excl-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 12px;
+    letter-spacing: -0.005em;
+  }
+  .excl-item:last-child { border-bottom: none; }
+  .excl-item .ei-icon {
+    width: 20px; height: 20px;
+    border-radius: 5px;
+    background: linear-gradient(135deg, var(--ink-200), var(--ink-300));
+    flex-shrink: 0;
+  }
+  .excl-item .ei-name { color: var(--fg); flex: 1; font-family: var(--font-mono); font-size: 11px; }
+  .excl-item .ei-default {
+    font-size: 10px;
+    color: var(--fg-subtle);
+    background: var(--bg-subtle);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .excl-item .ei-remove {
+    color: var(--fg-subtle);
+    cursor: pointer;
+    width: 18px; height: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+  }
+  .excl-item .ei-remove:hover { background: var(--bg-subtle); color: var(--fg-muted); }
+  .excl-item .ei-remove svg { width: 11px; height: 11px; }
+  .excl-add {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    color: var(--fg-subtle);
+    font-size: 12px;
+    cursor: pointer;
+    background: var(--bg-elevated);
+    transition: background var(--dur-quick) var(--ease-out);
+  }
+  .excl-add:hover { background: var(--bg-subtle); color: var(--fg); }
+  .excl-add svg { width: 12px; height: 12px; }
+
+  /* footer */
+  footer {
+    margin-top: 160px;
+    padding-top: 40px;
+    border-top: 0.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  footer p { margin: 0; color: var(--fg-subtle); font-size: 13px; line-height: 1.6; }
+  footer .sig {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  hr.rule { border: 0; height: 0; border-top: 0.5px solid var(--border); margin: 64px 0 0; }
+</style>
+</head>
+<body>
+
+<div class="theme-toggle" role="group" aria-label="主题切换">
+  <button class="tt-btn active" data-theme-set="light">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+    </svg>
+    Light
+  </button>
+  <button class="tt-btn" data-theme-set="dark">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+    Dark
+  </button>
+</div>
+
+<main>
+
+  <!-- ────────────────── HERO ────────────────── -->
+  <header class="hero">
+    <div class="brand-lockup">
+      <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/>
+        <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/>
+      </svg>
+      <span class="wordmark">Corivo</span>
+      <span class="sep">·</span>
+      <span class="eyebrow" style="font-size: 10px;">Step 2B · Screens v0</span>
+    </div>
+
+    <h1 class="display">把乐高,拼成五张稿。</h1>
+    <p class="lede">
+      五张精稿全部用 system-v0 的 token 与组件搭出来。两套主题可以右上角实时切换——任何一张都该在 Light / Dark 下都"对"。如果不对,token 还要继续改。
+    </p>
+
+    <nav class="anchors">
+      <span class="a-label">Jump</span>
+      <a href="#screen-quickask"><span class="num">01</span>Quick Ask</a>
+      <a href="#screen-mainwin"><span class="num">02</span>主窗口 · Ask</a>
+      <a href="#screen-drawer"><span class="num">03</span>Frame Drawer</a>
+      <a href="#screen-onboarding"><span class="num">04</span>Onboarding</a>
+      <a href="#screen-settings"><span class="num">05</span>Settings</a>
+    </nav>
+  </header>
+
+  <!-- ────────────────── 01 · QUICK ASK ────────────────── -->
+  <section id="screen-quickask">
+    <header>
+      <span class="eyebrow">01 · Quick Ask</span>
+      <h2>双击 ⌥,我在。</h2>
+      <p>浮在所有应用之上的临时存在,毛玻璃是它的语言。下面是两种主要状态:刚召唤(空 + focus context 已就绪),以及对话进行中(已问一轮,正在听回答)。</p>
+    </header>
+
+    <h3 class="sub">State A · 刚召唤</h3>
+    <div class="scr-stage">
+      <span class="stage-label">// 浮层 stage</span>
+      <div class="qa">
+        <div class="qa-context">
+          <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+          <div class="qa-app">在看 <span>· corivo-architecture-v3-spec.md · 第 4 节</span></div>
+          <div class="qa-pulse"></div>
+        </div>
+        <div class="qa-input">
+          <div class="qa-text placeholder">问点什么…</div>
+          <div class="qa-meta">
+            <span>正在读屏</span>
+            <div class="qa-actions">
+              <span class="kbd">⌘</span><span class="kbd">↵</span>
+              <span style="opacity: 0.6;">发送</span>
+              <span class="kbd">esc</span>
+              <span style="opacity: 0.6;">收起</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 64px;">State B · 一轮对话进行中</h3>
+    <div class="scr-stage">
+      <span class="stage-label">// 浮层 stage</span>
+      <div class="qa">
+        <div class="qa-context">
+          <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+          <div class="qa-app">在看 <span>· github.com · pull/2148 · diff</span></div>
+          <div class="qa-pulse"></div>
+        </div>
+        <div class="qa-thread">
+          <div class="qa-msg-user">reviewer 提到的 race condition 在哪一段?</div>
+          <div class="qa-msg-assistant">在 <code>SessionManager::append_turn</code> 这个方法里。reviewer 的意思是 <code>OpenOptions::new().append(true)</code> 之后,如果两个 turn 同时拿到 file handle,write 会交错。建议在写入路径上加一个全局 mutex 来序列化。<span class="breath"></span></div>
+        </div>
+        <div class="qa-input">
+          <div class="qa-meta">
+            <span>· 引用了 1 个屏</span>
+            <div class="qa-actions">
+              <span class="open-in-app">在 App 中查看 →</span>
+              <span class="kbd">esc</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────── 02 · 主窗口 ────────────────── -->
+  <section id="screen-mainwin">
+    <header>
+      <span class="eyebrow">02 · Main Window · Ask</span>
+      <h2>主窗口 · 一个目的地。</h2>
+      <p>1100 × 720,左侧是会话列表(从导航栏转身而来),中间是当前对话,右侧默认空——按需滑出 Frame Drawer。这里展示的是"对话进行中,已有引用、流式输出"的综合状态。</p>
+    </header>
+
+    <div class="mw">
+      <div class="win-titlebar">
+        <div class="tl-dots">
+          <div class="tl-dot tl-close"></div>
+          <div class="tl-dot tl-min"></div>
+          <div class="tl-dot tl-max"></div>
+        </div>
+        <div class="win-title">关于 race condition 的几个 follow-up</div>
+      </div>
+
+      <div class="mw-body">
+        <!-- Sidebar -->
+        <aside class="sb">
+          <div class="sb-top">
+            <div class="sb-brand">
+              <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+              <span class="wm">Corivo</span>
+            </div>
+            <button class="sb-newbtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              新会话
+            </button>
+            <div class="sb-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <span class="label">搜索会话</span>
+              <span class="kb"><span class="kbsm">⌘</span><span class="kbsm">K</span></span>
+            </div>
+          </div>
+
+          <div class="sb-list">
+            <div class="sb-section">置顶</div>
+            <div class="sb-thread">2026 Q2 路线图初稿讨论</div>
+
+            <div class="sb-section">最近</div>
+            <div class="sb-thread active"><span class="pin"></span>关于 race condition 的几个 follow-up</div>
+            <div class="sb-thread">把 SessionManager 的实现整理成 ADR</div>
+            <div class="sb-thread">VC 沟通时被问到的三个问题</div>
+            <div class="sb-thread">capture helper 的 NSPanel 调试记录</div>
+            <div class="sb-thread">和 spec v3 第 7 节相关的几个</div>
+            <div class="sb-thread">前端 redesign · 跟设计师对齐</div>
+            <div class="sb-thread">收到的 closed-beta 反馈整理</div>
+
+            <div class="sb-archive">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              归档(7)
+            </div>
+          </div>
+
+          <div class="sb-bottom">
+            <div class="sb-user">
+              <div class="avatar">LZ</div>
+              <div class="u-info">
+                <div class="u-name">Liu Zhengyanshuo</div>
+                <div class="u-tier">Closed Beta</div>
+              </div>
+              <svg style="width: 12px; height: 12px; color: var(--fg-subtle);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="sb-capture">
+              <span class="cap-dot"></span>
+              <span style="flex: 1;">捕捉中 · 5s 间隔</span>
+              <span style="font-family: var(--font-mono); font-size: 9.5px; color: var(--fg-subtle); letter-spacing: 0.06em;">PAUSE</span>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Conversation -->
+        <section class="conv">
+          <header class="conv-head">
+            <div class="conv-title">关于 race condition 的几个 follow-up</div>
+            <div class="conv-meta">3 turns · 14:32</div>
+          </header>
+
+          <div class="conv-body">
+
+            <!-- Turn 1: User -->
+            <div class="turn">
+              <div class="turn-head">
+                <div class="avatar" style="width: 18px; height: 18px; font-size: 8.5px;">LZ</div>
+                <span class="name">你</span>
+                <span class="time">· 14:32</span>
+              </div>
+              <div class="turn-content">
+                <p>刚才在看的那个 PR 里 reviewer 提到的 race condition 在哪一段?</p>
+              </div>
+            </div>
+
+            <!-- Turn 2: Assistant -->
+            <div class="turn">
+              <div class="turn-head">
+                <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+                <span class="name">Corivo</span>
+                <span class="time">· 14:32</span>
+              </div>
+              <div class="turn-content">
+                <p>在 <code>SessionManager::append_turn</code> 这个方法里。reviewer 的意思是 <code>fs::OpenOptions::new().append(true).open(...)</code> 之后,如果两个并发的 turn 同时拿到 file handle,<code>write_all</code> 会交错写入。</p>
+                <p>他建议改成全局的 <code>tokio::sync::Mutex&lt;()&gt;</code> 来序列化写入路径——这样可以避免每次写入都重新打开文件。</p>
+              </div>
+              <div class="cites">
+                <span class="cite">
+                  <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+                  <span class="cite-name">github.com / pull/2148 / diff</span>
+                  <span class="cite-time">14:28</span>
+                </span>
+                <span class="cite">
+                  <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+                  <span class="cite-name">VS Code / session_manager.rs</span>
+                  <span class="cite-time">14:25</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Turn 3: User -->
+            <div class="turn">
+              <div class="turn-head">
+                <div class="avatar" style="width: 18px; height: 18px; font-size: 8.5px;">LZ</div>
+                <span class="name">你</span>
+                <span class="time">· 14:34</span>
+              </div>
+              <div class="turn-content">
+                <p>嗯,那如果用 tokio 的 RwLock 会不会更好</p>
+              </div>
+            </div>
+
+            <!-- Turn 4: Assistant streaming -->
+            <div class="turn">
+              <div class="turn-head">
+                <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+                <span class="name">Corivo</span>
+                <span class="time">· 流式中</span>
+                <span class="tool-call" style="margin-left: auto;"><span class="tc-dot"></span>read_file</span>
+              </div>
+              <div class="turn-content">
+                <p>RwLock 在这里其实没必要——append 都是写操作,不会有读多写少的场景。RwLock 反而比 Mutex 慢一点(它要维护 reader count)。除非你之后想加一个并发的 "读最新 turn" 的接口<span class="breath"></span></p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Input -->
+          <div class="conv-input">
+            <div class="conv-input-shell">
+              <span class="ci-text placeholder">继续问点什么…</span>
+              <span class="ci-send">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-9"/></svg>
+              </span>
+            </div>
+            <div class="conv-input-foot">
+              <span>· 含 focus context · 引用了 2 个屏</span>
+              <span><span class="kbd">⌘</span><span class="kbd">↵</span> &nbsp;发送 &nbsp; <span class="kbd">⌘</span><span class="kbd">.</span> &nbsp;停</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────── 03 · DRAWER ────────────────── -->
+  <section id="screen-drawer">
+    <header>
+      <span class="eyebrow">03 · Frame Drawer</span>
+      <h2>引用一帧,看一眼回到对话。</h2>
+      <p>在主窗口里点任意一个 cited frame chip,右侧抽屉滑出。视觉上跟主对话同一种语言,只是缩进了一档。下面是同一个主窗口,Drawer 已打开。</p>
+    </header>
+
+    <div class="mw mw-with-drawer">
+      <div class="win-titlebar">
+        <div class="tl-dots">
+          <div class="tl-dot tl-close"></div>
+          <div class="tl-dot tl-min"></div>
+          <div class="tl-dot tl-max"></div>
+        </div>
+        <div class="win-title">关于 race condition 的几个 follow-up</div>
+      </div>
+
+      <div class="mw-body">
+        <!-- Sidebar (compact, same as before) -->
+        <aside class="sb">
+          <div class="sb-top">
+            <div class="sb-brand">
+              <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+              <span class="wm">Corivo</span>
+            </div>
+            <button class="sb-newbtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              新会话
+            </button>
+            <div class="sb-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <span class="label">搜索会话</span>
+              <span class="kb"><span class="kbsm">⌘</span><span class="kbsm">K</span></span>
+            </div>
+          </div>
+          <div class="sb-list">
+            <div class="sb-section">最近</div>
+            <div class="sb-thread active"><span class="pin"></span>关于 race condition 的几个 follow-up</div>
+            <div class="sb-thread">把 SessionManager 整理成 ADR</div>
+            <div class="sb-thread">VC 被问到的三个问题</div>
+            <div class="sb-thread">capture helper 的 NSPanel 调试</div>
+          </div>
+          <div class="sb-bottom">
+            <div class="sb-user">
+              <div class="avatar">LZ</div>
+              <div class="u-info">
+                <div class="u-name">Liu Zhengyanshuo</div>
+                <div class="u-tier">Closed Beta</div>
+              </div>
+            </div>
+            <div class="sb-capture">
+              <span class="cap-dot"></span>
+              <span style="flex: 1;">捕捉中 · 5s</span>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Conv (narrower) -->
+        <section class="conv">
+          <header class="conv-head">
+            <div class="conv-title">关于 race condition 的几个 follow-up</div>
+            <div class="conv-meta">3 turns</div>
+          </header>
+          <div class="conv-body">
+            <div class="turn">
+              <div class="turn-head">
+                <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+                <span class="name">Corivo</span>
+                <span class="time">· 14:32</span>
+              </div>
+              <div class="turn-content">
+                <p>在 <code>SessionManager::append_turn</code> 这个方法里。reviewer 的意思是,如果两个并发的 turn 同时拿到 file handle,<code>write_all</code> 会交错写入。</p>
+              </div>
+              <div class="cites">
+                <span class="cite" style="background: var(--accent-soft); color: var(--accent-fg-on-soft); border-color: rgba(168, 107, 34, 0.2);">
+                  <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+                  <span class="cite-name">github.com / pull/2148 / diff</span>
+                  <span class="cite-time" style="color: currentColor; opacity: 0.7;">14:28</span>
+                </span>
+                <span class="cite">
+                  <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+                  <span class="cite-name">session_manager.rs</span>
+                </span>
+              </div>
+            </div>
+            <div class="turn">
+              <div class="turn-head">
+                <div class="avatar" style="width: 18px; height: 18px; font-size: 8.5px;">LZ</div>
+                <span class="name">你</span>
+                <span class="time">· 14:34</span>
+              </div>
+              <div class="turn-content"><p>嗯,那如果用 tokio 的 RwLock 会不会更好</p></div>
+            </div>
+          </div>
+          <div class="conv-input">
+            <div class="conv-input-shell">
+              <span class="ci-text placeholder">继续问点什么…</span>
+              <span class="ci-send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-9"/></svg></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Drawer -->
+        <aside class="drawer">
+          <div class="drw-head">
+            <span class="drw-title">github.com / pull/2148</span>
+            <div class="drw-close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="width: 14px; height: 14px;"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </div>
+          </div>
+
+          <div class="drw-image-wrap">
+            <div class="drw-image">
+              <div class="fake-chrome">
+                <span class="fc-dot"></span><span class="fc-dot"></span><span class="fc-dot"></span>
+              </div>
+              <div class="fake-content">
+                <div class="fc-line medium"></div>
+                <div class="fc-line short"></div>
+                <div class="fc-line medium"></div>
+                <div class="fc-line"></div>
+                <div class="fc-line amber"></div>
+                <div class="fc-line short"></div>
+                <div class="fc-line medium"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="drw-meta">
+            <span>14:28:42</span>
+            <span class="strategy">ax+ocr</span>
+            <span style="margin-left: auto;">Chrome</span>
+          </div>
+
+          <div class="drw-tabs">
+            <span class="drw-tab">截图</span>
+            <span class="drw-tab active">提取文本</span>
+            <span class="drw-tab">原始数据</span>
+          </div>
+
+          <div class="drw-text">
+            <p style="margin: 0 0 10px;">"…我注意到 <mark>SessionManager::append_turn</mark> 在并发场景下可能会有问题。当前实现是每次写入都打开 append 模式的文件,如果两个 turn 同时进入这个方法,<mark>write_all 之间可能会交错写入</mark>,导致 jsonl 文件的某一行被破坏。"</p>
+            <p style="margin: 0 0 10px;">"建议:在 SessionManager 的字段里加一个 <mark>tokio::sync::Mutex&lt;()&gt;</mark>,所有写入路径先 acquire 这个 mutex 再 write。这样即使 file handle 是 per-write 打开,顺序也是保证的。"</p>
+            <p style="margin: 0; color: var(--fg-subtle);">— @reviewer-x · 12 hours ago</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────── 04 · ONBOARDING ────────────────── -->
+  <section id="screen-onboarding">
+    <header>
+      <span class="eyebrow">04 · Onboarding</span>
+      <h2>三步,把第一印象做对。</h2>
+      <p>用户第一次看到 Corivo 的样子。三步:Welcome(讲清楚我是谁)、Permission(申请权限,带状态)、Done(让你试一下双击 ⌥)。</p>
+    </header>
+
+    <div class="ob-grid">
+
+      <!-- Step 1 · Welcome -->
+      <div class="ob-step">
+        <div class="win-titlebar">
+          <div class="tl-dots"><div class="tl-dot tl-close"></div><div class="tl-dot tl-min"></div><div class="tl-dot tl-max"></div></div>
+          <div class="win-title">Corivo</div>
+        </div>
+        <div class="ob-progress">
+          <div class="ob-brand">
+            <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+            <span class="wm">Corivo</span>
+          </div>
+          <div class="ob-steps-row">
+            <span class="ob-step-pill active"></span>
+            <span class="ob-step-pill"></span>
+            <span class="ob-step-pill"></span>
+            <span style="margin-left: 6px;">1 / 3</span>
+          </div>
+        </div>
+        <div class="ob-content">
+          <img class="mascot mascot-md" src="assets/corivo-mascot.svg" alt="Corivo" />
+          <span class="ob-eyebrow">Welcome</span>
+          <h2 class="ob-title">工作时,在你旁边的那个人。</h2>
+          <p class="ob-desc">Corivo 在后台安静地看着你的屏幕——读你看过的页面、想过的问题。需要时双击 ⌥,我一秒就在。</p>
+          <div class="ob-cards">
+            <div class="ob-card">
+              <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+              <div class="obc-title">读屏即上下文</div>
+              <div class="obc-desc">不用复制粘贴,你看的就是它知道的。</div>
+            </div>
+            <div class="ob-card">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              <div class="obc-title">长记忆,短反应</div>
+              <div class="obc-desc">15 分钟前看过的能查到,问完一秒回到原节奏。</div>
+            </div>
+            <div class="ob-card">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="12" cy="12" r="2"/></svg>
+              <div class="obc-title">本地优先</div>
+              <div class="obc-desc">截图与索引都在你的 Mac 上,你随时可以一键销毁。</div>
+            </div>
+          </div>
+        </div>
+        <div class="ob-foot">
+          <button class="btn btn-text">跳过</button>
+          <button class="btn btn-primary">下一步 →</button>
+        </div>
+      </div>
+
+      <!-- Step 2 · Permission -->
+      <div class="ob-step">
+        <div class="win-titlebar">
+          <div class="tl-dots"><div class="tl-dot tl-close"></div><div class="tl-dot tl-min"></div><div class="tl-dot tl-max"></div></div>
+          <div class="win-title">Corivo</div>
+        </div>
+        <div class="ob-progress">
+          <div class="ob-brand">
+            <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+            <span class="wm">Corivo</span>
+          </div>
+          <div class="ob-steps-row">
+            <span class="ob-step-pill done"></span>
+            <span class="ob-step-pill active"></span>
+            <span class="ob-step-pill"></span>
+            <span style="margin-left: 6px;">2 / 3</span>
+          </div>
+        </div>
+        <div class="ob-content">
+          <span class="ob-eyebrow">Permission</span>
+          <h2 class="ob-title">两个权限,你来决定开哪个。</h2>
+          <p class="ob-desc">屏幕录制是必要的——它让我能看到你看到的。辅助功能是可选的,开了之后我能更准确地"读懂"页面里的字。</p>
+
+          <div class="ob-permission">
+            <div class="perm-row">
+              <div class="perm-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              </div>
+              <div class="perm-info">
+                <div class="pi-title">屏幕录制 · 必须</div>
+                <div class="pi-desc">用来定期捕获你的屏幕画面。所有截图保留在本地,不上传。</div>
+              </div>
+              <span class="perm-status granted">已授权</span>
+            </div>
+            <div class="perm-row">
+              <div class="perm-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+              </div>
+              <div class="perm-info">
+                <div class="pi-title">辅助功能 · 可选</div>
+                <div class="pi-desc">让我能直接读到 UI 文本(比 OCR 更准),你看的链接、按钮文字都更清晰。</div>
+              </div>
+              <span class="perm-status pending">等待授权</span>
+            </div>
+          </div>
+        </div>
+        <div class="ob-foot">
+          <button class="btn btn-ghost">← 上一步</button>
+          <button class="btn btn-primary">下一步 →</button>
+        </div>
+      </div>
+
+      <!-- Step 3 · Done -->
+      <div class="ob-step">
+        <div class="win-titlebar">
+          <div class="tl-dots"><div class="tl-dot tl-close"></div><div class="tl-dot tl-min"></div><div class="tl-dot tl-max"></div></div>
+          <div class="win-title">Corivo</div>
+        </div>
+        <div class="ob-progress">
+          <div class="ob-brand">
+            <svg class="fm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+            <span class="wm">Corivo</span>
+          </div>
+          <div class="ob-steps-row">
+            <span class="ob-step-pill done"></span>
+            <span class="ob-step-pill done"></span>
+            <span class="ob-step-pill active"></span>
+            <span style="margin-left: 6px;">3 / 3</span>
+          </div>
+        </div>
+        <div class="ob-content">
+          <img class="mascot mascot-lg" src="assets/corivo-mascot.svg" alt="Corivo" />
+          <span class="ob-eyebrow">Ready</span>
+          <h2 class="ob-title">我已经在了。</h2>
+          <p class="ob-desc">现在双击 <span class="kbd" style="margin: 0 2px;">⌥</span> 试试——任何时候、任何应用之上,我都能在 200ms 内出现。</p>
+          <div style="display: flex; gap: 12px; margin-top: 8px;">
+            <span class="kbd" style="height: 32px; min-width: 32px; padding: 0 12px; font-size: 14px;">⌥</span>
+            <span style="display: flex; align-items: center; color: var(--fg-subtle); font-family: var(--font-mono); font-size: 11px;">+</span>
+            <span class="kbd" style="height: 32px; min-width: 32px; padding: 0 12px; font-size: 14px;">⌥</span>
+          </div>
+        </div>
+        <div class="ob-foot">
+          <span style="font-size: 11px; color: var(--fg-subtle); font-family: var(--font-mono); letter-spacing: 0.06em;">这一步无需你做什么 — 我们会一直在</span>
+          <button class="btn btn-primary">开始使用</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ────────────────── 05 · SETTINGS ────────────────── -->
+  <section id="screen-settings">
+    <header>
+      <span class="eyebrow">05 · Settings · Capture & Privacy</span>
+      <h2>把"信任承诺"摆在你看得见的地方。</h2>
+      <p>Settings 仍然是 dialog,只是 Capture & Privacy 升到二号位。下面展示该 tab 的实景:采集节奏 · "最近 24h 抓到的" inspector(替代 Timeline 的信任作用)· 排除清单 · 权限状态 · 数据销毁。</p>
+    </header>
+
+    <div class="settings-frame">
+      <div class="settings-tab-bar">
+        <div class="tl-dots">
+          <div class="tl-dot tl-close"></div>
+          <div class="tl-dot tl-min" style="opacity: 0.5;"></div>
+          <div class="tl-dot tl-max" style="opacity: 0.5;"></div>
+        </div>
+        <span style="font-size: 12px; color: var(--fg-subtle); font-weight: 500; letter-spacing: -0.005em; margin-left: auto; margin-right: auto;">Settings</span>
+      </div>
+
+      <div class="settings-body">
+        <nav class="settings-nav">
+          <div class="sn-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            General
+          </div>
+          <div class="sn-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Capture & Privacy
+            <span class="star">★</span>
+          </div>
+          <div class="sn-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Exec Agent
+          </div>
+          <div class="sn-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+            Skills
+          </div>
+          <div class="sn-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            About
+          </div>
+        </nav>
+
+        <div class="settings-content">
+          <div class="sc-header">
+            <h3>Capture & Privacy</h3>
+            <p>"你掌控屏幕里发生的事"——这一节就是 Corivo 对你的全部承诺。</p>
+          </div>
+
+          <!-- Inspector card -->
+          <div class="sc-section">
+            <div class="sc-section-title">最近 24h 抓到的</div>
+            <div class="inspector">
+              <div class="insp-head">
+                <span class="ih-title">14,328 帧 · 487 MB</span>
+                <span class="ih-link">看看抓到了什么 →</span>
+              </div>
+              <div class="insp-stats">
+                <div class="insp-stat">
+                  <div class="v">14.3k</div>
+                  <div class="l">FRAMES</div>
+                </div>
+                <div class="insp-stat">
+                  <div class="v">487 MB</div>
+                  <div class="l">SIZE</div>
+                </div>
+                <div class="insp-stat">
+                  <div class="v">10:00</div>
+                  <div class="l">PEAK HOUR</div>
+                </div>
+              </div>
+              <div class="insp-spark">
+                <div class="bar" style="height: 30%;"></div>
+                <div class="bar" style="height: 22%;"></div>
+                <div class="bar" style="height: 18%;"></div>
+                <div class="bar" style="height: 35%;"></div>
+                <div class="bar" style="height: 45%;"></div>
+                <div class="bar" style="height: 60%;"></div>
+                <div class="bar peak" style="height: 92%;"></div>
+                <div class="bar peak" style="height: 88%;"></div>
+                <div class="bar" style="height: 70%;"></div>
+                <div class="bar" style="height: 65%;"></div>
+                <div class="bar" style="height: 55%;"></div>
+                <div class="bar" style="height: 48%;"></div>
+                <div class="bar" style="height: 60%;"></div>
+                <div class="bar" style="height: 75%;"></div>
+                <div class="bar peak" style="height: 80%;"></div>
+                <div class="bar" style="height: 70%;"></div>
+                <div class="bar" style="height: 55%;"></div>
+                <div class="bar" style="height: 35%;"></div>
+                <div class="bar" style="height: 28%;"></div>
+                <div class="bar" style="height: 18%;"></div>
+                <div class="bar" style="height: 12%;"></div>
+                <div class="bar" style="height: 8%;"></div>
+                <div class="bar" style="height: 6%;"></div>
+                <div class="bar" style="height: 14%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Capture controls -->
+          <div class="sc-section">
+            <div class="sc-section-title">采集节奏</div>
+            <div class="setrow">
+              <div>
+                <div class="sr-label">采集开关</div>
+                <div class="sr-desc">关掉之后 Corivo 不会再读屏 — 但已有的索引仍然可查</div>
+              </div>
+              <div class="toggle on"></div>
+            </div>
+            <div class="setrow">
+              <div>
+                <div class="sr-label">采集间隔(秒)</div>
+                <div class="sr-desc">每 N 秒采一帧 + 焦点切换时强采</div>
+              </div>
+              <input class="num-input" type="text" value="5" />
+            </div>
+            <div class="setrow">
+              <div>
+                <div class="sr-label">JPEG 压缩</div>
+                <div class="sr-desc">数值越高质量越好,但占用更多空间</div>
+              </div>
+              <div class="slider-shell">
+                <div class="slider-track">
+                  <div class="slider-fill"></div>
+                  <div class="slider-thumb"></div>
+                </div>
+                <span class="sv">75</span>
+              </div>
+            </div>
+            <div class="setrow">
+              <div>
+                <div class="sr-label">存储配额(GB)</div>
+                <div class="sr-desc">超过阈值时自动清理最旧的帧</div>
+              </div>
+              <input class="num-input" type="text" value="10" />
+            </div>
+          </div>
+
+          <!-- Exclusions -->
+          <div class="sc-section">
+            <div class="sc-section-title">不要采这些应用</div>
+            <div class="excl-list">
+              <div class="excl-item">
+                <div class="ei-icon"></div>
+                <span class="ei-name">com.apple.keychainaccess</span>
+                <span class="ei-default">Default</span>
+                <span class="ei-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></span>
+              </div>
+              <div class="excl-item">
+                <div class="ei-icon"></div>
+                <span class="ei-name">org.signal.Signal</span>
+                <span class="ei-default">Default</span>
+                <span class="ei-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></span>
+              </div>
+              <div class="excl-item">
+                <div class="ei-icon"></div>
+                <span class="ei-name">com.1password.1password</span>
+                <span class="ei-default">Default</span>
+                <span class="ei-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></span>
+              </div>
+              <div class="excl-add">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                添加应用…
+              </div>
+            </div>
+          </div>
+
+          <!-- Permissions -->
+          <div class="sc-section">
+            <div class="sc-section-title">系统权限</div>
+            <div class="setrow">
+              <div>
+                <div class="sr-label">屏幕录制</div>
+                <div class="sr-desc">用于定期采集屏幕画面</div>
+              </div>
+              <span class="perm-status granted">已授权</span>
+            </div>
+            <div class="setrow">
+              <div>
+                <div class="sr-label">辅助功能(AX)</div>
+                <div class="sr-desc">让 Corivo 直接读 UI 文本,比 OCR 更准</div>
+              </div>
+              <span class="perm-status granted">已授权</span>
+            </div>
+          </div>
+
+          <!-- Hard delete -->
+          <div class="sc-section">
+            <div class="sc-section-title">硬删除</div>
+            <div class="setrow">
+              <div>
+                <div class="sr-label">清空所有数据</div>
+                <div class="sr-desc">所有帧、索引、会话历史。不可恢复。</div>
+              </div>
+              <button class="btn btn-destructive btn-sm">全部销毁…</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <footer>
+    <p class="sig">Screens v0 · 2026-05-09</p>
+    <p>Step 2B 的全部产物 · 五张精稿,Light/Dark 双主题。如果整体过了,下一步是 <strong>Step 3 · Handoff</strong> —— 把 token 与组件落到代码(Tailwind 配置 / shadcn 组件 / Tauri 主题切换),开始让真实代码长成这个样子。</p>
+  </footer>
+
+</main>
+
+<script>
+  (function() {
+    const root = document.documentElement;
+    const buttons = document.querySelectorAll('.tt-btn');
+    const apply = (theme) => {
+      root.dataset.theme = theme;
+      try { localStorage.setItem('corivo-theme', theme); } catch (e) {}
+      buttons.forEach(b => b.classList.toggle('active', b.dataset.themeSet === theme));
+    };
+    let saved = null;
+    try { saved = localStorage.getItem('corivo-theme'); } catch (e) {}
+    const initial = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    apply(initial);
+    buttons.forEach(b => b.addEventListener('click', () => apply(b.dataset.themeSet)));
+  })();
+</script>
+
+</body>
+</html>

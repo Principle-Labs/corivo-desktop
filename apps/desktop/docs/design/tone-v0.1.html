@@ -1,0 +1,1362 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corivo · Tone Reference v0.1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* ── Surface · 纸感,不再"米色感" ─────────── */
+    --bg-page:     #F8F7F3;   /* paper */
+    --bg-card:     #FCFBF8;   /* card */
+    --bg-subtle:   #F0EEE6;   /* subtle */
+    --bg-deep:     #E8E5DA;   /* deep */
+
+    /* ── Ink · 偏暖中性的墨色阶 ──────────────── */
+    --ink-1000:    #1A1916;
+    --ink-900:     #2B2925;
+    --ink-800:     #423E37;
+    --ink-700:     #5A574F;
+    --ink-600:     #7A746A;
+    --ink-500:     #98917E;
+    --ink-400:     #B5AE9C;
+    --ink-300:     #CFCABE;
+    --ink-200:     #E5E0D2;
+    --ink-100:     #F0EAD9;
+
+    /* ── Amber · 沉到印染感,不再"光" ──────────── */
+    --amber-700:   #6B4216;
+    --amber-600:   #8E5A1F;
+    --amber-500:   #A86B22;   /* primary — print, not glow */
+    --amber-400:   #C0894A;
+    --amber-300:   #D5A878;
+    --amber-100:   #ECDFC5;
+    --amber-tint:  rgba(168, 107, 34, 0.06);
+
+    /* ── 边界 ─────────────────────────────── */
+    --hairline:        rgba(28, 26, 23, 0.07);
+    --hairline-strong: rgba(28, 26, 23, 0.13);
+
+    /* ── 双层阴影 ──────────────────────────── */
+    --shadow-sm:
+      0 0 0 0.5px rgba(28, 26, 23, 0.05),
+      0 1px 2px   rgba(28, 26, 23, 0.04);
+    --shadow-md:
+      0 0 0 0.5px rgba(28, 26, 23, 0.06),
+      0 2px 4px   rgba(28, 26, 23, 0.04),
+      0 12px 32px rgba(28, 26, 23, 0.06);
+    --shadow-lg:
+      0 0 0 0.5px rgba(28, 26, 23, 0.07),
+      0 4px 8px   rgba(28, 26, 23, 0.05),
+      0 24px 64px rgba(28, 26, 23, 0.10);
+
+    /* ── Typography ────────────────────────── */
+    /* 全部走系统字 + 字距控制,无 Serif、无 Italic */
+    --font-sans: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+    --font-display: -apple-system, "SF Pro Display", "PingFang SC", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+
+    /* ── Radii ─────────────────────────────── */
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 20px;
+
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-page);
+    color: var(--ink-1000);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    letter-spacing: 0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.035;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+  }
+
+  main {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 96px 40px 200px;
+    position: relative;
+  }
+
+  /* ── Hero · brand lockup ───────────────────── */
+  .hero {
+    margin-bottom: 56px;
+  }
+  .brand-lockup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 40px;
+    color: var(--ink-700);
+  }
+  .brand-lockup .focus-mark {
+    width: 24px;
+    height: 24px;
+    color: var(--ink-700);
+  }
+  .brand-lockup .wordmark {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink-1000);
+  }
+  .brand-lockup .sep {
+    color: var(--ink-300);
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+    font-weight: 500;
+  }
+
+  .display {
+    font-family: var(--font-display);
+    font-size: 56px;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    margin: 24px 0 28px;
+    color: var(--ink-1000);
+  }
+  .lede {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--ink-700);
+    max-width: 600px;
+    margin: 0;
+    letter-spacing: 0;
+  }
+
+  /* ── Diff callout ──────────────────────────── */
+  .diff-note {
+    margin-top: 48px;
+    padding: 28px 32px;
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-left: 2px solid var(--ink-700);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-sm);
+  }
+  .diff-note .diff-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+    margin-bottom: 14px;
+  }
+  .diff-note ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .diff-note li {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-800);
+    padding-left: 18px;
+    position: relative;
+  }
+  .diff-note li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 6px;
+    height: 1px;
+    background: var(--ink-500);
+  }
+  .diff-note li strong {
+    color: var(--ink-1000);
+    font-weight: 600;
+  }
+  .diff-note li code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-600);
+    background: var(--bg-subtle);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+
+  /* ── Section structure ─────────────────────── */
+  section {
+    margin-top: 128px;
+  }
+  section > header {
+    margin-bottom: 40px;
+  }
+  section > header .eyebrow {
+    display: block;
+    margin-bottom: 12px;
+  }
+  section > header h2 {
+    font-family: var(--font-display);
+    font-size: 32px;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+  section > header p {
+    color: var(--ink-700);
+    margin: 0;
+    max-width: 580px;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  h3.sub {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink-700);
+    margin: 0 0 16px;
+  }
+  code, .mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-600);
+    letter-spacing: 0;
+  }
+
+  /* ── Color swatches ────────────────────────── */
+  .swatch-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 1px;
+    background: var(--hairline);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .swatch {
+    background: var(--bg-card);
+    padding: 0;
+  }
+  .swatch .chip {
+    height: 96px;
+    display: block;
+  }
+  .swatch .meta {
+    padding: 12px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .swatch .name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-900);
+    letter-spacing: -0.005em;
+  }
+  .swatch .hex {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-500);
+  }
+
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 32px;
+  }
+  .compare-card {
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+  .compare-card .label {
+    padding: 14px 18px;
+    font-size: 12px;
+    color: var(--ink-700);
+    border-bottom: 0.5px solid var(--hairline);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.005em;
+  }
+  .compare-card .label .tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .compare-card .label.is .tag    { background: #E8F0E0; color: #4A6B2D; }
+  .compare-card .label.isnt .tag  { background: var(--bg-deep); color: var(--ink-600); }
+  .compare-card .body {
+    padding: 32px;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Typography scale ──────────────────────── */
+  .type-scale {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    border-top: 0.5px solid var(--hairline);
+    padding-top: 32px;
+  }
+  .type-row {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    align-items: baseline;
+    gap: 32px;
+  }
+  .type-row .ref {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-500);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .t-display { font-family: var(--font-display); font-size: 48px; font-weight: 600; line-height: 1.05; letter-spacing: -0.025em; }
+  .t-h1      { font-family: var(--font-display); font-size: 32px; font-weight: 600; line-height: 1.18; letter-spacing: -0.02em; }
+  .t-h2      { font-family: var(--font-display); font-size: 24px; font-weight: 600; line-height: 1.3; letter-spacing: -0.013em; }
+  .t-h3      { font-size: 18px; font-weight: 600; line-height: 1.4; letter-spacing: -0.005em; }
+  .t-body-l  { font-size: 17px; line-height: 1.6; color: var(--ink-800); }
+  .t-body    { font-size: 15px; line-height: 1.6; color: var(--ink-900); }
+  .t-small   { font-size: 13px; line-height: 1.55; color: var(--ink-700); }
+  .t-caption { font-size: 12px; line-height: 1.5; color: var(--ink-600); letter-spacing: 0.02em; }
+
+  .mixed-sample {
+    margin-top: 48px;
+    padding: 32px 36px;
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm);
+  }
+  .mixed-sample p {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--ink-900);
+    letter-spacing: 0;
+  }
+  .mixed-sample p + p { margin-top: 16px; }
+
+  /* ── Surface row ──────────────────────────── */
+  .surface-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+  .surface-card {
+    background: var(--bg-card);
+    border-radius: var(--r-lg);
+    padding: 28px 22px;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .surface-card .surface-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-900);
+    letter-spacing: -0.005em;
+  }
+  .surface-card .surface-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+  }
+  .s-hairline { border: 0.5px solid var(--hairline); }
+  .s-sm { box-shadow: var(--shadow-sm); }
+  .s-md { box-shadow: var(--shadow-md); }
+  .s-lg { box-shadow: var(--shadow-lg); }
+
+  /* ── Components ───────────────────────────── */
+  .components-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .comp-cell {
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-lg);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .comp-cell .comp-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 18px;
+    border-radius: var(--r-sm);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    border: 0.5px solid transparent;
+    transition: all 160ms var(--ease);
+    background: transparent;
+    color: var(--ink-1000);
+  }
+  .btn-primary {
+    background: var(--ink-1000);
+    color: var(--bg-page);
+  }
+  .btn-primary:hover {
+    background: var(--ink-900);
+    transform: translateY(-0.5px);
+  }
+  .btn-ghost {
+    border-color: var(--hairline-strong);
+    color: var(--ink-900);
+  }
+  .btn-ghost:hover {
+    background: var(--bg-subtle);
+  }
+  .btn-text {
+    color: var(--ink-700);
+    padding: 0 8px;
+  }
+  .btn-text:hover { color: var(--ink-1000); }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .input-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .input-shell label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-700);
+    letter-spacing: -0.005em;
+  }
+  .input {
+    height: 38px;
+    padding: 0 14px;
+    border: 0.5px solid var(--hairline-strong);
+    background: var(--bg-page);
+    border-radius: var(--r-sm);
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink-1000);
+    outline: none;
+    transition: all 160ms var(--ease);
+    letter-spacing: 0;
+  }
+  .input::placeholder { color: var(--ink-500); }
+  .input:focus {
+    border-color: var(--ink-900);
+    background: var(--bg-card);
+    box-shadow: 0 0 0 4px rgba(28, 26, 23, 0.04);
+  }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--bg-card);
+  }
+  .list-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    padding: 14px 18px;
+    border-bottom: 0.5px solid var(--hairline);
+    align-items: center;
+    transition: background 120ms var(--ease);
+    cursor: default;
+  }
+  .list-item:last-child { border-bottom: none; }
+  .list-item:hover { background: var(--bg-subtle); }
+  .list-item .li-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-1000);
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .list-item .li-meta {
+    font-size: 12px;
+    color: var(--ink-500);
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+  }
+
+  .small-card {
+    padding: 20px 22px;
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-sm);
+  }
+  .small-card .sc-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .small-card .sc-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-1000);
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .small-card .sc-body {
+    font-size: 13px;
+    color: var(--ink-700);
+    line-height: 1.55;
+  }
+
+  /* ── Focus mark · Corivo signature ─────────── */
+  .focus-mark {
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .fm-hero-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  .fm-hero {
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-lg);
+    padding: 56px 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .fm-hero .focus-mark {
+    width: 64px;
+    height: 64px;
+    color: var(--ink-700);
+  }
+  .fm-hero .fm-name {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink-1000);
+  }
+  .fm-hero .fm-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+  }
+
+  .fm-anatomy {
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-lg);
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    justify-content: center;
+  }
+  .fm-anatomy h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-1000);
+    letter-spacing: -0.005em;
+  }
+  .fm-anatomy ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .fm-anatomy li {
+    font-size: 13px;
+    color: var(--ink-700);
+    line-height: 1.55;
+    display: flex;
+    gap: 10px;
+  }
+  .fm-anatomy li::before {
+    content: '·';
+    color: var(--ink-400);
+    flex-shrink: 0;
+  }
+  .fm-anatomy code {
+    font-size: 11px;
+  }
+
+  .fm-sizes {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--hairline);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .fm-size {
+    background: var(--bg-card);
+    padding: 28px 16px 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .fm-size .focus-mark { color: var(--ink-700); }
+  .fm-size .px {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.05em;
+  }
+
+  .fm-contexts {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .fm-ctx {
+    border-radius: var(--r-md);
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    border: 0.5px solid var(--hairline);
+  }
+  .fm-ctx .focus-mark { width: 22px; height: 22px; }
+  .fm-ctx .ctx-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .fm-ctx-default { background: var(--bg-card); }
+  .fm-ctx-default .focus-mark { color: var(--ink-700); }
+  .fm-ctx-default .ctx-label { color: var(--ink-500); }
+  .fm-ctx-subtle  { background: var(--bg-subtle); }
+  .fm-ctx-subtle .focus-mark { color: var(--ink-700); }
+  .fm-ctx-subtle .ctx-label { color: var(--ink-500); }
+  .fm-ctx-active  { background: var(--amber-tint); border-color: rgba(168, 107, 34, 0.18); }
+  .fm-ctx-active .focus-mark { color: var(--amber-600); }
+  .fm-ctx-active .ctx-label { color: var(--amber-700); }
+  .fm-ctx-dark    { background: var(--ink-1000); border-color: transparent; }
+  .fm-ctx-dark .focus-mark { color: #E8E5DA; }
+  .fm-ctx-dark .ctx-label { color: var(--ink-400); }
+
+  /* ── Corivo glimpse · stage ────────────────── */
+  .corivo-stage {
+    margin-top: 12px;
+    padding: 64px 48px;
+    border-radius: var(--r-xl);
+    border: 0.5px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    position: relative;
+    overflow: hidden;
+    /* simulate "blurred app behind" — Quick Ask floats over real content */
+    background:
+      radial-gradient(ellipse at 18% 22%, rgba(168, 107, 34, 0.18) 0%, transparent 45%),
+      radial-gradient(ellipse at 82% 78%, rgba(75, 65, 50, 0.30) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(120, 105, 80, 0.10) 0%, transparent 60%),
+      linear-gradient(135deg, #C9BC9A 0%, #A89B7A 50%, #8B7E5E 100%);
+  }
+  .corivo-stage .stage-label {
+    position: absolute;
+    top: 16px;
+    left: 22px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  /* Quick Ask · floating panel with frosted glass */
+  .quick-ask {
+    width: 100%;
+    max-width: 560px;
+    background: rgba(252, 251, 248, 0.72);
+    backdrop-filter: blur(28px) saturate(1.6);
+    -webkit-backdrop-filter: blur(28px) saturate(1.6);
+    border-radius: var(--r-lg);
+    box-shadow:
+      0 0 0 0.5px rgba(255, 255, 255, 0.12),
+      0 0 0 0.5px rgba(28, 26, 23, 0.10),
+      0 24px 64px rgba(28, 26, 23, 0.30),
+      0 8px 16px rgba(28, 26, 23, 0.18);
+    overflow: hidden;
+    border: 0.5px solid rgba(255, 255, 255, 0.20);
+  }
+  .qa-context {
+    padding: 14px 18px;
+    border-bottom: 0.5px solid rgba(28, 26, 23, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(252, 251, 248, 0.18);
+  }
+  .qa-context .focus-mark {
+    width: 18px;
+    height: 18px;
+    color: var(--ink-700);
+    flex-shrink: 0;
+  }
+  .qa-context .qa-app {
+    font-size: 13px;
+    color: var(--ink-900);
+    font-weight: 500;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.005em;
+  }
+  .qa-context .qa-app span {
+    color: var(--ink-500);
+    font-weight: 400;
+  }
+  .qa-context .qa-pulse {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--amber-500);
+    box-shadow: 0 0 0 3px var(--amber-tint);
+    flex-shrink: 0;
+  }
+  .qa-input {
+    padding: 22px 22px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .qa-input .qa-text {
+    font-size: 15px;
+    color: var(--ink-1000);
+    line-height: 1.5;
+    min-height: 24px;
+    letter-spacing: 0;
+  }
+  .qa-input .qa-text .breath {
+    display: inline-block;
+    width: 1.5px;
+    height: 16px;
+    background: var(--amber-500);
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: breathe 1.6s ease-in-out infinite;
+    border-radius: 1px;
+    transform-origin: center;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.35; transform: scaleY(0.92); }
+    50%      { opacity: 1;    transform: scaleY(1.05); }
+  }
+  .qa-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--ink-500);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .qa-meta .kbd {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(28, 26, 23, 0.08);
+    color: var(--ink-700);
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+
+  /* Empty state · main window paper variant */
+  .empty-state {
+    width: 100%;
+    max-width: 560px;
+    padding: 48px;
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-lg);
+    text-align: center;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .empty-state .focus-mark {
+    width: 36px;
+    height: 36px;
+    color: var(--amber-500);
+  }
+  .empty-state .es-text {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--ink-1000);
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin: 0;
+  }
+  .empty-state .es-hint {
+    font-size: 13px;
+    color: var(--ink-500);
+    margin: 0;
+    letter-spacing: 0;
+  }
+
+  /* ── Is / Isn't ─────────────────────────── */
+  .is-isnt {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--hairline);
+    margin-top: 12px;
+  }
+  .ii-cell {
+    background: var(--bg-card);
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ii-cell .ii-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .ii-cell.is .ii-tag    { color: #4A6B2D; }
+  .ii-cell.isnt .ii-tag  { color: var(--ink-500); }
+  .ii-cell .ii-text {
+    font-size: 14px;
+    color: var(--ink-900);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .ii-cell.isnt .ii-text {
+    color: var(--ink-600);
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-300);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  /* ── Footer ─────────────────────────────── */
+  footer {
+    margin-top: 160px;
+    padding-top: 40px;
+    border-top: 0.5px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  footer p {
+    margin: 0;
+    color: var(--ink-600);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  footer .sig {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  hr.rule {
+    border: 0;
+    height: 0;
+    border-top: 0.5px solid var(--hairline);
+    margin: 64px 0 0;
+  }
+</style>
+</head>
+<body>
+
+<main>
+
+  <!-- ────────────────────────── HERO ────────────────────────── -->
+  <header class="hero">
+
+    <div class="brand-lockup">
+      <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M5 9V5H9"/>
+        <path d="M15 5H19V9"/>
+        <path d="M19 15V19H15"/>
+        <path d="M9 19H5V15"/>
+        <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/>
+      </svg>
+      <span class="wordmark">Corivo</span>
+      <span class="sep">·</span>
+      <span class="eyebrow" style="font-size: 10px;">Tone Reference v0.1</span>
+    </div>
+
+    <h1 class="display">工作时,<br>安静地在场。</h1>
+    <p class="lede">
+      v0.1 把 v0 太像 Claude 的部分退掉了——退掉 Serif、退掉 Italic、把暖白拉到纸感、把 amber 沉到印染感,加一个属于 Corivo 的取景标记。
+    </p>
+
+    <aside class="diff-note">
+      <div class="diff-eyebrow">v0 → v0.1 · 改了四件事</div>
+      <ul>
+        <li><strong>退掉 Serif Display + Italic</strong> · 改用 SF Pro Display + 字距控制,从"杂志/书"切到"软件/工程"</li>
+        <li><strong>暖白从米色退到纸感</strong> · <code>#FBF8F2</code> → <code>#F8F7F3</code>,少一分"煮过",多一分自然</li>
+        <li><strong>Amber 从光沉到印染</strong> · <code>#C8842B</code> → <code>#A86B22</code>,且不再用作主操作色,只在小尺度出现</li>
+        <li><strong>加入 Focus Mark</strong> · 一个 4 角取景框 + 中心点的小图记,作为 Corivo 的视觉签名</li>
+      </ul>
+    </aside>
+
+  </header>
+
+  <!-- ────────────────────────── 1 · Color ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">01 · Surface & Color</span>
+      <h2>纸感的暖,与一束印染的琥珀。</h2>
+      <p>底色不再像"煮过的米浆",更接近真正的纸——暖,但中性。Amber 从"光感"沉到"印染感",平时退后,只在最该被看到的瞬间出现。</p>
+    </header>
+
+    <h3 class="sub">Surface · 纸感四阶</h3>
+    <div class="swatch-row">
+      <div class="swatch">
+        <span class="chip" style="background: var(--bg-page);"></span>
+        <span class="meta">
+          <span class="name">Page</span>
+          <span class="hex">#F8F7F3</span>
+        </span>
+      </div>
+      <div class="swatch">
+        <span class="chip" style="background: var(--bg-card); border-right: 0.5px solid var(--hairline);"></span>
+        <span class="meta">
+          <span class="name">Card</span>
+          <span class="hex">#FCFBF8</span>
+        </span>
+      </div>
+      <div class="swatch">
+        <span class="chip" style="background: var(--bg-subtle);"></span>
+        <span class="meta">
+          <span class="name">Subtle</span>
+          <span class="hex">#F0EEE6</span>
+        </span>
+      </div>
+      <div class="swatch">
+        <span class="chip" style="background: var(--bg-deep);"></span>
+        <span class="meta">
+          <span class="name">Deep</span>
+          <span class="hex">#E8E5DA</span>
+        </span>
+      </div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 48px;">Ink · 偏暖的墨色阶</h3>
+    <div class="swatch-row" style="grid-template-columns: repeat(9, 1fr);">
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-1000);"></span><span class="meta"><span class="hex">1000</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-900);"></span><span class="meta"><span class="hex">900</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-800);"></span><span class="meta"><span class="hex">800</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-700);"></span><span class="meta"><span class="hex">700</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-500);"></span><span class="meta"><span class="hex">500</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-400);"></span><span class="meta"><span class="hex">400</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-300);"></span><span class="meta"><span class="hex">300</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-200);"></span><span class="meta"><span class="hex">200</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-100);"></span><span class="meta"><span class="hex">100</span></span></div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 48px;">Amber · 沉到印染感</h3>
+    <div class="swatch-row" style="grid-template-columns: repeat(6, 1fr);">
+      <div class="swatch"><span class="chip" style="height: 80px; background: var(--amber-700);"></span><span class="meta"><span class="name">700</span><span class="hex">#6B4216</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 80px; background: var(--amber-600);"></span><span class="meta"><span class="name">600</span><span class="hex">#8E5A1F</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 80px; background: var(--amber-500);"></span><span class="meta"><span class="name">500 ★</span><span class="hex">#A86B22</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 80px; background: var(--amber-400);"></span><span class="meta"><span class="name">400</span><span class="hex">#C0894A</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 80px; background: var(--amber-300);"></span><span class="meta"><span class="name">300</span><span class="hex">#D5A878</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 80px; background: var(--amber-100);"></span><span class="meta"><span class="name">100</span><span class="hex">#ECDFC5</span></span></div>
+    </div>
+
+    <div class="compare">
+      <div class="compare-card">
+        <div class="label is"><span class="tag">是</span><span>琥珀印染 · 沉、含蓄</span></div>
+        <div class="body" style="background: var(--amber-500);"></div>
+      </div>
+      <div class="compare-card">
+        <div class="label isnt"><span class="tag">不是</span><span>琥珀光 · 仍像在发光的橙</span></div>
+        <div class="body" style="background: #C8842B;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 2 · Type ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">02 · Typography</span>
+      <h2>系统字 + 字距,不再有 Serif。</h2>
+      <p>全部走 SF Pro / 苹方,显著的负字距让大字"压实",eyebrow / mono 用正字距让小字"开"。气质从"杂志 / 书"切到"软件 / 工程",同时保持中文的呼吸。</p>
+    </header>
+
+    <div class="type-scale">
+      <div class="type-row"><span class="ref">Display · 48</span><span class="t-display">工作时,安静地在场。</span></div>
+      <div class="type-row"><span class="ref">H1 · 32</span><span class="t-h1">在合适的时候,说一句合适的话</span></div>
+      <div class="type-row"><span class="ref">H2 · 24</span><span class="t-h2">写作时它陪你查资料,不打断思路</span></div>
+      <div class="type-row"><span class="ref">H3 · 18</span><span class="t-h3">把刚才看的页面整理成几条要点</span></div>
+      <div class="type-row"><span class="ref">Body L · 17</span><span class="t-body-l">这一段比正文略大,用在 lede 或对话里需要被注意到的句子。</span></div>
+      <div class="type-row"><span class="ref">Body · 15</span><span class="t-body">默认正文。中英文混排时不再追求"字距开",而是按 macOS 原生字的默认节奏走——既不挤,也不松。</span></div>
+      <div class="type-row"><span class="ref">Small · 13</span><span class="t-small">次要文字、说明、辅助标签。视觉上要"退后一步",但仍能读清楚。</span></div>
+      <div class="type-row"><span class="ref">Caption · 12</span><span class="t-caption">最小可读字号,用于元数据、时间戳、技术性标签。</span></div>
+    </div>
+
+    <div class="mixed-sample">
+      <p>"刚才那个 PR 里 reviewer 提到的 race condition,具体在哪一段?" —— Corivo 在你打字时,已经从你过去 15 分钟看过的 GitHub diff 里把上下文翻了出来。它不抢答,等你说完。</p>
+      <p>这段话里中文和 English、半角与全角、code 标识与人话混在一起。<code>useChatStream()</code> 这样的 mono 在正文里出现时,要恰好跟正文对齐,不能凸出来一截。</p>
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 3 · Surface ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">03 · Surface · Borders & Shadows</span>
+      <h2>0.5px 描边,双层叠影。</h2>
+      <p>Retina 上 0.5px 才是真正的"线"。阴影从来不是单层——近距离的锐影定形状,远距离的弥散给重量。这一节没改,因为它本来就不是 Claude 的语言。</p>
+    </header>
+
+    <div class="surface-row">
+      <div class="surface-card s-hairline">
+        <span class="surface-name">Hairline</span>
+        <span class="surface-meta">0.5px solid<br>rgba(28,26,23,.07)</span>
+      </div>
+      <div class="surface-card s-sm">
+        <span class="surface-name">Shadow · sm</span>
+        <span class="surface-meta">0.5px ring<br>+ 1px y</span>
+      </div>
+      <div class="surface-card s-md">
+        <span class="surface-name">Shadow · md</span>
+        <span class="surface-meta">0.5px ring<br>+ 2px + 12px</span>
+      </div>
+      <div class="surface-card s-lg">
+        <span class="surface-name">Shadow · lg</span>
+        <span class="surface-meta">0.5px ring<br>+ 4px + 24px</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 4 · Components ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">04 · Components</span>
+      <h2>主操作走深墨,不走 amber。</h2>
+      <p>Amber 现在只在流式光标、状态徽标、Focus Mark 的 active 态出现。主操作按钮、链接、焦点样式,全部用墨色完成。</p>
+    </header>
+
+    <div class="components-grid">
+
+      <div class="comp-cell">
+        <span class="comp-label">Button</span>
+        <div class="btn-row">
+          <button class="btn btn-primary">主要操作</button>
+          <button class="btn btn-ghost">次要</button>
+          <button class="btn btn-text">取消</button>
+        </div>
+        <span class="mono">主操作 = 深墨色。Amber 不再做主按钮——它太抢了。</span>
+      </div>
+
+      <div class="comp-cell">
+        <span class="comp-label">Input</span>
+        <div class="input-shell">
+          <label>问点什么</label>
+          <input class="input" placeholder="或者直接双击 ⌥ 召唤我" />
+        </div>
+        <span class="mono">焦点用 4px 的弱光圈,不画粗描边。</span>
+      </div>
+
+      <div class="comp-cell" style="grid-column: span 2;">
+        <span class="comp-label">List</span>
+        <div class="list">
+          <div class="list-item">
+            <span class="li-title">关于刚才那个 spec 的几个 follow-up 问题</span>
+            <span class="li-meta">2m ago</span>
+          </div>
+          <div class="list-item">
+            <span class="li-title">把 SessionManager 的实现整理成 ADR</span>
+            <span class="li-meta">14m ago</span>
+          </div>
+          <div class="list-item">
+            <span class="li-title">VC 沟通时被问到的三个问题</span>
+            <span class="li-meta">yesterday</span>
+          </div>
+          <div class="list-item">
+            <span class="li-title">2026 Q2 路线图初稿讨论</span>
+            <span class="li-meta">2d ago</span>
+          </div>
+        </div>
+        <span class="mono">悬停时背景轻微提亮,不画选中描边。</span>
+      </div>
+
+      <div class="comp-cell">
+        <span class="comp-label">Small Card</span>
+        <div class="small-card">
+          <div class="sc-meta">14:32 · figma.com</div>
+          <div class="sc-title">Quick Ask · 浮层结构草图</div>
+          <div class="sc-body">从屏幕底部缓慢浮现,200ms 内到位,不弹跳。</div>
+        </div>
+      </div>
+
+      <div class="comp-cell">
+        <span class="comp-label">Status Tag</span>
+        <div class="btn-row">
+          <span class="btn btn-ghost" style="height: 26px; padding: 0 12px; font-size: 12px; cursor: default;">捕捉中</span>
+          <span class="btn" style="height: 26px; padding: 0 12px; font-size: 12px; background: var(--amber-tint); color: var(--amber-700); border-color: transparent; cursor: default;">流式输出</span>
+          <span class="btn" style="height: 26px; padding: 0 12px; font-size: 12px; background: var(--bg-deep); color: var(--ink-700); border-color: transparent; cursor: default;">已停止</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 5 · Focus Mark ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">05 · Focus Mark · Corivo Signature</span>
+      <h2>四个角,加一个心。</h2>
+      <p>这是 Corivo 的视觉签名——四角 L 形 + 中心一点,像相机的 AF 取景。它说"我在看这一块,但很轻"。它会出现在 Quick Ask 的 context tag、屏幕捕捉指示器、品牌徽标位、空状态等所有"产品本质相关"的地方。</p>
+    </header>
+
+    <div class="fm-hero-grid">
+      <div class="fm-hero">
+        <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 9V5H9"/>
+          <path d="M15 5H19V9"/>
+          <path d="M19 15V19H15"/>
+          <path d="M9 19H5V15"/>
+          <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/>
+        </svg>
+        <div class="fm-name">Focus Mark</div>
+        <div class="fm-tag">Corivo · Visual Signature</div>
+      </div>
+
+      <div class="fm-anatomy">
+        <h3>结构</h3>
+        <ul>
+          <li>4 个 90° 角的 L 形,留 6px 内边距,暗示"框住一块画面"</li>
+          <li>中心 1.25 半径实心圆,表示"焦点在这里"</li>
+          <li>Stroke <code>1.25</code>(24×24 viewBox),线端 round,角点 sharp</li>
+          <li>颜色随上下文走:常态 ink-700;捕捉中 amber-600;深色面 ink-100</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="sub">尺寸 · 16 / 20 / 24 / 32 / 48</h3>
+    <div class="fm-sizes">
+      <div class="fm-size">
+        <svg class="focus-mark" style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+        <span class="px">16 px</span>
+      </div>
+      <div class="fm-size">
+        <svg class="focus-mark" style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+        <span class="px">20 px</span>
+      </div>
+      <div class="fm-size">
+        <svg class="focus-mark" style="width:24px;height:24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+        <span class="px">24 px</span>
+      </div>
+      <div class="fm-size">
+        <svg class="focus-mark" style="width:32px;height:32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+        <span class="px">32 px</span>
+      </div>
+      <div class="fm-size">
+        <svg class="focus-mark" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+        <span class="px">48 px</span>
+      </div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 24px;">上下文 · 四种姿态</h3>
+    <div class="fm-contexts">
+      <div class="fm-ctx fm-ctx-default">
+        <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+        <span class="ctx-label">Default</span>
+      </div>
+      <div class="fm-ctx fm-ctx-subtle">
+        <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+        <span class="ctx-label">Subtle</span>
+      </div>
+      <div class="fm-ctx fm-ctx-active">
+        <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+        <span class="ctx-label">Active · 捕捉中</span>
+      </div>
+      <div class="fm-ctx fm-ctx-dark">
+        <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+        <span class="ctx-label">Inverted</span>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ────────────────────────── 6 · Glimpse ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">06 · A glimpse of Corivo</span>
+      <h2>主窗口是纸,浮层是光。</h2>
+      <p>Quick Ask 保留毛玻璃——它是浮在所有应用之上的临时存在,毛玻璃是它的语言。主窗口里的空状态走纸感。两种姿态有对比、但 Focus Mark 让它们一眼属于同一个 Corivo。</p>
+    </header>
+
+    <div class="corivo-stage">
+      <span class="stage-label">// 浮层 stage · 模拟"应用之上"</span>
+
+      <!-- Quick Ask · 毛玻璃 -->
+      <div class="quick-ask">
+        <div class="qa-context">
+          <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/>
+            <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/>
+          </svg>
+          <div class="qa-app">在看 <span>· corivo-architecture-v3-spec.md · 第 4 节</span></div>
+          <div class="qa-pulse"></div>
+        </div>
+        <div class="qa-input">
+          <div class="qa-text">把这一节的核心三件事整理成 bullet<span class="breath"></span></div>
+          <div class="qa-meta">
+            <span>正在读屏</span>
+            <span><span class="kbd">⌘</span><span class="kbd">↵</span> 发送 · <span class="kbd">esc</span> 收起</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 32px;">
+      <span class="mono" style="display: block; margin-bottom: 12px;">// 主窗口 · 纸感空状态</span>
+      <div class="empty-state" style="margin: 0 auto;">
+        <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/>
+          <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/>
+        </svg>
+        <p class="es-text">还没问过我什么。</p>
+        <p class="es-hint">双击 ⌥,或在这里开始一句话。</p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ────────────────────────── 7 · Is / Isn't ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">07 · Is / Isn't</span>
+      <h2>用两列把判据钉死。</h2>
+      <p>这八对是后面所有设计决策的快速 review 表。任何一张稿子做完,左右两列对一遍——偏向右列,就回去改。</p>
+    </header>
+
+    <div class="is-isnt">
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">纸感的暖白,中性一点</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">米色"煮过"的暖,或死白工业灰</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">琥珀沉到印染感,极少出现</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">琥珀像光,大面积出现</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">系统字 + 字距,直接说</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">Serif + Italic 的书卷气</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">主操作走深墨色</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">主操作走 amber</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">0.5px 描边,双层阴影</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">1px 笔画感,单层硬阴影</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">主窗口纸,浮层光</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">主浮层都用一种材质</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">Focus Mark 做签名</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">通用 AI 闪光 / 流光边框</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">空状态像同事说话</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">"暂无数据"</span></div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <footer>
+    <p class="sig">Tone Reference v0.1 · 2026-05-09</p>
+    <p>这是 v0 → v0.1 的第二份"墙板"。如果整体气质对了,我会进 Step 1 —— 重新组织信息架构(把"提问 / 时间线 / Quick Ask / 设置"拧成一件事)。如果哪几块还想调,我们继续修底,再往下走。</p>
+  </footer>
+
+</main>
+
+</body>
+</html>

@@ -1,0 +1,2 @@
+# Cargo build artefacts (per-triple subdirs land here when build.mjs runs).
+/target/

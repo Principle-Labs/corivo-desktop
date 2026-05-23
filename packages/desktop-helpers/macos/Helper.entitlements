@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  CorivoCaptureHelper entitlements.
+
+  Hardened Runtime entitlements only. The helper deliberately does NOT
+  declare any NS*UsageDescription in its Info.plist — TCC walks the
+  responsible-process chain back to Corivo.app, so permission dialog
+  copy comes from the parent's Info.plist and the TCC.db row is keyed
+  to ai.corivo.desktop, not ai.corivo.desktop.capture-helper.
+
+  The helper only loads Apple-signed frameworks (AppKit, AVFoundation,
+  ScreenCaptureKit, Vision, ApplicationServices), so it does NOT need
+  cs.allow-jit or cs.disable-library-validation. Keep this list minimal
+  — anything we add here is also a request to Apple notary review.
+-->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.device.microphone</key>
+  <true/>
+  <key>com.apple.security.device.audio-input</key>
+  <true/>
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <key>com.apple.security.inherit</key>
+  <true/>
+</dict>
+</plist>

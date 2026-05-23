@@ -1,0 +1,534 @@
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+
+import { Button } from "@repo/ui/components/button";
+import { Input } from "@repo/ui/components/input";
+import { Label } from "@repo/ui/components/label";
+
+import { useConfig } from "@/hooks/use-config";
+import { useTranslation } from "@/i18n";
+import {
+  authLogout,
+  authStatus,
+  modelsGetAvailable,
+  modelsRefresh,
+  type ModelMeta,
+} from "@/lib/tauri";
+import type { ModelDirectory } from "@corivo/shared-types";
+import type {
+  ApiShape,
+  ExecAgentAuthMode,
+  ThinkingLevel,
+} from "@/lib/types";
+import { applyAuthStatus } from "@/stores/user-profile-store";
+
+import {
+  FieldGroup,
+  SectionHeader,
+  SettingsSkeleton,
+} from "./settings-shared";
+
+const THINKING_LEVELS: { value: ThinkingLevel }[] = [
+  { value: "off" },
+  { value: "minimal" },
+  { value: "low" },
+  { value: "medium" },
+  { value: "high" },
+  { value: "xhigh" },
+];
+
+const API_SHAPES: { value: ApiShape; label: string; placeholder: string }[] = [
+  {
+    value: "anthropic",
+    label: "Anthropic Messages",
+    placeholder: "https://api.anthropic.com",
+  },
+  {
+    value: "openai",
+    label: "OpenAI / OpenAI-compatible",
+    placeholder: "https://api.openai.com/v1",
+  },
+];
+
+export function ExecAgentSection() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { config, isLoading, update, isSaving } = useConfig();
+  const queryClient = useQueryClient();
+  const { data: auth } = useQuery({
+    queryKey: ["auth-status"],
+    queryFn: authStatus,
+    refetchOnWindowFocus: false,
+  });
+  const { data: directory, isFetching: modelsLoading } =
+    useQuery<ModelDirectory>({
+      queryKey: ["models-available"],
+      queryFn: modelsGetAvailable,
+      refetchOnWindowFocus: false,
+    });
+
+  const refreshModels = useMutation({
+    mutationFn: modelsRefresh,
+    onSuccess: (next) => {
+      queryClient.setQueryData<ModelDirectory>(["models-available"], next);
+      toast.success(t.settings.execAgent.modelsRefreshed);
+    },
+    onError: (error) =>
+      toast.error(t.settings.execAgent.refreshFailed(String(error))),
+  });
+
+  const logout = useMutation({
+    mutationFn: authLogout,
+    onSuccess: () => {
+      // Wipe the sidebar profile cache before navigating; otherwise
+      // the UserCard would briefly flash the old name+avatar on the
+      // /login splash.
+      applyAuthStatus(null);
+      toast.success(t.settings.execAgent.logoutSuccess);
+      void queryClient.invalidateQueries({ queryKey: ["auth-status"] });
+      void navigate({ to: "/login", replace: true });
+    },
+    onError: (error) =>
+      toast.error(t.common.logoutFailed(String(error))),
+  });
+
+  // BYOK section is collapsed by default — surfaced as "advanced" so
+  // the recommended (CorivoProxy + login) path stays the obvious one.
+  // Auto-open when the user is already in BYOK mode so we don't hide
+  // their saved settings.
+  const [byokOpen, setByokOpen] = useState(false);
+
+  // Every alias the user has been granted. The directory comes from
+  // /v1/me/models — no client-side filtering (the backend already
+  // dropped disabled rows). Empty array while the cache is hydrating
+  // or when the user has no grants.
+  const managed = useMemo<ModelMeta[]>(
+    () => directory?.managed ?? [],
+    [directory],
+  );
+
+  // Pin `selected_model_id` to an alias the live directory still has.
+  // Covers (a) first launch before the cache lands, (b) admin revoking
+  // the previously-selected alias, (c) old config rows that held a
+  // raw upstream id from before the alias migration — those won't
+  // match any current alias, so we fall back to the backend's
+  // default_alias. BYOK skipped because that path drives the sidecar
+  // via `byok_model`.
+  useEffect(() => {
+    if (!config || isSaving) return;
+    if (config.exec_agent.auth_mode !== "corivo_proxy") return;
+    if (managed.length === 0) return;
+    const current = config.exec_agent.selected_model_id;
+    if (current && managed.some((m) => m.alias === current)) return;
+    const fallback =
+      managed.find((m) => m.alias === directory?.default_alias)?.alias ??
+      managed[0].alias;
+    update((prev) => ({
+      ...prev,
+      exec_agent: { ...prev.exec_agent, selected_model_id: fallback },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config, managed, directory?.default_alias, isSaving]);
+
+  if (isLoading || !config) {
+    return <SettingsSkeleton />;
+  }
+
+  const authMode = config.exec_agent.auth_mode;
+  const selectedModelId = config.exec_agent.selected_model_id;
+  const thinkingLevel = config.exec_agent.thinking_level;
+  const byokApiShape = config.exec_agent.byok_api_shape ?? "anthropic";
+  const byokBaseUrl = config.exec_agent.byok_base_url ?? "";
+  const byokKey = config.exec_agent.byok_key ?? "";
+  const byokModel = config.exec_agent.byok_model ?? "";
+
+  const setAuthMode = (next: ExecAgentAuthMode) => {
+    if (next === authMode) return;
+    update((prev) => ({
+      ...prev,
+      exec_agent: { ...prev.exec_agent, auth_mode: next },
+    }));
+  };
+
+  const setSelectedModelId = (next: string) => {
+    if (next === (selectedModelId ?? "")) return;
+    update((prev) => ({
+      ...prev,
+      exec_agent: { ...prev.exec_agent, selected_model_id: next || null },
+    }));
+  };
+
+  const setThinkingLevel = (next: ThinkingLevel) => {
+    if (next === thinkingLevel) return;
+    update((prev) => ({
+      ...prev,
+      exec_agent: { ...prev.exec_agent, thinking_level: next },
+    }));
+  };
+
+  const setByokField = (
+    field: "byok_api_shape" | "byok_base_url" | "byok_key" | "byok_model",
+    next: string,
+  ) => {
+    update((prev) => ({
+      ...prev,
+      exec_agent: {
+        ...prev.exec_agent,
+        [field]:
+          field === "byok_api_shape"
+            ? (next as ApiShape)
+            : next.length === 0
+              ? null
+              : next,
+      },
+    }));
+  };
+
+  const showCorivoProxy = authMode === "corivo_proxy";
+  const showByok = authMode === "byok" || byokOpen;
+
+  return (
+    <div className="max-w-xl space-y-8">
+      <SectionHeader
+        title={t.settings.execAgent.title}
+        description={t.settings.execAgent.description}
+      />
+
+      <FieldGroup title={t.settings.execAgent.authMethodGroup}>
+        <div className="space-y-3">
+          <ModeRadio
+            id="mode-corivo"
+            label={t.settings.execAgent.modes.corivo.label}
+            description={t.settings.execAgent.modes.corivo.description}
+            value="corivo_proxy"
+            current={authMode}
+            disabled={isSaving}
+            onChange={setAuthMode}
+          />
+          <ModeRadio
+            id="mode-byok"
+            label={t.settings.execAgent.modes.byok.label}
+            description={t.settings.execAgent.modes.byok.description}
+            value="byok"
+            current={authMode}
+            disabled={isSaving}
+            onChange={setAuthMode}
+          />
+        </div>
+      </FieldGroup>
+
+      {showCorivoProxy ? (
+        <FieldGroup title={t.settings.execAgent.modelGroup}>
+          <div className="space-y-3 text-sm">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">{t.settings.execAgent.mainModelLabel}</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => refreshModels.mutate()}
+                disabled={refreshModels.isPending}
+                title={t.settings.execAgent.refreshTitle}
+              >
+                <RefreshCw
+                  className={`mr-1 h-3 w-3 ${
+                    refreshModels.isPending ? "animate-spin" : ""
+                  }`}
+                />
+                {t.settings.execAgent.refresh}
+              </Button>
+            </div>
+
+            {managed.length === 0 ? (
+              <p className="rounded-md border border-border/40 bg-muted/30 p-3 text-xs text-muted-foreground">
+                {modelsLoading
+                  ? t.settings.execAgent.modelsLoading
+                  : t.settings.execAgent.modelsEmpty}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {managed.map((model) => (
+                  <ModelOption
+                    key={model.alias}
+                    model={model}
+                    isDefault={model.alias === directory?.default_alias}
+                    checked={selectedModelId === model.alias}
+                    disabled={isSaving}
+                    onChange={() => setSelectedModelId(model.alias)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </FieldGroup>
+      ) : null}
+
+      <FieldGroup title={t.settings.execAgent.thinkingBudgetGroup}>
+        <div className="space-y-2 text-sm">
+          <Label htmlFor="thinking-level">{t.settings.execAgent.thinkingLevelLabel}</Label>
+          <select
+            id="thinking-level"
+            value={thinkingLevel}
+            disabled={isSaving}
+            onChange={(event) =>
+              setThinkingLevel(event.target.value as ThinkingLevel)
+            }
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {THINKING_LEVELS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {t.settings.execAgent.thinkingLevels[opt.value]}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            {t.settings.execAgent.thinkingHint}
+          </p>
+        </div>
+      </FieldGroup>
+
+      {authMode === "corivo_proxy" ? (
+        <FieldGroup title={t.settings.execAgent.corivoLoginGroup}>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between rounded-md border border-border/40 p-3">
+              <div className="space-y-1">
+                <div className="font-medium">
+                  {auth?.loggedIn
+                    ? t.settings.execAgent.loggedIn
+                    : t.settings.execAgent.loggedOut}
+                </div>
+                {auth?.label ? (
+                  <div className="text-xs text-muted-foreground">
+                    {t.settings.execAgent.accountLabel(auth.label)}
+                  </div>
+                ) : !auth?.loggedIn ? (
+                  <div className="text-xs text-muted-foreground">
+                    {t.settings.execAgent.pleaseLogin}
+                  </div>
+                ) : null}
+              </div>
+              {auth?.loggedIn ? (
+                <Button
+                  variant="outline"
+                  onClick={() => logout.mutate()}
+                  disabled={logout.isPending}
+                >
+                  {t.settings.execAgent.logoutCta}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => void navigate({ to: "/login" })}
+                >
+                  {t.settings.execAgent.goLoginCta}
+                </Button>
+              )}
+            </div>
+          </div>
+        </FieldGroup>
+      ) : null}
+
+      {showByok ? (
+        <FieldGroup title={t.settings.execAgent.byokGroup}>
+          <div className="space-y-3 rounded-md border border-border/40 p-3 text-sm">
+            <div className="space-y-2">
+              <Label htmlFor="byok-api-shape">
+                {t.settings.execAgent.byokApiShapeLabel}
+              </Label>
+              <select
+                id="byok-api-shape"
+                value={byokApiShape}
+                disabled={isSaving}
+                onChange={(event) =>
+                  setByokField("byok_api_shape", event.target.value)
+                }
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {API_SHAPES.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="byok-base-url">
+                {t.settings.execAgent.byokBaseUrlLabel}
+              </Label>
+              <Input
+                id="byok-base-url"
+                type="text"
+                value={byokBaseUrl}
+                placeholder={
+                  API_SHAPES.find((s) => s.value === byokApiShape)
+                    ?.placeholder
+                }
+                onChange={(event) =>
+                  setByokField("byok_base_url", event.target.value)
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                {t.settings.execAgent.byokBaseUrlHint}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="byok-key">{t.settings.execAgent.byokKeyLabel}</Label>
+              <Input
+                id="byok-key"
+                type="password"
+                value={byokKey}
+                placeholder={
+                  byokApiShape === "anthropic"
+                    ? "sk-ant-api03-..."
+                    : "sk-..."
+                }
+                onChange={(event) =>
+                  setByokField("byok_key", event.target.value)
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="byok-model">
+                {t.settings.execAgent.byokModelLabel}
+              </Label>
+              <Input
+                id="byok-model"
+                type="text"
+                value={byokModel}
+                placeholder={
+                  byokApiShape === "anthropic"
+                    ? "claude-sonnet-4-20250514"
+                    : "gpt-4o"
+                }
+                onChange={(event) =>
+                  setByokField("byok_model", event.target.value)
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                {t.settings.execAgent.byokModelHint}
+              </p>
+            </div>
+          </div>
+          {authMode !== "byok" ? (
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setByokOpen(false)}
+            >
+              {t.settings.execAgent.byokCollapse}
+            </button>
+          ) : null}
+        </FieldGroup>
+      ) : null}
+    </div>
+  );
+}
+
+function ModelOption({
+  model,
+  isDefault,
+  checked,
+  disabled,
+  onChange,
+}: {
+  model: ModelMeta;
+  isDefault: boolean;
+  checked: boolean;
+  disabled: boolean;
+  onChange: () => void;
+}) {
+  // DOM id must be a valid HTML identifier; aliases like "corivo:fast"
+  // would otherwise put a colon in the attribute. Replace conservatively.
+  const id = `model-${model.alias.replace(/[^a-z0-9_-]/gi, "-")}`;
+  const caps = model.capabilities;
+  return (
+    <label
+      htmlFor={id}
+      className="flex cursor-pointer items-start gap-3 rounded-md border border-border/40 p-3 hover:bg-accent/30"
+    >
+      <input
+        id={id}
+        type="radio"
+        name="exec-agent-selected-model"
+        checked={checked}
+        disabled={disabled}
+        onChange={onChange}
+        className="mt-1"
+      />
+      <div className="flex-1 space-y-0.5">
+        <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+          <span>{model.display_name}</span>
+          {/* api_type surfaces the true upstream (e.g. "gemini") even
+              when client_protocol is "openai" via sub2api normalization. */}
+          <span className="rounded bg-muted px-1.5 text-[10px] text-muted-foreground">
+            {model.api_type}
+          </span>
+          {caps.reasoning ? (
+            <span className="rounded bg-muted px-1.5 text-[10px] text-muted-foreground">
+              thinking
+            </span>
+          ) : null}
+          {caps.vision ? (
+            <span className="rounded bg-muted px-1.5 text-[10px] text-muted-foreground">
+              vision
+            </span>
+          ) : null}
+          {isDefault ? (
+            <span className="rounded bg-primary/15 px-1.5 text-[10px] text-primary">
+              默认
+            </span>
+          ) : null}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {model.alias} · {(caps.context_window / 1000).toFixed(0)}k context
+        </div>
+      </div>
+    </label>
+  );
+}
+
+function ModeRadio({
+  id,
+  label,
+  description,
+  value,
+  current,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  description: string;
+  value: ExecAgentAuthMode;
+  current: ExecAgentAuthMode;
+  disabled: boolean;
+  onChange: (next: ExecAgentAuthMode) => void;
+}) {
+  const checked = current === value;
+  return (
+    <label
+      htmlFor={id}
+      className="flex cursor-pointer items-start gap-3 rounded-md border border-border/40 p-3 hover:bg-accent/30"
+    >
+      <input
+        id={id}
+        type="radio"
+        name="exec-agent-auth-mode"
+        checked={checked}
+        disabled={disabled}
+        onChange={() => onChange(value)}
+        className="mt-1"
+      />
+      <div className="space-y-1">
+        <div className="text-sm font-medium">{label}</div>
+        <div className="text-xs text-muted-foreground">{description}</div>
+      </div>
+    </label>
+  );
+}

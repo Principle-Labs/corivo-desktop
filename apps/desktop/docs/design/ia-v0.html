@@ -1,0 +1,1164 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corivo · IA v0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-page:     #F8F7F3;
+    --bg-card:     #FCFBF8;
+    --bg-subtle:   #F0EEE6;
+    --bg-deep:     #E8E5DA;
+
+    --ink-1000:    #1A1916;
+    --ink-900:     #2B2925;
+    --ink-800:     #423E37;
+    --ink-700:     #5A574F;
+    --ink-600:     #7A746A;
+    --ink-500:     #98917E;
+    --ink-400:     #B5AE9C;
+    --ink-300:     #CFCABE;
+    --ink-200:     #E5E0D2;
+    --ink-100:     #F0EAD9;
+
+    --amber-700:   #6B4216;
+    --amber-600:   #8E5A1F;
+    --amber-500:   #A86B22;
+    --amber-400:   #C0894A;
+    --amber-300:   #D5A878;
+    --amber-100:   #ECDFC5;
+    --amber-tint:  rgba(168, 107, 34, 0.06);
+
+    --hairline:        rgba(28, 26, 23, 0.07);
+    --hairline-strong: rgba(28, 26, 23, 0.13);
+
+    --shadow-sm: 0 0 0 0.5px rgba(28, 26, 23, 0.05), 0 1px 2px rgba(28, 26, 23, 0.04);
+    --shadow-md: 0 0 0 0.5px rgba(28, 26, 23, 0.06), 0 2px 4px rgba(28, 26, 23, 0.04), 0 12px 32px rgba(28, 26, 23, 0.06);
+    --shadow-lg: 0 0 0 0.5px rgba(28, 26, 23, 0.07), 0 4px 8px rgba(28, 26, 23, 0.05), 0 24px 64px rgba(28, 26, 23, 0.10);
+
+    --font-sans: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+    --font-display: -apple-system, "SF Pro Display", "PingFang SC", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 20px;
+
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-page);
+    color: var(--ink-1000);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.035;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+  }
+
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 96px 40px 200px;
+    position: relative;
+  }
+
+  /* ── Hero ─────────────────────────────── */
+  .hero { margin-bottom: 56px; }
+  .brand-lockup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 40px;
+    color: var(--ink-700);
+  }
+  .brand-lockup .focus-mark {
+    width: 24px;
+    height: 24px;
+    color: var(--ink-700);
+    flex-shrink: 0;
+  }
+  .brand-lockup .wordmark {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink-1000);
+  }
+  .brand-lockup .sep { color: var(--ink-300); }
+  .brand-lockup .eyebrow { font-size: 10px !important; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+    font-weight: 500;
+  }
+
+  .display {
+    font-family: var(--font-display);
+    font-size: 56px;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    margin: 24px 0 28px;
+    color: var(--ink-1000);
+  }
+  .lede {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--ink-700);
+    max-width: 620px;
+    margin: 0;
+  }
+
+  /* ── Sections ─────────────────────────── */
+  section { margin-top: 112px; }
+  section > header { margin-bottom: 36px; }
+  section > header .eyebrow { display: block; margin-bottom: 12px; }
+  section > header h2 {
+    font-family: var(--font-display);
+    font-size: 32px;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+  section > header p {
+    color: var(--ink-700);
+    margin: 0;
+    max-width: 620px;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  h3.sub {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink-700);
+    margin: 0 0 16px;
+  }
+  code, .mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-600);
+  }
+  .strike {
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-400);
+    color: var(--ink-500);
+  }
+
+  /* ── Decision card ────────────────────── */
+  .decision {
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-left: 2px solid var(--amber-500);
+    border-radius: var(--r-md);
+    padding: 28px 32px;
+    box-shadow: var(--shadow-sm);
+  }
+  .decision .dec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .decision .dec-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--amber-700);
+    background: var(--amber-tint);
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  .decision .dec-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ink-1000);
+    letter-spacing: -0.01em;
+  }
+  .decision .dec-body {
+    color: var(--ink-800);
+    font-size: 14px;
+    line-height: 1.65;
+  }
+  .decision ul {
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .decision li {
+    padding-left: 18px;
+    position: relative;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-800);
+  }
+  .decision li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 6px;
+    height: 1px;
+    background: var(--ink-500);
+  }
+  .decision li strong { color: var(--ink-1000); font-weight: 600; }
+
+  /* ── Migration table · what moves where ── */
+  .migrate {
+    margin-top: 28px;
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--bg-card);
+  }
+  .migrate-row {
+    display: grid;
+    grid-template-columns: 1fr 32px 1.4fr;
+    gap: 24px;
+    align-items: center;
+    padding: 16px 22px;
+    border-bottom: 0.5px solid var(--hairline);
+  }
+  .migrate-row:last-child { border-bottom: none; }
+  .migrate-row .from {
+    font-size: 13px;
+    color: var(--ink-600);
+  }
+  .migrate-row .from .strike-line {
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-400);
+  }
+  .migrate-row .arrow {
+    color: var(--ink-400);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    text-align: center;
+  }
+  .migrate-row .to {
+    font-size: 14px;
+    color: var(--ink-1000);
+    font-weight: 500;
+  }
+  .migrate-row .to .meta {
+    display: block;
+    font-size: 12px;
+    color: var(--ink-500);
+    font-weight: 400;
+    margin-top: 2px;
+  }
+
+  /* ── Sitemap layered cards ────────────── */
+  .sitemap {
+    background: linear-gradient(180deg, var(--bg-subtle) 0%, var(--bg-card) 100%);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-xl);
+    padding: 56px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sm-row {
+    display: flex;
+    gap: 24px;
+    align-items: stretch;
+    margin-bottom: 32px;
+  }
+  .sm-row.center { justify-content: center; }
+  .sm-row:last-child { margin-bottom: 0; }
+
+  .sm-node {
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    padding: 16px 18px;
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+  }
+  .sm-node .sm-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+    margin-bottom: 6px;
+  }
+  .sm-node .sm-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-1000);
+    letter-spacing: -0.005em;
+  }
+  .sm-node .sm-desc {
+    font-size: 12px;
+    color: var(--ink-600);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+
+  .sm-overlay { background: var(--bg-deep); border-style: dashed; border-color: var(--hairline-strong); box-shadow: none; }
+  .sm-overlay .sm-tag { color: var(--ink-600); }
+  .sm-glass {
+    background: rgba(252, 251, 248, 0.78);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Main window block — split into 3 columns visually */
+  .sm-mainwin {
+    flex: 1;
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+  .sm-mainwin .sm-mainwin-head {
+    padding: 14px 18px;
+    border-bottom: 0.5px solid var(--hairline);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sm-mainwin .sm-mainwin-head .sm-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-1000);
+  }
+  .sm-mainwin .sm-mainwin-head .sm-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-left: auto;
+  }
+  .sm-mainwin .sm-mainwin-body {
+    display: grid;
+    grid-template-columns: 1.1fr 1.6fr 1fr;
+    gap: 1px;
+    background: var(--hairline);
+    min-height: 200px;
+  }
+  .sm-mainwin .sm-pane {
+    background: var(--bg-card);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sm-mainwin .sm-pane .sm-pane-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-1000);
+    letter-spacing: -0.005em;
+  }
+  .sm-mainwin .sm-pane .sm-pane-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+  }
+  .sm-mainwin .sm-pane ul {
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sm-mainwin .sm-pane li {
+    font-size: 11px;
+    color: var(--ink-600);
+    line-height: 1.5;
+  }
+  .sm-mainwin .sm-pane.transient {
+    background: repeating-linear-gradient(135deg, var(--bg-card) 0 8px, var(--bg-subtle) 8px 9px);
+  }
+
+  /* Connector line / arrow */
+  .sm-connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    margin-bottom: 4px;
+  }
+  .sm-connector .line {
+    width: 1px;
+    height: 100%;
+    background: var(--ink-300);
+  }
+  .sm-connector .label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.06em;
+    background: linear-gradient(180deg, var(--bg-subtle), var(--bg-card));
+    padding: 0 8px;
+    margin-left: -32px;
+  }
+
+  /* ── Flow rows ───────────────────────────── */
+  .flow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    margin-top: 0;
+  }
+  .flow-row {
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    padding: 24px 28px;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+  .flow-row .flow-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-1000);
+    letter-spacing: -0.005em;
+    line-height: 1.4;
+  }
+  .flow-row .flow-name .flow-num {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .flow-steps {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .flow-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: var(--bg-subtle);
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--ink-800);
+    border: 0.5px solid var(--hairline);
+  }
+  .flow-step.amber {
+    background: var(--amber-tint);
+    color: var(--amber-700);
+    border-color: rgba(168, 107, 34, 0.16);
+  }
+  .flow-step.ink {
+    background: var(--ink-1000);
+    color: var(--bg-page);
+    border-color: var(--ink-1000);
+  }
+  .flow-arrow {
+    color: var(--ink-400);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    user-select: none;
+  }
+
+  /* ── Before / After (sidebar) ─────────── */
+  .ba-grid {
+    display: grid;
+    grid-template-columns: 1fr 32px 1fr;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .ba-card {
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .ba-card .ba-head {
+    padding: 12px 18px;
+    border-bottom: 0.5px solid var(--hairline);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ba-card .ba-head .ba-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 999px;
+  }
+  .ba-card.before .ba-tag { background: var(--bg-deep); color: var(--ink-600); }
+  .ba-card.after .ba-tag  { background: var(--amber-tint); color: var(--amber-700); }
+  .ba-card .ba-head .ba-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-1000);
+    letter-spacing: -0.005em;
+  }
+  .ba-card .ba-body {
+    padding: 18px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .ba-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-400);
+    font-family: var(--font-mono);
+    font-size: 14px;
+  }
+  .ba-item {
+    padding: 10px 14px;
+    background: var(--bg-subtle);
+    border-radius: var(--r-sm);
+    font-size: 12px;
+    color: var(--ink-800);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ba-item.muted {
+    background: transparent;
+    color: var(--ink-500);
+    border: 0.5px dashed var(--hairline-strong);
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-400);
+  }
+  .ba-item.amber {
+    background: var(--amber-tint);
+    color: var(--amber-700);
+  }
+  .ba-item .focus-mark { color: currentColor; flex-shrink: 0; }
+  .ba-section-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+    margin-top: 6px;
+    padding-left: 4px;
+  }
+  .ba-section-label:first-child { margin-top: 0; }
+
+  /* ── Settings re-grouping ──────────────── */
+  .settings-tree {
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .st-group {
+    padding: 18px 24px;
+    border-bottom: 0.5px solid var(--hairline);
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+    align-items: baseline;
+  }
+  .st-group:last-child { border-bottom: none; }
+  .st-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-1000);
+    letter-spacing: -0.005em;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .st-name .pin {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--amber-700);
+    background: var(--amber-tint);
+    padding: 2px 6px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .st-items {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--ink-700);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .st-items .st-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .st-items .st-item .new {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--amber-700);
+    background: var(--amber-tint);
+    padding: 1px 5px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .st-items .st-item .moved {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--ink-600);
+    background: var(--bg-deep);
+    padding: 1px 5px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+
+  /* ── Out of scope list ─────────────────── */
+  .scope-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .scope-card {
+    padding: 18px 22px;
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+  }
+  .scope-card .scope-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+    margin-bottom: 8px;
+  }
+  .scope-card .scope-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-1000);
+    letter-spacing: -0.005em;
+    margin-bottom: 4px;
+  }
+  .scope-card .scope-desc {
+    font-size: 12px;
+    color: var(--ink-600);
+    line-height: 1.55;
+  }
+
+  /* ── Footer ─────────────────────────────── */
+  footer {
+    margin-top: 160px;
+    padding-top: 40px;
+    border-top: 0.5px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  footer p {
+    margin: 0;
+    color: var(--ink-600);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  footer .sig {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  hr.rule {
+    border: 0;
+    height: 0;
+    border-top: 0.5px solid var(--hairline);
+    margin: 64px 0 0;
+  }
+
+  .focus-mark {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+  }
+</style>
+</head>
+<body>
+
+<main>
+
+  <!-- ────────────────────────── HERO ────────────────────────── -->
+  <header class="hero">
+    <div class="brand-lockup">
+      <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;" aria-hidden="true">
+        <path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/>
+        <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/>
+      </svg>
+      <span class="wordmark">Corivo</span>
+      <span class="sep">·</span>
+      <span class="eyebrow">Step 1 · IA v0</span>
+    </div>
+
+    <h1 class="display">把所有路径,<br>拧成一件事。</h1>
+    <p class="lede">
+      在画第一张高保真之前,先把"应用里有哪些地方、它们之间是什么关系"重排一遍。这一份不画 UI,只画路径——它决定了 Step 2 里所有界面的位置感。
+    </p>
+  </header>
+
+  <!-- ────────────────────────── 1 · Timeline 决策 ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">01 · The Timeline Decision</span>
+      <h2>删 Timeline。</h2>
+      <p>你的判断是对的——它是个 demo 阶段的"数据库浏览器",看着像功能,实际上是把内部数据层端到了用户面前。删掉它,IA 立刻从两个一级路径塌成一个,产品心智更尖锐。</p>
+    </header>
+
+    <div class="decision">
+      <div class="dec-head">
+        <span class="dec-tag">Decided · 移除</span>
+        <span class="dec-title"><code>/timeline</code> 路由不再存在</span>
+      </div>
+      <div class="dec-body">
+        Timeline 现在的核心价值是"你看,我们采到了"——这是工程师说服自己产品在工作的视图,不是用户需要的视图。它的存在还有三个副作用:
+      </div>
+      <ul>
+        <li><strong>稀释了 Ask 的中心地位。</strong>用户面对两个 tab 时会犹豫"我应该去哪",但 Corivo 的产品本质就是"提问",不应该有第二个并列的目的地。</li>
+        <li><strong>把"被监视感"放大了。</strong>把所有 frame 一字排开给用户看,无意中强调了"我们记录了你所有屏幕"——这个感受跟"温暖工作伙伴"是冲突的。Frame 应当是 Ask 引用时才浮现的东西,不是浏览的对象。</li>
+        <li><strong>它需要的功能可以被更好的形态承接。</strong>Capture 控制 / 数据查看 / 隐私验证,有更合适的去处(见下表)。</li>
+      </ul>
+    </div>
+
+    <h3 class="sub" style="margin-top: 36px;">原 Timeline 承担的功能,迁移到哪里</h3>
+    <div class="migrate">
+      <div class="migrate-row">
+        <div class="from"><span class="strike-line">Timeline · 帧列表浏览</span></div>
+        <div class="arrow">→</div>
+        <div class="to">
+          Ask 中作为 cited frames 浮现
+          <span class="meta">回答下方,可点开右侧 drawer 看大图</span>
+        </div>
+      </div>
+      <div class="migrate-row">
+        <div class="from"><span class="strike-line">Timeline · 帧详情(截图 + AX/OCR)</span></div>
+        <div class="arrow">→</div>
+        <div class="to">
+          Frame Drawer · 主窗口右侧抽屉
+          <span class="meta">点击 cited frame 时滑出,关掉就回到对话</span>
+        </div>
+      </div>
+      <div class="migrate-row">
+        <div class="from"><span class="strike-line">Timeline · CaptureControls(开始/停止)</span></div>
+        <div class="arrow">→</div>
+        <div class="to">
+          Sidebar 底部状态吊牌
+          <span class="meta">常驻可见,单击即切换;Settings 里也保留</span>
+        </div>
+      </div>
+      <div class="migrate-row">
+        <div class="from"><span class="strike-line">Timeline · "看看 Corivo 抓到了什么"的信任验证</span></div>
+        <div class="arrow">→</div>
+        <div class="to">
+          Settings · Capture & Privacy 升级
+          <span class="meta">"最近 24h 抓到的"、排除清单、硬删除,集中放在这里</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 2 · Sitemap ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">02 · Sitemap</span>
+      <h2>新结构 · 一张图。</h2>
+      <p>把"主窗口"放在中心,把"浮层 / 弹窗 / 抽屉"作为它的伴随状态——这个排法本身就是产品心智:Corivo 只有一个目的地,其他都是它的不同姿态。</p>
+    </header>
+
+    <div class="sitemap">
+
+      <!-- 浮层(Quick Ask) -->
+      <div class="sm-row center">
+        <div class="sm-node sm-glass" style="width: 320px;">
+          <div class="sm-tag">⌥⌥ · 浮层</div>
+          <div class="sm-name">Quick Ask</div>
+          <div class="sm-desc">屏幕任意位置召唤,带 focus context;输入即问;按 Esc 收回。</div>
+        </div>
+      </div>
+
+      <!-- 连接线 -->
+      <div class="sm-connector">
+        <div class="line"></div>
+      </div>
+      <div style="text-align: center; margin-top: -24px; margin-bottom: 16px;">
+        <span class="mono" style="background: var(--bg-card); padding: 2px 10px; border-radius: 999px; border: 0.5px solid var(--hairline);">"在 App 中查看" · 把当前会话带去主窗口</span>
+      </div>
+
+      <!-- 主窗口 -->
+      <div class="sm-row">
+        <div class="sm-mainwin">
+          <div class="sm-mainwin-head">
+            <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px; color: var(--ink-700);">
+              <path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/>
+              <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/>
+            </svg>
+            <span class="sm-name">Main Window · 单一目的地</span>
+            <span class="sm-tag">Ask</span>
+          </div>
+          <div class="sm-mainwin-body">
+            <div class="sm-pane">
+              <span class="sm-pane-tag">Left rail</span>
+              <span class="sm-pane-name">Sidebar</span>
+              <ul>
+                <li>· 品牌位 + 新建</li>
+                <li>· 搜索会话</li>
+                <li>· 会话列表(最近/置顶)</li>
+                <li>· 用户 + 采集状态</li>
+              </ul>
+            </div>
+            <div class="sm-pane">
+              <span class="sm-pane-tag">Center</span>
+              <span class="sm-pane-name">Conversation</span>
+              <ul>
+                <li>· 空状态 / 当前会话</li>
+                <li>· 流式回应</li>
+                <li>· 引用帧(可展开)</li>
+                <li>· 输入栏(底部)</li>
+              </ul>
+            </div>
+            <div class="sm-pane transient">
+              <span class="sm-pane-tag">Right · Transient</span>
+              <span class="sm-pane-name">Frame Drawer</span>
+              <ul>
+                <li>· 点引用 → 滑出</li>
+                <li>· 大图 + AX/OCR</li>
+                <li>· 关闭即收</li>
+                <li class="mono" style="margin-top: 4px;">默认隐藏</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overlay (settings/permission) -->
+      <div class="sm-row" style="margin-top: 32px; gap: 16px;">
+        <div class="sm-node sm-overlay" style="flex: 1;">
+          <div class="sm-tag">Dialog · ⌘,</div>
+          <div class="sm-name">Settings</div>
+          <div class="sm-desc">General / Capture & Privacy ★ / Exec Agent / Skills / About</div>
+        </div>
+        <div class="sm-node sm-overlay" style="flex: 1;">
+          <div class="sm-tag">Overlay · 工具调用授权</div>
+          <div class="sm-name">Permission Dialog</div>
+          <div class="sm-desc">Agent 请求工具权限时弹出,挡住所有交互直到用户回复</div>
+        </div>
+        <div class="sm-node sm-overlay" style="flex: 1;">
+          <div class="sm-tag">Pre-app · 一次性</div>
+          <div class="sm-name">Auth + Onboarding</div>
+          <div class="sm-desc">Login → Welcome → Permission → Done。完成后不再出现。</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 3 · Flows ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">03 · Key Flows</span>
+      <h2>四条主路径。</h2>
+      <p>这四条覆盖了 90% 的使用场景。把它们走顺,产品就站住了。</p>
+    </header>
+
+    <div class="flow">
+
+      <div class="flow-row">
+        <div class="flow-name">
+          <span class="flow-num">Flow 01</span>
+          冷启动 · 第一次问
+        </div>
+        <div class="flow-steps">
+          <span class="flow-step">打开主窗口</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step amber">空状态:还没问过我什么</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">输入栏聚焦</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">问</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step ink">流式回应 + 引用帧</span>
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-name">
+          <span class="flow-num">Flow 02</span>
+          Quick Ask · 问完就走
+        </div>
+        <div class="flow-steps">
+          <span class="flow-step">⌥⌥ 双击</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step amber">浮层 + 当前 focus context</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">问</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step ink">回应</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">Esc 收回</span>
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-name">
+          <span class="flow-num">Flow 03</span>
+          Quick Ask → 主窗口 · 接续深聊
+        </div>
+        <div class="flow-steps">
+          <span class="flow-step">浮层中已有几轮对话</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">点"在 App 中查看"</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step amber">主窗口打开 · 该会话定位</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step ink">继续聊</span>
+        </div>
+      </div>
+
+      <div class="flow-row">
+        <div class="flow-name">
+          <span class="flow-num">Flow 04</span>
+          引用帧 · 看一眼回到对话
+        </div>
+        <div class="flow-steps">
+          <span class="flow-step">读到引用 frame chip</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">点击</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step amber">右侧 Drawer 滑出 · 大图 + 文本</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step">关掉</span>
+          <span class="flow-arrow">→</span>
+          <span class="flow-step ink">回到对话原位</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 4 · Sidebar 转身 ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">04 · Sidebar Transformation</span>
+      <h2>从导航,转身成会话列表。</h2>
+      <p>当主窗口只有一个目的地,Sidebar 上还放"导航"就是冗余。它该承担的不是"去哪",而是"我有哪些会话"——这是真正帮用户的事。</p>
+    </header>
+
+    <div class="ba-grid">
+
+      <div class="ba-card before">
+        <div class="ba-head">
+          <span class="ba-tag">Before</span>
+          <span class="ba-title">导航 Sidebar</span>
+        </div>
+        <div class="ba-body">
+          <div class="ba-section-label">Nav</div>
+          <div class="ba-item">提问</div>
+          <div class="ba-item muted">时间线</div>
+
+          <div class="ba-section-label">Bottom</div>
+          <div class="ba-item">用户 + 菜单</div>
+          <div class="ba-item">采集状态</div>
+        </div>
+      </div>
+
+      <div class="ba-arrow">→</div>
+
+      <div class="ba-card after">
+        <div class="ba-head">
+          <span class="ba-tag">After</span>
+          <span class="ba-title">会话列表 Sidebar</span>
+        </div>
+        <div class="ba-body">
+          <div class="ba-section-label">Top</div>
+          <div class="ba-item">
+            <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+            Corivo · 品牌位
+          </div>
+          <div class="ba-item amber">+ 新会话</div>
+          <div class="ba-item">⌘K · 搜索会话</div>
+
+          <div class="ba-section-label">List</div>
+          <div class="ba-item">置顶会话</div>
+          <div class="ba-item">最近会话</div>
+          <div class="ba-item">归档(可折叠)</div>
+
+          <div class="ba-section-label">Bottom</div>
+          <div class="ba-item">用户卡 + 菜单</div>
+          <div class="ba-item">
+            <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--amber-500);box-shadow:0 0 0 3px var(--amber-tint);margin-right:2px;"></span>
+            采集中 · 点击切换
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 5 · Settings 重组 ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">05 · Settings · Re-grouped</span>
+      <h2>把"信任承诺"从角落抬到二号位。</h2>
+      <p>Capture 和 Privacy 原来是两个独立 section,合并成 <strong>Capture & Privacy</strong>,排在 General 之后。这是 Corivo 对用户的核心承诺所在——"你掌控屏幕里发生的事"。</p>
+    </header>
+
+    <div class="settings-tree">
+
+      <div class="st-group">
+        <div class="st-name">General</div>
+        <div class="st-items">
+          <div class="st-item">UI / 回应语言</div>
+          <div class="st-item">最小化到托盘</div>
+          <div class="st-item">开机自启</div>
+          <div class="st-item">重置 onboarding</div>
+        </div>
+      </div>
+
+      <div class="st-group">
+        <div class="st-name">
+          Capture & Privacy
+          <span class="pin">★ 升级</span>
+        </div>
+        <div class="st-items">
+          <div class="st-item">采集开关 + 节奏(间隔 / 批次 / 配额 / 画质)</div>
+          <div class="st-item">排除应用清单 · 默认 + 自定义</div>
+          <div class="st-item"><span class="moved">原 Permissions</span> 屏幕录制 / 辅助功能权限</div>
+          <div class="st-item"><span class="new">New</span> 最近 24h 抓到的(数量 / 体积 / 跳转 inspector)</div>
+          <div class="st-item">硬删除 · 全部清空</div>
+        </div>
+      </div>
+
+      <div class="st-group">
+        <div class="st-name">Exec Agent</div>
+        <div class="st-items">
+          <div class="st-item">Corivo Proxy / BYOK</div>
+          <div class="st-item">模型选择 + 刷新</div>
+          <div class="st-item">Thinking Level</div>
+          <div class="st-item">Skill 共享开关</div>
+        </div>
+      </div>
+
+      <div class="st-group">
+        <div class="st-name">Skills</div>
+        <div class="st-items">
+          <div class="st-item">已安装 skill 列表 · 启用/停用</div>
+        </div>
+      </div>
+
+      <div class="st-group">
+        <div class="st-name">About</div>
+        <div class="st-items">
+          <div class="st-item">App 版本 · 检查更新</div>
+          <div class="st-item">系统信息 / 数据目录</div>
+          <div class="st-item">设备 ID / 校验和</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 6 · Out of scope ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">06 · Out of Scope</span>
+      <h2>这次 redesign 里不做的事。</h2>
+      <p>明确写出来,避免一边设计一边膨胀。下面这些有道理但不在这次 IA 里——它们要么需要后端配合,要么是后续阶段的事。</p>
+    </header>
+
+    <div class="scope-list">
+      <div class="scope-card">
+        <div class="scope-tag">不做 · 1</div>
+        <div class="scope-title">主题切换 · 暗色模式</div>
+        <div class="scope-desc">跟随系统就好。手动切换会让设计 token 翻倍,这次先不做。</div>
+      </div>
+      <div class="scope-card">
+        <div class="scope-tag">不做 · 2</div>
+        <div class="scope-title">多窗口 / 多账号</div>
+        <div class="scope-desc">单窗口、单账号心智更干净。多窗口需求不强,以后再说。</div>
+      </div>
+      <div class="scope-card">
+        <div class="scope-tag">不做 · 3</div>
+        <div class="scope-title">导出 / 分享会话</div>
+        <div class="scope-desc">隐私敏感,且现阶段没有对应的产品场景。</div>
+      </div>
+      <div class="scope-card">
+        <div class="scope-tag">不做 · 4</div>
+        <div class="scope-title">自定义快捷键</div>
+        <div class="scope-desc">⌥⌥ 是核心心智,不应该让用户自定义掉。其他动作走系统默认。</div>
+      </div>
+      <div class="scope-card">
+        <div class="scope-tag">不做 · 5</div>
+        <div class="scope-title">Frame 全文搜索的独立入口</div>
+        <div class="scope-desc">用户的"搜索"心智应该走 Ask——"我刚才看那个 X 是什么"——而不是去 grep frame。</div>
+      </div>
+      <div class="scope-card">
+        <div class="scope-tag">不做 · 6</div>
+        <div class="scope-title">Notification overlay 的实际投用</div>
+        <div class="scope-desc">代码里保留,但 v3 redesign 不规划它的产品形态。等真有 proactive 场景再设计。</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <footer>
+    <p class="sig">IA Reference v0 · 2026-05-09</p>
+    <p>这一份是 Step 1 的产物——它把"应用里有哪些地方、它们之间是什么关系"重新画了一遍,关键决策包括:删 Timeline、Sidebar 转会话列表、Frame 转 inline 引用 + 抽屉、Capture & Privacy 升二号位。如果这张结构对了,我会进 Step 2 —— 设计系统底座 + 五张关键场景的精稿(Quick Ask / 主窗口 Ask / Frame Drawer / Onboarding / Settings)。</p>
+  </footer>
+
+</main>
+
+</body>
+</html>

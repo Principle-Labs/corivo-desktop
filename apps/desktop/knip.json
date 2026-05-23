@@ -1,0 +1,10 @@
+{
+  "entry": ["src/overlay/main.tsx"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": [
+    "@fontsource-variable/fraunces",
+    "@fontsource-variable/jetbrains-mono",
+    "@fontsource/caveat"
+  ]
+}

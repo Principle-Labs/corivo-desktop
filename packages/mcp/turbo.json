@@ -1,0 +1,24 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "cache": false,
+      "outputs": [
+        "../../apps/desktop/src-tauri/binaries/corivo-mcp-aarch64-apple-darwin",
+        "../../apps/desktop/src-tauri/binaries/corivo-mcp-x86_64-apple-darwin",
+        "../../apps/desktop/src-tauri/binaries/corivo-mcp-universal-apple-darwin",
+        "../../apps/desktop/src-tauri/binaries/corivo-mcp-x86_64-pc-windows-msvc.exe"
+      ]
+    },
+    "build:debug": {
+      "cache": false,
+      "outputs": [
+        "../../apps/desktop/src-tauri/binaries/corivo-mcp-aarch64-apple-darwin",
+        "../../apps/desktop/src-tauri/binaries/corivo-mcp-x86_64-apple-darwin",
+        "../../apps/desktop/src-tauri/binaries/corivo-mcp-universal-apple-darwin",
+        "../../apps/desktop/src-tauri/binaries/corivo-mcp-x86_64-pc-windows-msvc.exe"
+      ]
+    }
+  }
+}

@@ -1,0 +1,963 @@
+/* ===========================================================================
+ * Quick Ask overlay theme.
+ *
+ * Two-layer token system:
+ *   1. `--qa-*` — Quick-Ask-specific chrome tokens (titlebar, chips,
+ *      inputbar, iconbtns, error/warn pills, kbd shortcuts).
+ *   2. shadcn / Tailwind bridge tokens (`--background`, `--foreground`,
+ *      `--accent`, `--border`, …) consumed by the shared
+ *      `<MessageBubble>` from `components/chat/message-bubble.tsx`. The
+ *      defaults from `globals.css` are warm-light + opaque, which would
+ *      render dark text on a translucent vibrancy panel — we override
+ *      them here so the same Tailwind classes look right on both
+ *      vibrancy materials.
+ *
+ * Both layers swap together on `prefers-color-scheme`. macOS
+ * NSVisualEffectView (`HudWindow` material, see
+ * `apply_quick_ask_vibrancy` in src-tauri/src/lib.rs) follows system
+ * Appearance, so the WebView's `prefers-color-scheme` aligns with the
+ * underlying blur — light tokens land on light vibrancy, dark on dark.
+ * =========================================================================== */
+
+:root[data-quick-ask-root="true"],
+body[data-quick-ask-root="true"] {
+  /* ---- Dark defaults (HudWindow on dark Appearance) ----------------- */
+  --qa-text: rgba(245, 245, 245, 0.96);
+  --qa-text-titlebar: rgba(245, 245, 245, 0.85);
+  --qa-text-secondary: rgba(245, 245, 245, 0.78);
+  --qa-text-muted: rgba(245, 245, 245, 0.55);
+  --qa-text-hint: rgba(245, 245, 245, 0.5);
+  --qa-text-faint: rgba(245, 245, 245, 0.35);
+
+  --qa-surface-soft: rgba(255, 255, 255, 0.06);
+  --qa-surface-iconbtn-hover: rgba(255, 255, 255, 0.1);
+  --qa-surface-close: rgba(255, 255, 255, 0.1);
+  --qa-surface-close-hover: rgba(255, 255, 255, 0.18);
+  --qa-surface-strong: rgba(0, 0, 0, 0.22);
+  --qa-surface-kbd: rgba(255, 255, 255, 0.08);
+
+  --qa-stroke: rgba(255, 255, 255, 0.06);
+  --qa-stroke-strong: rgba(255, 255, 255, 0.08);
+  --qa-stroke-dashed: rgba(255, 255, 255, 0.16);
+  --qa-stroke-kbd: rgba(255, 255, 255, 0.14);
+
+  --qa-send-bg: rgba(245, 245, 245, 0.92);
+  --qa-send-bg-hover: rgba(255, 255, 255, 1);
+  --qa-send-bg-disabled: rgba(245, 245, 245, 0.4);
+  --qa-send-fg: rgba(20, 20, 22, 0.95);
+
+  --qa-active: rgba(120, 200, 255, 0.95);
+
+  --qa-warn-fg: rgba(255, 210, 130, 0.92);
+  --qa-warn-bg: rgba(255, 200, 0, 0.06);
+  --qa-warn-stroke: rgba(255, 200, 0, 0.22);
+
+  --qa-error-fg: rgba(255, 130, 130, 0.95);
+  --qa-error-fg-strong: rgba(255, 120, 120, 0.9);
+  --qa-error-bg: rgba(255, 80, 80, 0.08);
+  --qa-error-stroke: rgba(255, 80, 80, 0.2);
+
+  /* shadcn / Tailwind bridge — dark vibrancy variant. Aligned with
+   * globals.css's `[data-theme="dark"]` so MessageBubble looks
+   * consistent across overlay + main window. Surfaces stay translucent
+   * so NSVisualEffectView shows through. */
+  --background: rgba(245, 242, 233, 0.04);
+  --foreground: rgba(245, 242, 233, 0.96);
+  --card: rgba(245, 242, 233, 0.05);
+  --card-foreground: rgba(245, 242, 233, 0.96);
+  --muted: rgba(245, 242, 233, 0.06);
+  --muted-foreground: rgba(245, 242, 233, 0.65);
+  --accent: rgba(192, 137, 74, 0.18);
+  --accent-foreground: #d5a878;
+  --border: rgba(245, 242, 233, 0.08);
+  --primary: #c0894a;            /* dye amber 400 — dark-mode primary */
+  --primary-foreground: #161410;
+  --destructive: #e68682;
+  --destructive-foreground: #161410;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-quick-ask-root="true"],
+  body[data-quick-ask-root="true"] {
+    /* ---- Light counterparts (HudWindow on light Appearance) --------- */
+    --qa-text: rgba(20, 14, 10, 0.95);
+    --qa-text-titlebar: rgba(20, 14, 10, 0.85);
+    --qa-text-secondary: rgba(20, 14, 10, 0.7);
+    --qa-text-muted: rgba(20, 14, 10, 0.55);
+    --qa-text-hint: rgba(20, 14, 10, 0.5);
+    --qa-text-faint: rgba(20, 14, 10, 0.35);
+
+    --qa-surface-soft: rgba(0, 0, 0, 0.04);
+    --qa-surface-iconbtn-hover: rgba(0, 0, 0, 0.06);
+    --qa-surface-close: rgba(0, 0, 0, 0.06);
+    --qa-surface-close-hover: rgba(0, 0, 0, 0.12);
+    /* The inputbar wants a noticeably stronger inset than the chips —
+       in light vibrancy, a translucent white sheet reads as "card"
+       without overpowering the blur. */
+    --qa-surface-strong: rgba(255, 255, 255, 0.55);
+    --qa-surface-kbd: rgba(0, 0, 0, 0.05);
+
+    --qa-stroke: rgba(0, 0, 0, 0.08);
+    --qa-stroke-strong: rgba(0, 0, 0, 0.1);
+    --qa-stroke-dashed: rgba(0, 0, 0, 0.18);
+    --qa-stroke-kbd: rgba(0, 0, 0, 0.12);
+
+    /* Send button in light mode runs the dyed honey amber to match
+     * `/ask`'s new primary. The system-v0 brief says amber should not
+     * be the main button color in chrome surfaces, but Quick Ask's
+     * send is a single, focal "commit" — it's the one place the
+     * overlay actively wants attention. */
+    --qa-send-bg: #a86b22;
+    --qa-send-bg-hover: #8e5a1f;
+    --qa-send-bg-disabled: rgba(168, 107, 34, 0.4);
+    --qa-send-fg: #ffffff;
+
+    --qa-active: #1d6fa5;
+
+    --qa-warn-fg: #a36800;
+    --qa-warn-bg: rgba(255, 200, 0, 0.14);
+    --qa-warn-stroke: rgba(180, 130, 0, 0.3);
+
+    --qa-error-fg: #b91c1c;
+    --qa-error-fg-strong: #b91c1c;
+    --qa-error-bg: rgba(220, 38, 38, 0.08);
+    --qa-error-stroke: rgba(220, 38, 38, 0.25);
+
+    /* shadcn / Tailwind bridge — light vibrancy variant. Mirrors the
+       paper palette in globals.css but uses translucent surfaces so
+       the NSVisualEffectView material shows through. */
+    --background: rgba(252, 251, 248, 0.55);
+    --foreground: #1a1916;
+    --card: rgba(252, 251, 248, 0.6);
+    --card-foreground: #1a1916;
+    --muted: rgba(28, 26, 23, 0.05);
+    --muted-foreground: #5a574f;
+    --accent: rgba(168, 107, 34, 0.10);
+    --accent-foreground: #6b4216;
+    --border: rgba(28, 26, 23, 0.10);
+    --primary: #a86b22;            /* dye amber 500 — light-mode primary */
+    --primary-foreground: #ffffff;
+    --destructive: #b85450;
+    --destructive-foreground: #ffffff;
+  }
+}
+
+:root[data-quick-ask-root="true"],
+body[data-quick-ask-root="true"] {
+  background: transparent;
+  color: var(--qa-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body[data-quick-ask-root="true"] {
+  /* Natural height: a `ResizeObserver` in QuickAskWindow.tsx measures
+     the shell and pushes the value to `quick_ask_set_height`, so the
+     window always matches rendered content. Don't pin to 100vh — that
+     would create a feedback loop with the dynamic window sizing.
+
+     CO-43: globals.css sets `html, body, #root { height: 100% }` for
+     the main app (router + sidebar fill the viewport). For this overlay
+     that rule has the opposite of the intended effect — #root gets
+     pinned to the initial 140px window height, the shell's flex column
+     resolves the body against that constraint (combined with
+     `.quick-ask-body { flex: 1 1 auto; min-height: 0 }`), and the
+     composer's textarea collapses below its 72px `min-height`. The
+     ResizeObserver then reads the squashed shell, pushes the small
+     value back, and the panel settles at the wrong size on first paint.
+     Explicitly free body + #root from the 100% chain so the shell can
+     grow to its natural content height on first measure. `min-height:
+     100%` on #root keeps the shell filling the full window in manual-
+     resize mode (where the shell takes `height: 100vh`, see below). */
+  width: 100vw;
+  height: auto;
+}
+
+body[data-quick-ask-root="true"] #root {
+  height: auto;
+  min-height: 100%;
+}
+
+.quick-ask-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /* Default mode: height is content-driven so the ResizeObserver →
+     `quick_ask_set_height` loop shrinks the macOS window down to
+     whatever React just rendered. Once the user grabs the corner the
+     shell switches to `data-manual-resized="true"` and fills the
+     window (see below); see also `manualResized` in QuickAskWindow.tsx
+     where the observer is gated so there's no feedback loop with the
+     fixed shell height. */
+  /* Background blur is provided by macOS NSVisualEffectView (see
+     `apply_quick_ask_vibrancy` in src-tauri/src/lib.rs). The CSS layer
+     stays transparent so the native material shows through.
+
+     `border-radius` MUST match `QUICK_ASK_CORNER_RADIUS` in
+     `src-tauri/src/lib.rs` — the vibrancy view uses that value for
+     its rounded mask, and any drift makes the corners look stepped
+     (CSS box clipped at one radius, native blur at another).
+
+     The drop-shadow is drawn natively by AppKit (`shadow: true` on the
+     `quick-ask` window in `tauri.conf.json`). macOS computes it from the
+     vibrancy view's alpha mask, so it follows the rounded corners
+     automatically — no CSS `box-shadow` needed (and none would render
+     anyway: the shell fills the entire window so anything outside the
+     box would be clipped by the OS frame).
+
+     No `border` here on purpose — the native shadow already gives the
+     edge enough definition; a 1px stroke on top reads as an ugly hard
+     outline against the vibrancy. */
+  background: transparent;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+/* Manual-resize mode: shell fills the window so the composer can stick
+   to the bottom and the transcript (or empty body) absorbs the slack. */
+.quick-ask-shell[data-manual-resized="true"] {
+  height: 100vh;
+}
+
+.quick-ask-shell[data-manual-resized="true"] .quick-ask-transcript {
+  /* Cap is gone in manual mode — transcript should grow to consume
+     whatever room the user gave us; scroll kicks in only if messages
+     still overflow that. min-height:0 lets the flex item shrink below
+     its content size, otherwise the scroll never engages. */
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+}
+
+.quick-ask-shell[data-manual-resized="true"] .quick-ask-composer {
+  /* When there's no flex-growing sibling above (empty state, picker,
+     permission card only), the standard flexbox push-to-end trick
+     keeps the composer glued to the bottom. No-op when the conversation
+     slot has content, since `.quick-ask-conversation` already takes
+     the slack via `flex: 1 1 auto`. */
+  margin-top: auto;
+}
+
+/* CO-47: when the history overlay is open, guarantee enough vertical
+   room in the conversation slot for the floating picker to render at
+   its natural size without being clipped by the shell's `overflow:
+   hidden`. A tall transcript already pushes the slot past this so the
+   min-height is a no-op; when there's no transcript, this is what
+   lets the picker appear in full by gently growing the window. */
+.quick-ask-shell[data-picker-open="true"] .quick-ask-conversation {
+  min-height: 320px;
+}
+
+/* ---------- Title bar ---------------------------------------------------- */
+
+.quick-ask-titlebar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 6px 12px;
+  cursor: grab;
+  user-select: none;
+}
+
+.quick-ask-titlebar:active {
+  cursor: grabbing;
+}
+
+.quick-ask-close {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--qa-surface-close);
+  color: var(--qa-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.quick-ask-close:hover {
+  background: var(--qa-surface-close-hover);
+}
+
+.quick-ask-titlebar__title {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--qa-text-titlebar);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quick-ask-titlebar__actions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.quick-ask-titlebar__btn {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--qa-surface-close);
+  color: var(--qa-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.quick-ask-titlebar__btn:hover {
+  background: var(--qa-surface-close-hover);
+  color: var(--qa-text);
+}
+
+.quick-ask-titlebar__btn--active {
+  background: var(--qa-surface-close-hover);
+  color: var(--qa-text);
+}
+
+.quick-ask-titlebar__hint {
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 11px;
+  color: var(--qa-text-hint);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.quick-ask-titlebar__hint:hover {
+  background: var(--qa-surface-iconbtn-hover);
+  color: var(--qa-text);
+}
+
+/* ---------- Body --------------------------------------------------------- */
+
+.quick-ask-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 16px 14px 16px;
+  min-height: 0;
+}
+
+/* CO-47: dedicated flex slot for the transcript + history overlay.
+   `flex: 1 1 auto` lets it absorb any slack between titlebar and
+   composer in manual-resize mode, which means the composer always
+   sits at the body's bottom edge. `position: relative` is the anchor
+   for `.quick-ask-picker` / `.quick-ask-picker-backdrop` so the
+   overlay can never reach into the composer area below.
+   `:empty` collapses the wrapper when there's no transcript and no
+   picker — otherwise the body's 10px gap would render a stray slot
+   above the composer. */
+.quick-ask-conversation {
+  flex: 1 1 auto;
+  position: relative;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.quick-ask-conversation:empty {
+  display: none;
+}
+
+/* ---------- Focus chips -------------------------------------------------- */
+
+.quick-ask-chips {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-ask-chip__icon {
+  /* Reserved 14px slot for the foreground app's icon. Always present
+     once we have a bundle id (even mid-IPC), so the chip width is
+     stable across the fade-in — no layout shift. The <img> inside
+     is opacity-0 by default and fades to 1 on mount so a slow IPC
+     doesn't pop. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.quick-ask-chip__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  animation: quick-ask-chip-icon-fade 180ms ease-out forwards;
+}
+
+@keyframes quick-ask-chip-icon-fade {
+  to {
+    opacity: 1;
+  }
+}
+
+.quick-ask-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--qa-text-secondary);
+  padding: 5px 10px;
+  border-radius: 9999px;
+  background: var(--qa-surface-soft);
+  border: 1px dashed var(--qa-stroke-dashed);
+  white-space: nowrap;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quick-ask-chip--loading {
+  opacity: 0.65;
+}
+
+.quick-ask-chip--warn {
+  color: var(--qa-warn-fg);
+  background: var(--qa-warn-bg);
+  border-color: var(--qa-warn-stroke);
+}
+
+/* "+ 切到 [App]" affordance — appears next to the locked anchor when
+   the user's foreground app has drifted. Visually subordinate to the
+   read-only anchor chips: smaller text, no border, transparent base
+   so it reads as a secondary text-link rather than a peer pill. */
+.quick-ask-chip--switch {
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.01em;
+  color: var(--qa-text-faint);
+  background: transparent;
+  border: 0;
+  padding: 3px 6px;
+  border-radius: 9999px;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.quick-ask-chip--switch:hover {
+  color: var(--qa-text-primary);
+  background: var(--qa-surface-iconbtn-hover, var(--qa-surface-soft));
+}
+
+/* ---------- Transcript --------------------------------------------------- */
+
+.quick-ask-transcript {
+  /* Cap before the window itself caps via QUICK_ASK_MAX_HEIGHT (800)
+     in commands/quick_ask.rs. With titlebar + chips + inputbar +
+     paddings totaling ~150px, 460 keeps the worst-case shell under
+     ~620 — comfortably below the backend max. Inside this cap the
+     transcript scrolls; the window stays put. */
+  max-height: 460px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 4px 4px 4px;
+}
+
+/* Each bubble is rendered by `<MessageBubble>` from
+ * components/chat/message-bubble.tsx, so message-level styling lives
+ * there (Tailwind utilities re-mapped onto the dark/light tokens above).
+ * Quick Ask just owns the surrounding transcript scroll container. */
+
+.quick-ask-message__error {
+  font-size: 11px;
+  color: var(--qa-error-fg-strong);
+  padding: 2px 4px;
+}
+
+/* ---------- Session picker --------------------------------------------- */
+
+/* CO-47: floats above the transcript when the user toggles the 历史
+   button. Previously this slid inline and replaced the transcript,
+   which threw away the active conversation context every time history
+   was opened. Now the picker is `position: absolute` inside the
+   `.quick-ask-conversation` slot, so it can never reach below the
+   composer — the conversation slot stops where the composer begins.
+   The transcript stays mounted underneath; a sibling backdrop
+   (`.quick-ask-picker-backdrop`) captures click-outside to dismiss.
+   Capped below `QUICK_ASK_MAX_HEIGHT` (800) from `commands/quick_ask.rs`. */
+.quick-ask-picker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 14px;
+  /* Dark, slightly translucent surface + backdrop blur. The intent is
+     to clearly de-emphasize the transcript bubbles behind the overlay
+     — without the blur the bubbles read through and visually compete
+     with the session list. NSVisualEffectView already blurs the
+     desktop behind the entire window; this second `backdrop-filter`
+     blurs the in-app content (bubbles, FocusCard) that sits between
+     the picker and that vibrancy layer. */
+  background: rgba(0, 0, 0, 0.48);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* Floating affordance — kept softer than before since the dark
+     tint + blur already create plenty of visual separation. */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+  max-height: 320px;
+  overflow: hidden;
+}
+
+/* When the user has manually resized the window, let the picker fill
+   the whole conversation slot — top to just-above-composer. Otherwise a
+   200px-tall picker stranded at the top of a 600px-tall conversation
+   leaves an awkward blur band between picker and composer. */
+.quick-ask-shell[data-manual-resized="true"] .quick-ask-picker {
+  bottom: 0;
+  max-height: none;
+}
+
+/* Click-outside dismiss. Spans the conversation slot only (not the
+   composer below), so a click on the composer's textarea doesn't
+   collapse the overlay — the user can keep drafting while browsing
+   history. Transparent on purpose — the picker's own shadow is what
+   signals "this floats above the transcript", a tint here would just
+   darken the chat needlessly. */
+.quick-ask-picker-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: transparent;
+}
+
+@media (prefers-color-scheme: light) {
+  .quick-ask-picker {
+    /* Frosted-glass treatment for light Appearance: a high-opacity
+       white sheet + the same backdrop blur as dark mode. The blur is
+       what separates the overlay from the chat bubbles underneath —
+       without it a 70% white panel still lets enough text leak through
+       to look noisy. Row text falls back to the light-mode `--qa-*`
+       tokens (dark on light), which read naturally on this surface, so
+       no per-element color overrides are needed here. */
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(20, 14, 10, 0.08);
+    box-shadow: 0 6px 20px rgba(20, 14, 10, 0.14);
+  }
+}
+
+.quick-ask-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.quick-ask-picker__row {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--qa-text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.quick-ask-picker__row:hover {
+  background: var(--qa-surface-iconbtn-hover);
+  color: var(--qa-text);
+}
+
+.quick-ask-picker__row--active {
+  background: var(--qa-surface-iconbtn-hover);
+  color: var(--qa-text);
+}
+
+.quick-ask-picker__row--new {
+  color: var(--qa-text);
+}
+
+.quick-ask-picker__icon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--qa-text-secondary);
+}
+
+.quick-ask-picker__row--new:hover .quick-ask-picker__icon,
+.quick-ask-picker__row:hover .quick-ask-picker__icon {
+  color: var(--qa-text);
+}
+
+.quick-ask-picker__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quick-ask-picker__meta {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  color: var(--qa-text-faint);
+}
+
+.quick-ask-picker__divider {
+  flex: 0 0 auto;
+  height: 1px;
+  margin: 2px 6px;
+  background: var(--qa-stroke);
+}
+
+.quick-ask-picker__empty {
+  font-size: 11.5px;
+  color: var(--qa-text-faint);
+  padding: 10px 10px 8px;
+  text-align: center;
+}
+
+/* ---------- Composer (focus chips + input bar) -------------------------- */
+
+/* Wraps the FocusCard chips and the input bar in a single rounded
+   surface so the chips read as "what's attached to this message",
+   ChatGPT-style attachment row. The chips and inputbar both lose their
+   own backgrounds/borders and inherit this frame. */
+.quick-ask-composer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 8px 8px 12px;
+  border-radius: 18px;
+  background: var(--qa-surface-strong);
+  border: 1px solid var(--qa-stroke);
+}
+
+.quick-ask-composer .quick-ask-chips {
+  padding: 2px 4px 0 2px;
+}
+
+/* ---------- Input bar ---------------------------------------------------- */
+
+.quick-ask-inputbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* Standalone (not inside .quick-ask-composer) is no longer used, but
+   keep the rounded frame in case future surfaces mount the bar
+   directly. */
+.quick-ask-inputbar:not(.quick-ask-composer .quick-ask-inputbar) {
+  padding: 8px 8px 8px 14px;
+  border-radius: 18px;
+  background: var(--qa-surface-strong);
+  border: 1px solid var(--qa-stroke);
+}
+
+.quick-ask-inputbar textarea {
+  flex: 1 1 auto;
+  /* Disable the native textarea grip — the window itself is now
+   * resizable via the corner handle in the bottom-right of the
+   * shell. Letting the textarea grip stay would give the user two
+   * conflicting resize affordances. */
+  resize: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+  padding: 6px 0;
+  min-height: 72px;
+  max-height: 220px;
+}
+
+.quick-ask-inputbar textarea::placeholder {
+  color: var(--qa-text-faint);
+}
+
+.quick-ask-inputbar__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-ask-iconbtn {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--qa-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, opacity 120ms ease;
+}
+
+.quick-ask-iconbtn:hover:not(:disabled) {
+  background: var(--qa-surface-iconbtn-hover);
+  color: var(--qa-text);
+}
+
+.quick-ask-iconbtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.quick-ask-iconbtn--send {
+  background: var(--qa-send-bg);
+  color: var(--qa-send-fg);
+}
+
+.quick-ask-iconbtn--send:hover:not(:disabled) {
+  background: var(--qa-send-bg-hover);
+  color: var(--qa-send-fg);
+}
+
+.quick-ask-iconbtn--send:disabled {
+  background: var(--qa-send-bg-disabled);
+  color: var(--qa-send-fg);
+  opacity: 1;
+}
+
+.quick-ask-iconbtn--active {
+  color: var(--qa-active);
+}
+
+/* ---------- Errors ------------------------------------------------------- */
+
+.quick-ask-error {
+  font-size: 12px;
+  color: var(--qa-error-fg);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--qa-error-bg);
+  border: 1px solid var(--qa-error-stroke);
+}
+
+/* ---------- Permission card --------------------------------------------- */
+
+.quick-ask-permission {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 12px 10px 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--qa-surface-strong);
+  border: 1px solid var(--qa-surface-close-hover);
+  font-size: 12px;
+  color: var(--qa-text-secondary);
+}
+
+.quick-ask-permission__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--qa-text-titlebar);
+}
+
+.quick-ask-permission__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-ask-permission__label,
+.quick-ask-permission__args-label {
+  color: var(--qa-text-muted);
+  font-size: 11px;
+}
+
+.quick-ask-permission__tool {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--qa-text-titlebar);
+}
+
+.quick-ask-permission__reason {
+  margin: 0;
+  font-size: 12px;
+  color: var(--qa-text-secondary);
+  line-height: 1.4;
+}
+
+.quick-ask-permission__details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quick-ask-permission__details-summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--qa-text-muted);
+  list-style: none;
+  user-select: none;
+}
+
+.quick-ask-permission__details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.quick-ask-permission__details-summary::before {
+  content: "›";
+  display: inline-block;
+  margin-right: 4px;
+  transition: transform 120ms ease;
+}
+
+.quick-ask-permission__details[open] .quick-ask-permission__details-summary::before {
+  transform: rotate(90deg);
+}
+
+.quick-ask-permission__details-summary:hover {
+  color: var(--qa-text-secondary);
+}
+
+.quick-ask-permission__args {
+  margin: 0;
+  max-height: 140px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--qa-surface-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--qa-text-secondary);
+}
+
+.quick-ask-permission__hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--qa-text-hint);
+}
+
+.quick-ask-permission__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.quick-ask-permission__btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.quick-ask-permission__btn--deny {
+  background: var(--qa-surface-close);
+  color: var(--qa-text-secondary);
+}
+
+.quick-ask-permission__btn--deny:hover {
+  background: var(--qa-surface-close-hover);
+}
+
+/* Reuses the same commit tokens as the Quick Ask send button so the
+   contrast holds on both light and dark NSVisualEffectView materials.
+   The previous mapping borrowed `--qa-text-titlebar` / `--qa-surface-strong`,
+   which on dark vibrancy collapsed to a 22%-alpha black on near-white
+   — visually unreadable (CO-48). */
+.quick-ask-permission__btn--allow {
+  background: var(--qa-send-bg);
+  color: var(--qa-send-fg);
+}
+
+.quick-ask-permission__btn--allow:hover {
+  background: var(--qa-send-bg-hover);
+}
+
+/* ---------- kbd ---------------------------------------------------------- */
+
+.quick-ask-shell kbd {
+  font-family: -apple-system, ui-sans-serif, monospace;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--qa-surface-kbd);
+  border: 1px solid var(--qa-stroke-kbd);
+  color: var(--qa-text-secondary);
+}
+
+/* ---------- Resize handle ----------------------------------------------
+ * Bottom-right corner grip that drives a native macOS resize via Tauri's
+ * `startResizeDragging('SouthEast')`. position: fixed pins it to the
+ * viewport bottom-right regardless of the shell's measured height —
+ * when the user drags the window taller, the handle stays glued to
+ * the corner instead of riding up with the content. cursor:
+ * nwse-resize matches AppKit's edge cursor.
+ * --------------------------------------------------------------------- */
+.quick-ask-resize {
+  position: fixed;
+  right: 4px;
+  bottom: 4px;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 1px;
+  cursor: nwse-resize;
+  color: var(--qa-text-faint);
+  opacity: 0.7;
+  transition: opacity 120ms ease, color 120ms ease;
+  z-index: 5;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+.quick-ask-resize:hover {
+  opacity: 1;
+  color: var(--qa-text-secondary);
+}

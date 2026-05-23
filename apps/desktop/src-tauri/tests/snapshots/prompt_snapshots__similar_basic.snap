@@ -1,0 +1,37 @@
+---
+source: tests/prompt_snapshots.rs
+expression: render_similar(&input)
+---
+<!-- version: 1 | GUM §8 mapped from SIMILAR_PROMPT -->
+
+你是 Corivo 的命题比对员。给定一条新草拟的命题（Draft）和一组已存在的候选命题（Pool），请逐条判断每条候选相对 Draft 的关系：
+
+- `identical`：表达同一事实或同一倾向，措辞差异可忽略（可以直接复用这条候选，仅补绑定观察）
+- `similar`：主题或语义有明显重叠，但细节或强度不同（需要 REVISE 决定合并 / 更新 / 改写 / 对立）
+- `unrelated`：主题不同或无关联（应从本轮 Pool 中剔除）
+
+Draft：
+- text：用户习惯在上午专注处理长文档编辑
+- reasoning：连续两天上午都在 Notion 编辑超过 30 分钟
+
+Pool：
+- id=11: 用户偏好上午处理长文档
+- id=12: 用户在下午回复 Slack
+- id=13: 用户使用 Figma 做 UI 设计
+
+判定要求：
+- 只看命题语义，不要被 id 数字影响
+- 宁可 `similar` 也不要过度 `identical`；`identical` 仅限几乎同义
+- 输出顺序必须与 Pool 给出的顺序一致，逐条对应
+
+仅输出 JSON 数组，形如：
+
+```json
+[
+  {"proposition_id": 11, "relation": "identical"},
+  {"proposition_id": 12, "relation": "similar"},
+  {"proposition_id": 13, "relation": "unrelated"}
+]
+```
+
+不要输出任何其它文字、不要 Markdown 包裹。

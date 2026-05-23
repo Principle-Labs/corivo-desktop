@@ -1,0 +1,5 @@
+# CMake / vcpkg build artifacts. The compiled .exe is staged into
+# apps/desktop/src-tauri/binaries/ by build.ps1.
+build/
+vcpkg/
+out/

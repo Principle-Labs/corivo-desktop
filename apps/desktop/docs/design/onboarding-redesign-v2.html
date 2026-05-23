@@ -1,0 +1,1270 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Corivo · Onboarding Redesign v2</title>
+    <style>
+      /* ============================================================
+         TOKENS  ·  与 apps/desktop/src/globals.css 同源
+         data-theme: light | dark
+         data-lang : zh    | en
+         ============================================================ */
+
+      :root,
+      [data-theme="light"] {
+        --background: #f8f7f3;
+        --foreground: #1a1916;
+        --card: #fffefb;
+        --muted: #f0eee6;
+        --muted-foreground: #5a574f;
+        --border: rgba(28, 26, 23, 0.08);
+        --border-strong: rgba(28, 26, 23, 0.16);
+        --primary: #a86b22;
+        --primary-foreground: #ffffff;
+        --primary-hover: #8e5a1f;
+        --accent: #ecdfc5;
+        --accent-foreground: #6b4216;
+        --success: #4d7a3c;
+        --corivo-amber: #a86b22;
+        --brand-coral: #ef7551;
+        --window-chrome: #efece4;
+        --shadow-sm: 0 0 0 0.5px rgba(28, 26, 23, 0.05),
+          0 1px 2px rgba(28, 26, 23, 0.04);
+        --shadow-md: 0 0 0 0.5px rgba(28, 26, 23, 0.06),
+          0 2px 4px rgba(28, 26, 23, 0.04),
+          0 12px 32px rgba(28, 26, 23, 0.06);
+        --shadow-lg: 0 0 0 0.5px rgba(28, 26, 23, 0.07),
+          0 4px 8px rgba(28, 26, 23, 0.05),
+          0 24px 64px rgba(28, 26, 23, 0.1);
+        --glow: radial-gradient(
+          circle at 50% 50%,
+          color-mix(in oklab, var(--corivo-amber) 14%, transparent) 0%,
+          transparent 65%
+        );
+      }
+
+      [data-theme="dark"] {
+        --background: #161410;
+        --foreground: #f5f2e9;
+        --card: #1e1b16;
+        --muted: #272319;
+        --muted-foreground: #cfcabe;
+        --border: rgba(245, 242, 233, 0.08);
+        --border-strong: rgba(245, 242, 233, 0.18);
+        --primary: #c0894a;
+        --primary-foreground: #161410;
+        --primary-hover: #d5a878;
+        --accent: rgba(192, 137, 74, 0.16);
+        --accent-foreground: #d5a878;
+        --success: #82c170;
+        --corivo-amber: #c0894a;
+        --brand-coral: #ef7551;
+        --window-chrome: #1a1814;
+        --shadow-sm: inset 0 0.5px 0 rgba(245, 242, 233, 0.05),
+          0 0 0 0.5px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.35);
+        --shadow-md: inset 0 0.5px 0 rgba(245, 242, 233, 0.07),
+          0 0 0 0.5px rgba(0, 0, 0, 0.45), 0 4px 10px rgba(0, 0, 0, 0.4),
+          0 16px 40px rgba(0, 0, 0, 0.35);
+        --shadow-lg: inset 0 0.5px 0 rgba(245, 242, 233, 0.09),
+          0 0 0 0.5px rgba(0, 0, 0, 0.5), 0 8px 16px rgba(0, 0, 0, 0.45),
+          0 32px 80px rgba(0, 0, 0, 0.5);
+        --glow: radial-gradient(
+          circle at 50% 50%,
+          color-mix(in oklab, var(--corivo-amber) 20%, transparent) 0%,
+          transparent 60%
+        );
+      }
+
+      :root {
+        --font-sans:
+          -apple-system, "SF Pro Text", "Inter Variable", "Inter",
+          BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif;
+        --font-display:
+          -apple-system, "SF Pro Display", "Inter Variable", "Inter",
+          BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif;
+        --font-mono:
+          "JetBrains Mono Variable", "JetBrains Mono", ui-monospace,
+          SFMono-Regular, Menlo, monospace;
+      }
+
+      /* ============= RESET ============= */
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: var(--font-sans);
+        background: var(--background);
+        color: var(--foreground);
+        -webkit-font-smoothing: antialiased;
+        letter-spacing: 0.005em;
+        transition:
+          background-color 280ms cubic-bezier(0.32, 0.72, 0, 1),
+          color 280ms cubic-bezier(0.32, 0.72, 0, 1);
+      }
+      [data-lang="zh"] .lang-en {
+        display: none !important;
+      }
+      [data-lang="en"] .lang-zh {
+        display: none !important;
+      }
+
+      /* ============= DECK + TOOLBAR ============= */
+      .deck {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 32px 24px 96px;
+      }
+      .deck-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 40px;
+      }
+      .deck-tag {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+      .toolbar {
+        display: inline-flex;
+        gap: 4px;
+        padding: 4px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        box-shadow: var(--shadow-sm);
+      }
+      .toolbar button {
+        appearance: none;
+        background: transparent;
+        border: 0;
+        color: var(--muted-foreground);
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        letter-spacing: 0.1em;
+        padding: 6px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: all 180ms;
+      }
+      .toolbar button[data-active="true"] {
+        background: var(--foreground);
+        color: var(--background);
+      }
+      .toolbar .sep {
+        width: 1px;
+        height: 14px;
+        background: var(--border-strong);
+        align-self: center;
+        margin: 0 2px;
+      }
+
+      /* ============= WINDOW ============= */
+      .step {
+        margin-bottom: 64px;
+      }
+      .step-caption {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+        padding: 0 4px;
+      }
+      .step-caption .label {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        letter-spacing: 0.16em;
+        color: var(--muted-foreground);
+        text-transform: uppercase;
+      }
+
+      .window {
+        background: var(--background);
+        border-radius: 16px;
+        border: 1px solid var(--border-strong);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+      }
+      .chrome {
+        height: 36px;
+        background: var(--window-chrome);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+        gap: 14px;
+      }
+      .traffic {
+        display: flex;
+        gap: 8px;
+      }
+      .traffic span {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+      }
+      .traffic span:nth-child(1) {
+        background: #ec6a5e;
+      }
+      .traffic span:nth-child(2) {
+        background: #f5bf4f;
+      }
+      .traffic span:nth-child(3) {
+        background: #61c554;
+      }
+      .chrome .dots {
+        margin-left: auto;
+        display: inline-flex;
+        gap: 6px;
+      }
+      .chrome .dots span {
+        width: 5px;
+        height: 5px;
+        border-radius: 999px;
+        background: var(--border-strong);
+      }
+      .chrome .dots span.done {
+        background: var(--foreground);
+      }
+      .chrome .dots span.active {
+        background: var(--corivo-amber);
+      }
+
+      /* ============= TYPOGRAPHY ============= */
+      .display {
+        font-family: var(--font-display);
+        font-weight: 600;
+        letter-spacing: -0.028em;
+        line-height: 1.1;
+      }
+      h1.display {
+        font-size: 38px;
+        margin: 0;
+      }
+      h2.display {
+        font-size: 34px;
+        margin: 0;
+      }
+      .lede {
+        font-size: 15px;
+        line-height: 1.6;
+        color: var(--muted-foreground);
+        margin: 0;
+      }
+      em.accent {
+        font-style: normal;
+        color: var(--corivo-amber);
+        font-weight: 600;
+      }
+
+      /* ============= BUTTONS ============= */
+      .btn {
+        appearance: none;
+        border: 0;
+        cursor: pointer;
+        font-family: var(--font-sans);
+        font-weight: 500;
+        font-size: 14.5px;
+        letter-spacing: -0.005em;
+        height: 48px;
+        padding: 0 28px;
+        border-radius: 10px;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        box-shadow: var(--shadow-sm);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 180ms cubic-bezier(0.32, 0.72, 0, 1);
+      }
+      .btn:hover {
+        background: var(--primary-hover);
+      }
+      .btn.subtle {
+        background: transparent;
+        color: var(--muted-foreground);
+        box-shadow: none;
+        font-size: 13px;
+        height: 40px;
+        padding: 0 12px;
+      }
+      .btn.subtle:hover {
+        color: var(--foreground);
+      }
+
+      /* ============================================================
+         STEP 01 · PERMISSION  ·  单栏居中
+         ============================================================ */
+      .step1 {
+        position: relative;
+        padding: 96px 24px 88px;
+        min-height: 580px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 44px;
+      }
+      .step1::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: var(--glow);
+        pointer-events: none;
+      }
+      .step1-head {
+        text-align: center;
+        max-width: 480px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        position: relative;
+      }
+      .step1-body {
+        width: 100%;
+        max-width: 460px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        position: relative;
+      }
+
+      .perm-list {
+        display: flex;
+        flex-direction: column;
+        border-radius: 12px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+      }
+      .perm-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 20px;
+      }
+      .perm-row + .perm-row {
+        border-top: 1px solid var(--border);
+      }
+      .perm-row .ico {
+        width: 22px;
+        height: 22px;
+        color: var(--muted-foreground);
+        flex-shrink: 0;
+      }
+      .perm-row .meta {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .perm-row .name {
+        font-size: 14.5px;
+        font-weight: 500;
+        letter-spacing: -0.005em;
+        color: var(--foreground);
+      }
+      .perm-row .desc {
+        font-size: 12.5px;
+        color: var(--muted-foreground);
+        line-height: 1.4;
+      }
+      .perm-row .grant {
+        appearance: none;
+        border: 0;
+        cursor: pointer;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font-family: var(--font-sans);
+        font-weight: 500;
+        font-size: 12.5px;
+        letter-spacing: -0.005em;
+        padding: 0 16px;
+        height: 32px;
+        border-radius: 8px;
+        box-shadow: var(--shadow-sm);
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 180ms;
+      }
+      .perm-row .grant:hover {
+        background: var(--primary-hover);
+      }
+      .perm-row .grant.done {
+        background: transparent;
+        color: var(--success);
+        box-shadow: none;
+        cursor: default;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0;
+        height: auto;
+      }
+      .perm-row .grant.done::before {
+        content: "✓";
+        margin-right: 6px;
+        font-family: var(--font-sans);
+        font-size: 13px;
+      }
+
+      .step1-foot {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        letter-spacing: 0.14em;
+        color: var(--muted-foreground);
+        text-transform: uppercase;
+        margin: 0;
+        text-align: center;
+      }
+      /* step1-cta-row removed — each perm row now owns its own grant button */
+
+      /* ============================================================
+         STEP 02 · SHOW
+         ============================================================ */
+      .step2 {
+        padding: 72px 72px 88px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 44px;
+        min-height: 580px;
+        position: relative;
+      }
+      .step2::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: var(--glow);
+        pointer-events: none;
+      }
+      .step2-header {
+        text-align: center;
+        max-width: 560px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+      }
+      .theater {
+        position: relative;
+        width: 100%;
+        max-width: 720px;
+        display: flex;
+        flex-direction: column;
+      }
+      .screen-frame {
+        background: var(--card);
+        border: 1px solid var(--border-strong);
+        border-radius: 14px;
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        position: relative;
+      }
+      .mini-chrome {
+        height: 26px;
+        background: var(--window-chrome);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        gap: 8px;
+      }
+      .mini-traffic {
+        display: flex;
+        gap: 5px;
+      }
+      .mini-traffic span {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+      }
+      .mini-traffic span:nth-child(1) {
+        background: #ec6a5e;
+      }
+      .mini-traffic span:nth-child(2) {
+        background: #f5bf4f;
+      }
+      .mini-traffic span:nth-child(3) {
+        background: #61c554;
+      }
+      .mini-url {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--muted-foreground);
+      }
+      .screen-content {
+        padding: 24px 32px 28px;
+        height: 340px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-strong) transparent;
+      }
+      .screen-content::-webkit-scrollbar {
+        width: 6px;
+      }
+      .screen-content::-webkit-scrollbar-thumb {
+        background: var(--border-strong);
+        border-radius: 3px;
+      }
+      .screen-content::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      /* PRD doc typography */
+      .doc h1 {
+        font-family: var(--font-display);
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.018em;
+        line-height: 1.2;
+        margin: 0 0 4px 0;
+        color: var(--foreground);
+      }
+      .doc .meta {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        letter-spacing: 0.08em;
+        color: var(--muted-foreground);
+        text-transform: uppercase;
+        margin: 0 0 18px 0;
+      }
+      .doc h2 {
+        font-family: var(--font-display);
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.005em;
+        margin: 18px 0 6px 0;
+        color: var(--foreground);
+      }
+      .doc h2:first-of-type {
+        margin-top: 4px;
+      }
+      .doc p {
+        margin: 0 0 10px 0;
+        font-size: 13px;
+        line-height: 1.65;
+        color: var(--foreground);
+      }
+      .doc ul {
+        margin: 0 0 10px 0;
+        padding-left: 20px;
+        font-size: 13px;
+        line-height: 1.75;
+        color: var(--foreground);
+      }
+      .doc ul li {
+        margin-bottom: 2px;
+      }
+
+      .ask-pop {
+        position: relative;
+        z-index: 2;
+        width: 82%;
+        max-width: 560px;
+        margin: -24px auto 0;
+        background: var(--card);
+        border: 1px solid var(--border-strong);
+        border-radius: 12px;
+        box-shadow: var(--shadow-lg);
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .ask-input {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px;
+        background: var(--background);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 13px;
+        color: var(--muted-foreground);
+      }
+      .ask-input .caret {
+        width: 2px;
+        height: 13px;
+        background: var(--corivo-amber);
+        animation: caret 1s steps(2, end) infinite;
+      }
+      @keyframes caret {
+        50% {
+          opacity: 0;
+        }
+      }
+      .chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: var(--background);
+        color: var(--foreground);
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 160ms;
+      }
+      .chip:hover {
+        border-color: var(--border-strong);
+        background: var(--muted);
+      }
+
+      /* Apple Notes 真实生效反馈 */
+      .ask-result {
+        margin: 14px auto 0;
+        width: 82%;
+        max-width: 560px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: var(--shadow-sm);
+      }
+      .ask-result .notes-icon {
+        width: 36px;
+        height: 36px;
+        flex-shrink: 0;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #ffd966, #f5a623);
+        display: grid;
+        place-items: center;
+        font-size: 18px;
+        box-shadow: var(--shadow-sm);
+      }
+      .ask-result .notes-meta {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      .ask-result .notes-meta strong {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: -0.005em;
+      }
+      .ask-result .notes-meta .preview {
+        font-size: 11.5px;
+        color: var(--muted-foreground);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ask-result .notes-check {
+        color: var(--success);
+        flex-shrink: 0;
+        font-size: 15px;
+        line-height: 1;
+      }
+
+      /* ============================================================
+         STEP 03 · SHORTCUT
+         ============================================================ */
+      .step3 {
+        padding: 72px 72px 80px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 56px;
+        min-height: 580px;
+        position: relative;
+      }
+      .step3::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: var(--glow);
+        pointer-events: none;
+      }
+      .step3-header {
+        text-align: center;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        max-width: 560px;
+      }
+
+      .kb {
+        --u: 38px;
+        --g: 5px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: var(--g);
+        padding: 26px;
+        background: var(--card);
+        border-radius: 18px;
+        border: 1px solid var(--border-strong);
+        box-shadow: var(--shadow-lg);
+        max-width: 100%;
+      }
+      .kb-row {
+        display: flex;
+        gap: var(--g);
+        justify-content: center;
+      }
+      .key {
+        flex: 0 0 var(--u);
+        height: var(--u);
+        background: var(--background);
+        border: 1px solid var(--border-strong);
+        border-radius: 6px;
+        display: grid;
+        place-items: center;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--muted-foreground);
+        box-shadow:
+          inset 0 -2px 0
+            color-mix(in oklab, var(--foreground) 10%, transparent),
+          var(--shadow-sm);
+        white-space: nowrap;
+        padding: 0 4px;
+        opacity: 0.85;
+      }
+      .key.w-125 {
+        flex-basis: calc(var(--u) * 1.25 + var(--g) * 0.25);
+      }
+      .key.w-150 {
+        flex-basis: calc(var(--u) * 1.5 + var(--g) * 0.5);
+      }
+      .key.w-175 {
+        flex-basis: calc(var(--u) * 1.75 + var(--g) * 0.75);
+      }
+      .key.w-200 {
+        flex-basis: calc(var(--u) * 2 + var(--g));
+      }
+      .key.w-225 {
+        flex-basis: calc(var(--u) * 2.25 + var(--g) * 1.25);
+      }
+      .key.w-275 {
+        flex-basis: calc(var(--u) * 2.75 + var(--g) * 1.75);
+      }
+      .key.w-space {
+        flex-basis: calc(var(--u) * 5 + var(--g) * 4);
+      }
+      .key.opt {
+        background: var(--corivo-amber);
+        color: var(--primary-foreground);
+        border-color: var(--corivo-amber);
+        font-size: 16px;
+        font-weight: 600;
+        opacity: 1;
+        box-shadow:
+          inset 0 -3px 0 color-mix(in oklab, var(--corivo-amber) 50%, black),
+          0 0 0 3px color-mix(in oklab, var(--corivo-amber) 20%, transparent),
+          var(--shadow-md);
+      }
+
+      /* ---- kb-scene: Quick Ask ↑ cue ↑ keyboard 三段式 ---- */
+      .kb-scene {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .summon {
+        width: 280px;
+        background: var(--card);
+        border: 1px solid var(--border-strong);
+        border-radius: 12px;
+        box-shadow: var(--shadow-lg);
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .cue {
+        position: relative;
+        margin: 24px 0;
+        padding: 7px 16px;
+        background: var(--card);
+        border: 1px solid var(--corivo-amber);
+        border-radius: 999px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        color: var(--accent-foreground);
+        text-transform: uppercase;
+        box-shadow: var(--shadow-sm);
+      }
+      .cue::before,
+      .cue::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 1px;
+        height: 18px;
+        background: color-mix(in oklab, var(--corivo-amber) 50%, transparent);
+      }
+      .cue::before {
+        bottom: calc(100% + 2px);
+      }
+      .cue::after {
+        top: calc(100% + 2px);
+      }
+      .summon .head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--muted-foreground);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .summon .head .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        background: var(--brand-coral);
+      }
+      .summon .body {
+        font-size: 13px;
+        color: var(--muted-foreground);
+        padding: 4px 0;
+      }
+      .summon .caret {
+        display: inline-block;
+        width: 1.5px;
+        height: 12px;
+        background: var(--corivo-amber);
+        animation: caret 1s steps(2, end) infinite;
+        vertical-align: middle;
+        margin-right: 2px;
+      }
+
+      .step3-cta {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      /* ============================================================
+         RESPONSIVE
+         ============================================================ */
+      @media (max-width: 980px) {
+        .step1,
+        .step2,
+        .step3 {
+          padding: 56px 24px;
+        }
+        .summon {
+          right: 0;
+          top: -100px;
+        }
+      }
+    </style>
+  </head>
+
+  <body data-theme="light" data-lang="zh">
+    <div class="deck">
+      <!-- ============= TOP BAR ============= -->
+      <div class="deck-bar">
+        <span class="deck-tag">Corivo · Onboarding v2</span>
+        <div class="toolbar" role="toolbar" aria-label="Theme & language">
+          <button data-theme-set="light" data-active="true">☀ Light</button>
+          <button data-theme-set="dark">☾ Dark</button>
+          <span class="sep"></span>
+          <button data-lang-set="zh" data-active="true">中文</button>
+          <button data-lang-set="en">EN</button>
+        </div>
+      </div>
+
+      <!-- ===================================================
+           STEP 01 · 授权
+           =================================================== -->
+      <div class="step">
+        <div class="step-caption">
+          <span class="label">
+            <span class="lang-zh">01 · 授权</span>
+            <span class="lang-en">01 · Permissions</span>
+          </span>
+          <span class="label">1 / 3</span>
+        </div>
+
+        <div class="window">
+          <div class="chrome">
+            <div class="traffic"><span></span><span></span><span></span></div>
+            <div class="dots">
+              <span class="active"></span><span></span><span></span>
+            </div>
+          </div>
+
+          <div class="step1">
+            <div class="step1-head">
+              <h1 class="display">
+                <span class="lang-zh">授权 Corivo</span>
+                <span class="lang-en">Grant access to Corivo</span>
+              </h1>
+              <p class="lede">
+                <span class="lang-zh"
+                  >Corivo 需要以下两项 macOS 权限，才能读取屏幕上的内容。</span
+                >
+                <span class="lang-en"
+                  >Corivo needs the following two macOS permissions to read
+                  what's on your screen.</span
+                >
+              </p>
+            </div>
+
+            <div class="step1-body">
+              <div class="perm-list">
+                <div class="perm-row">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M5 8h14M12 8v6M12 14l-3 8M12 14l3 8"/></svg>
+                  <div class="meta">
+                    <span class="name">
+                      <span class="lang-zh">辅助功能</span>
+                      <span class="lang-en">Accessibility</span>
+                    </span>
+                    <span class="desc">
+                      <span class="lang-zh">用于读取屏幕上的文字</span>
+                      <span class="lang-en">Used to read text on your screen</span>
+                    </span>
+                  </div>
+                  <button class="grant">
+                    <span class="lang-zh">授权</span>
+                    <span class="lang-en">Grant</span>
+                  </button>
+                </div>
+                <div class="perm-row">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                  <div class="meta">
+                    <span class="name">
+                      <span class="lang-zh">屏幕录制</span>
+                      <span class="lang-en">Screen Recording</span>
+                    </span>
+                    <span class="desc">
+                      <span class="lang-zh">用于截取屏幕图像</span>
+                      <span class="lang-en">Used to capture screen images</span>
+                    </span>
+                  </div>
+                  <button class="grant">
+                    <span class="lang-zh">授权</span>
+                    <span class="lang-en">Grant</span>
+                  </button>
+                </div>
+              </div>
+
+              <p class="step1-foot">
+                <span class="lang-zh">两项授权完成后将自动进入下一步 · 数据仅保存在本机</span>
+                <span class="lang-en"
+                  >Continues automatically once both granted · Data stays on your Mac</span
+                >
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================================================
+           STEP 02 · 试一试
+           =================================================== -->
+      <div class="step">
+        <div class="step-caption">
+          <span class="label">
+            <span class="lang-zh">02 · 试一试</span>
+            <span class="lang-en">02 · Try it</span>
+          </span>
+          <span class="label">2 / 3</span>
+        </div>
+
+        <div class="window">
+          <div class="chrome">
+            <div class="traffic"><span></span><span></span><span></span></div>
+            <div class="dots">
+              <span class="done"></span><span class="active"></span><span></span>
+            </div>
+          </div>
+
+          <div class="step2">
+            <div class="step2-header">
+              <h2 class="display">
+                <span class="lang-zh">第一次提问</span>
+                <span class="lang-en">Your first question</span>
+              </h2>
+              <p class="lede">
+                <span class="lang-zh"
+                  >打开任意网页或应用，Corivo
+                  会自动捕获屏幕内容。然后直接向它提问。</span
+                >
+                <span class="lang-en"
+                  >Open any webpage or app — Corivo captures it automatically.
+                  Then ask Corivo about it.</span
+                >
+              </p>
+            </div>
+
+            <div class="theater">
+              <div class="screen-frame">
+                <div class="mini-chrome">
+                  <div class="mini-traffic">
+                    <span></span><span></span><span></span>
+                  </div>
+                  <span class="mini-url">
+                    <span class="lang-zh">notion.so · 2026 Q3 产品规划</span>
+                    <span class="lang-en">notion.so · 2026 Q3 Product Plan</span>
+                  </span>
+                </div>
+                <div class="screen-content">
+                  <div class="doc">
+                    <h1>
+                      <span class="lang-zh">2026 Q3 产品规划</span>
+                      <span class="lang-en">2026 Q3 Product Plan</span>
+                    </h1>
+                    <div class="meta">Alex Chen · Product · 2026-03-15</div>
+
+                    <h2>
+                      <span class="lang-zh">背景</span>
+                      <span class="lang-en">Background</span>
+                    </h2>
+                    <p>
+                      <span class="lang-zh">过去一个季度，活跃用户增长 32%，但新用户首周留存仅 41%，远低于行业基准。核心问题集中在 onboarding 流程过长、产品价值传达不清。</span>
+                      <span class="lang-en">Last quarter active users grew 32%, but week-one retention sits at just 41% — well below industry baseline. The core issues are an over-long onboarding and unclear value framing.</span>
+                    </p>
+
+                    <h2>
+                      <span class="lang-zh">目标</span>
+                      <span class="lang-en">Goals</span>
+                    </h2>
+                    <p>
+                      <span class="lang-zh">把新用户首周留存提升到 55%，onboarding 完成率从 68% 提升到 80%。</span>
+                      <span class="lang-en">Lift week-one retention to 55%; raise onboarding completion from 68% to 80%.</span>
+                    </p>
+
+                    <h2>
+                      <span class="lang-zh">方案</span>
+                      <span class="lang-en">Plan</span>
+                    </h2>
+                    <ul>
+                      <li>
+                        <span class="lang-zh">重做 onboarding 三步流程，去掉冗余环节</span>
+                        <span class="lang-en">Rebuild onboarding around three focused steps</span>
+                      </li>
+                      <li>
+                        <span class="lang-zh">第一步聚焦权限请求，附清晰隐私承诺</span>
+                        <span class="lang-en">Step 1 focuses on permissions with a clear privacy commitment</span>
+                      </li>
+                      <li>
+                        <span class="lang-zh">第二步用真实场景演示产品能力</span>
+                        <span class="lang-en">Step 2 demonstrates the product in a real scenario</span>
+                      </li>
+                      <li>
+                        <span class="lang-zh">第三步介绍快捷键唤起方式</span>
+                        <span class="lang-en">Step 3 introduces the keyboard shortcut</span>
+                      </li>
+                    </ul>
+
+                    <h2>
+                      <span class="lang-zh">里程碑</span>
+                      <span class="lang-en">Milestones</span>
+                    </h2>
+                    <ul>
+                      <li>
+                        <span class="lang-zh">7 月 15 日：设计完成 + 评审</span>
+                        <span class="lang-en">Jul 15 — design done & reviewed</span>
+                      </li>
+                      <li>
+                        <span class="lang-zh">8 月 1 日：开发完成，进入内测</span>
+                        <span class="lang-en">Aug 1 — dev complete, internal beta</span>
+                      </li>
+                      <li>
+                        <span class="lang-zh">8 月 20 日：全量上线</span>
+                        <span class="lang-en">Aug 20 — full rollout</span>
+                      </li>
+                      <li>
+                        <span class="lang-zh">9 月底：数据复盘，决定下一轮迭代</span>
+                        <span class="lang-en">End of Sep — review, plan next iteration</span>
+                      </li>
+                    </ul>
+
+                    <h2>
+                      <span class="lang-zh">风险</span>
+                      <span class="lang-en">Risks</span>
+                    </h2>
+                    <p>
+                      <span class="lang-zh">权限请求页是高敏感环节，需要 AB 测试两种文案策略。</span>
+                      <span class="lang-en">Permissions are a sensitive moment — needs an A/B on two tone strategies.</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ask-pop">
+                <div class="ask-input">
+                  <span class="caret"></span>
+                  <span>
+                    <span class="lang-zh">问问刚才屏幕上看到的内容…</span>
+                    <span class="lang-en">Ask about what's on screen…</span>
+                  </span>
+                </div>
+                <div class="chips">
+                  <button class="chip">
+                    <span class="lang-zh">总结这份文档，存到我的 Apple Notes</span>
+                    <span class="lang-en">Summarize this doc, save it to my Apple Notes</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="ask-result">
+                <div class="notes-icon">📝</div>
+                <div class="notes-meta">
+                  <strong>
+                    <span class="lang-zh">已添加到 Apple Notes</span>
+                    <span class="lang-en">Added to Apple Notes</span>
+                  </strong>
+                  <span class="preview">
+                    <span class="lang-zh">"2026 Q3 产品规划 · 摘要"</span>
+                    <span class="lang-en">"2026 Q3 Product Plan · Summary"</span>
+                  </span>
+                </div>
+                <span class="notes-check">✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================================================
+           STEP 03 · 快捷唤醒
+           =================================================== -->
+      <div class="step">
+        <div class="step-caption">
+          <span class="label">
+            <span class="lang-zh">03 · 快捷唤醒</span>
+            <span class="lang-en">03 · Shortcut</span>
+          </span>
+          <span class="label">3 / 3</span>
+        </div>
+
+        <div class="window">
+          <div class="chrome">
+            <div class="traffic"><span></span><span></span><span></span></div>
+            <div class="dots">
+              <span class="done"></span><span class="done"></span><span class="active"></span>
+            </div>
+          </div>
+
+          <div class="step3">
+            <div class="step3-header">
+              <h2 class="display">
+                <span class="lang-zh"
+                  >连按两下 <em class="accent">Option</em>，快速唤醒 Corivo</span
+                >
+                <span class="lang-en"
+                  >Double-tap <em class="accent">Option</em> to summon
+                  Corivo</span
+                >
+              </h2>
+              <p class="lede">
+                <span class="lang-zh"
+                  >在 Mac 任何位置，连按两下 Option 键即可唤起 Corivo 提问。</span
+                >
+                <span class="lang-en"
+                  >From any app on your Mac, double-tap the Option key to bring
+                  up Corivo and ask anything.</span
+                >
+              </p>
+            </div>
+
+            <div class="kb-scene">
+              <div class="summon">
+                <div class="head">
+                  <span class="dot"></span>
+                  <span>Quick Ask</span>
+                </div>
+                <div class="body">
+                  <span class="caret"></span>
+                  <span class="lang-zh">问我…</span>
+                  <span class="lang-en">Ask me…</span>
+                </div>
+              </div>
+
+              <div class="cue">
+                <span class="lang-zh">连按 2 下 ⌥</span>
+                <span class="lang-en">Tap ⌥ twice</span>
+              </div>
+
+              <div class="kb">
+                <div class="kb-row">
+                  <div class="key">fn</div>
+                  <div class="key">⌃</div>
+                  <div class="key opt">⌥</div>
+                  <div class="key w-125">⌘</div>
+                  <div class="key w-space">&nbsp;</div>
+                  <div class="key w-125">⌘</div>
+                  <div class="key opt">⌥</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="step3-cta">
+              <button class="btn">
+                <span class="lang-zh">进入 Corivo</span>
+                <span class="lang-en">Enter Corivo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const $$ = (s) => document.querySelectorAll(s);
+      const body = document.body;
+      $$("[data-theme-set]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const v = btn.getAttribute("data-theme-set");
+          body.setAttribute("data-theme", v);
+          $$("[data-theme-set]").forEach((b) =>
+            b.setAttribute(
+              "data-active",
+              b.getAttribute("data-theme-set") === v ? "true" : "false"
+            )
+          );
+        });
+      });
+      $$("[data-lang-set]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const v = btn.getAttribute("data-lang-set");
+          body.setAttribute("data-lang", v);
+          $$("[data-lang-set]").forEach((b) =>
+            b.setAttribute(
+              "data-active",
+              b.getAttribute("data-lang-set") === v ? "true" : "false"
+            )
+          );
+        });
+      });
+    </script>
+  </body>
+</html>

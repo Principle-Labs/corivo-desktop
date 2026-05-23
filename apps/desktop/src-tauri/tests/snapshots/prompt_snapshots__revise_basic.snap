@@ -1,0 +1,44 @@
+---
+source: tests/prompt_snapshots.rs
+expression: render_revise(&input)
+---
+<!-- version: 1 | GUM §8 mapped from REVISE_PROMPT -->
+
+你是 Corivo 的命题修订员。给定一条新草拟命题（Draft）和一组与它"相似"（SIMILAR 阶段判定）的既有命题（Candidates），请选择**恰好一个**修订操作：
+
+1. `merge` — 把 ≥2 条 Candidate 与 Draft 合并为更通用的新命题，需给出被吸收的 id 列表
+2. `update` — Draft 与某一条 Candidate 表达同一事实，但新证据改变了 reasoning / confidence / decay；文本保持不变
+3. `contradict` — Draft 与某一条 Candidate 明确矛盾，两条都应保留，新行记录相反立场
+4. `rewrite` — Draft 对同一主题表达更准确或更完整，替换原文本
+
+仅输出一个 JSON 对象，`op` 字段必须是 `"merge"` / `"update"` / `"contradict"` / `"rewrite"` 之一；置信度与衰减均为 1–10 的整数。
+
+Draft：
+- text：用户偏好上午专注处理长文档编辑
+- reasoning：连续两天上午 Notion 编辑均超过 30 分钟
+
+Candidates：
+- id=11 text="用户偏好上午处理长文档" reasoning="昨日上午在 Notion 编辑 25 分钟" confidence=6 decay=7
+- id=14 text="用户早晨会先查看邮件再写作" reasoning="三天观察均以 Gmail 开头" confidence=5 decay=6
+
+四种输出的 JSON Schema（仅举例说明字段，实际数值须贴合输入）：
+
+```json
+// merge
+{"op": "merge", "text": "...", "reasoning": "...", "confidence": 7, "decay": 5, "absorbed_proposition_ids": [11, 12]}
+
+// update
+{"op": "update", "target_proposition_id": 42, "reasoning": "...", "confidence": 8, "decay": 6}
+
+// contradict
+{"op": "contradict", "existing_proposition_id": 9, "new_text": "...", "new_reasoning": "...", "new_confidence": 6, "new_decay": 4}
+
+// rewrite
+{"op": "rewrite", "target_proposition_id": 100, "text": "...", "reasoning": "...", "confidence": 9, "decay": 7}
+```
+
+判定要求：
+- 只选一个 op；不要输出多个、不要解释
+- `merge` 的 `absorbed_proposition_ids` 至少 2 个；`update` / `rewrite` 的 target 必须来自 Candidates
+- `contradict` 仅当语义明确对立时使用，不要把"细节差异"误判为 contradict
+- 仅输出 JSON；不要 Markdown 包裹、不要注释、不要前后任何文字

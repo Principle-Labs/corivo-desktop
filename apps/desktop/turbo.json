@@ -1,0 +1,23 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "dependsOn": [
+        "@corivo/desktop-helpers#build:release",
+        "@corivo/agent#build",
+        "@corivo/mcp#build"
+      ],
+      "cache": false
+    },
+    "dev": {
+      "dependsOn": [
+        "@corivo/desktop-helpers#build",
+        "@corivo/agent#build:debug",
+        "@corivo/mcp#build:debug"
+      ],
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

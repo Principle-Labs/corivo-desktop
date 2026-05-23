@@ -1,0 +1,394 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://corivo.ai/schemas/capture-helper-v1.json",
+  "title": "Corivo Capture Helper Protocol v1",
+  "description": "NDJSON-over-stdio protocol between the Rust main process and a per-platform capture helper sidecar. See apps/desktop/docs/capture-helper-architecture-spec.md for the design rationale. Phase 0 covers the control-plane subset (hello / ping / shutdown / heartbeat); audio / screen / ax / foreground / ocr messages are added in later phases under the same v1 protocol number (additive, optional fields only).",
+  "$defs": {
+    "Uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "Iso8601": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ProtocolVersion": {
+      "type": "string",
+      "enum": ["v1"]
+    },
+    "PlatformInfo": {
+      "type": "object",
+      "required": ["os", "os_version", "arch"],
+      "properties": {
+        "os": { "type": "string", "enum": ["macos", "windows"] },
+        "os_version": { "type": "string", "description": "Marketing or build version, e.g. \"14.5.0\" or \"10.0.22631\"" },
+        "arch": { "type": "string", "enum": ["arm64", "x86_64"] }
+      },
+      "additionalProperties": false
+    },
+    "Capabilities": {
+      "type": "object",
+      "description": "Helper-declared feature flags. Rust client makes feature decisions purely from these — never from helper_version or os_version. Unknown keys are ignored (forward-compat).",
+      "properties": {
+        "audio_record":       { "type": "boolean", "description": "system_audio + microphone capture into segmented .m4a" },
+        "audio_per_app":      { "type": "boolean", "description": "macOS Core Audio Tap / Windows process loopback (v2 territory)" },
+        "screen_capture":     { "type": "boolean", "description": "single-shot screenshots" },
+        "ax_query":           { "type": "boolean", "description": "synchronous accessibility text walk" },
+        "ax_events":          { "type": "boolean", "description": "AXObserver / UIA event subscription" },
+        "foreground_monitor": { "type": "boolean", "description": "frontmost app activation events" },
+        "ocr_local":          { "type": "boolean", "description": "Vision / Windows.Media.Ocr local recognition" }
+      },
+      "additionalProperties": { "type": "boolean" }
+    },
+
+    "ResponseError": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "INVALID_REQUEST",
+            "UNSUPPORTED",
+            "PERMISSION_DENIED",
+            "RESOURCE_BUSY",
+            "NOT_FOUND",
+            "TIMEOUT",
+            "INTERNAL",
+            "OS_ERROR"
+          ]
+        },
+        "message": { "type": "string" },
+        "detail":  { "description": "Free-form additional context. For OS_ERROR includes os_code / hresult / facility." }
+      },
+      "additionalProperties": false
+    },
+
+    "MessageEnvelope": {
+      "oneOf": [
+        { "$ref": "#/$defs/Hello" },
+        { "$ref": "#/$defs/HelloAck" },
+        { "$ref": "#/$defs/Heartbeat" },
+        { "$ref": "#/$defs/Log" },
+        { "$ref": "#/$defs/Request" },
+        { "$ref": "#/$defs/Response" },
+        { "$ref": "#/$defs/Event" }
+      ]
+    },
+
+    "Hello": {
+      "description": "FIRST message helper sends after spawn. Helper must not send any other message before this.",
+      "type": "object",
+      "required": ["type", "helper_version", "supported_protocols", "capabilities", "platform"],
+      "properties": {
+        "type": { "const": "hello" },
+        "helper_version": {
+          "type": "string",
+          "description": "SemVer string of the helper binary (informational; capability decisions go through `capabilities`)."
+        },
+        "supported_protocols": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProtocolVersion" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "capabilities": { "$ref": "#/$defs/Capabilities" },
+        "platform": { "$ref": "#/$defs/PlatformInfo" }
+      },
+      "additionalProperties": false
+    },
+
+    "HelloAck": {
+      "description": "Rust client's response to hello. Must arrive within 5s; otherwise helper is permitted to exit non-zero.",
+      "type": "object",
+      "required": ["type", "selected_protocol", "client_version"],
+      "properties": {
+        "type": { "const": "hello_ack" },
+        "selected_protocol": { "$ref": "#/$defs/ProtocolVersion" },
+        "client_version": {
+          "type": "string",
+          "description": "SemVer of the Rust capture_client crate (informational)."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Heartbeat": {
+      "description": "Helper-emitted periodic liveness. Default cadence: every 5s. Rust client treats >= 15s without heartbeat as crashed.",
+      "type": "object",
+      "required": ["type", "ts"],
+      "properties": {
+        "type": { "const": "heartbeat" },
+        "ts":   { "$ref": "#/$defs/Iso8601" },
+        "in_flight_requests": { "type": "integer", "minimum": 0 },
+        "recording_sessions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["session_id", "segments_written"],
+            "properties": {
+              "session_id": { "type": "string" },
+              "segments_written": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "ax_subscriptions": {
+          "type": "array",
+          "items": { "type": "integer", "description": "subscribed pids" }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "Log": {
+      "description": "Optional structured log line over the main channel (rare; prefer stderr for normal logs).",
+      "type": "object",
+      "required": ["type", "level", "message"],
+      "properties": {
+        "type":    { "const": "log" },
+        "level":   { "type": "string", "enum": ["trace", "debug", "info", "warn", "error"] },
+        "message": { "type": "string" },
+        "target":  { "type": "string" },
+        "fields":  { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+
+    "Request": {
+      "type": "object",
+      "required": ["type", "id", "method"],
+      "properties": {
+        "type":    { "const": "request" },
+        "id":      { "$ref": "#/$defs/Uuid" },
+        "method":  { "$ref": "#/$defs/RequestMethod" },
+        "payload": { "description": "Method-specific payload; see method definitions below." }
+      },
+      "additionalProperties": false
+    },
+
+    "Response": {
+      "type": "object",
+      "required": ["type", "id", "ok"],
+      "properties": {
+        "type":   { "const": "response" },
+        "id":     { "$ref": "#/$defs/Uuid", "description": "Echoes the originating request id." },
+        "ok":     { "type": "boolean" },
+        "result": { "description": "Method-specific success payload. Present iff ok=true." },
+        "error":  { "$ref": "#/$defs/ResponseError", "description": "Present iff ok=false." }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if":   { "properties": { "ok": { "const": true } } },
+          "then": { "required": ["result"] },
+          "else": { "required": ["error"] }
+        }
+      ]
+    },
+
+    "Event": {
+      "type": "object",
+      "required": ["type", "name", "ts"],
+      "properties": {
+        "type":    { "const": "event" },
+        "name":    { "$ref": "#/$defs/EventName" },
+        "ts":      { "$ref": "#/$defs/Iso8601" },
+        "payload": { "description": "Event-specific payload." }
+      },
+      "additionalProperties": false
+    },
+
+    "RequestMethod": {
+      "type": "string",
+      "description": "Methods available in v1. Each phase appends without breaking earlier phases (additive only).",
+      "enum": [
+        "ping",
+        "shutdown",
+        "screen.capture",
+        "screen.list_displays",
+        "ax.query",
+        "ax.probe_selection",
+        "ax.subscribe",
+        "ax.unsubscribe",
+        "foreground.subscribe",
+        "foreground.unsubscribe",
+        "foreground.current",
+        "ocr.run",
+        "recording.start",
+        "recording.stop",
+        "recording.list_microphones",
+        "permission.status"
+      ]
+    },
+
+    "EventName": {
+      "type": "string",
+      "description": "Async events the helper emits (no `id`; just `name`/`ts`/`payload`).",
+      "enum": [
+        "foreground.app_activated",
+        "ax.focused_window_changed",
+        "ax.title_changed",
+        "recording.segment_closed",
+        "recording.error"
+      ]
+    },
+
+    "PingRequest": {
+      "description": "Liveness sanity check beyond heartbeat. Helper responds immediately.",
+      "type": "object",
+      "required": ["type", "id", "method"],
+      "properties": {
+        "type":    { "const": "request" },
+        "id":      { "$ref": "#/$defs/Uuid" },
+        "method":  { "const": "ping" },
+        "payload": { "type": "object", "additionalProperties": false }
+      },
+      "additionalProperties": false
+    },
+
+    "PingResponse": {
+      "type": "object",
+      "required": ["type", "id", "ok", "result"],
+      "properties": {
+        "type":   { "const": "response" },
+        "id":     { "$ref": "#/$defs/Uuid" },
+        "ok":     { "const": true },
+        "result": {
+          "type": "object",
+          "required": ["pong"],
+          "properties": {
+            "pong": { "const": true }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ShutdownRequest": {
+      "description": "Graceful shutdown. Helper completes any in-flight request, flushes recording manifests, then closes stdout and exits with code 0.",
+      "type": "object",
+      "required": ["type", "id", "method"],
+      "properties": {
+        "type":    { "const": "request" },
+        "id":      { "$ref": "#/$defs/Uuid" },
+        "method":  { "const": "shutdown" },
+        "payload": { "type": "object", "additionalProperties": false }
+      },
+      "additionalProperties": false
+    },
+
+    "ShutdownResponse": {
+      "type": "object",
+      "required": ["type", "id", "ok", "result"],
+      "properties": {
+        "type":   { "const": "response" },
+        "id":     { "$ref": "#/$defs/Uuid" },
+        "ok":     { "const": true },
+        "result": {
+          "type": "object",
+          "required": ["ack"],
+          "properties": {
+            "ack": { "const": true }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ScreenCaptureRequest": {
+      "description": "Capture a single frame from a display. If `output_path` is supplied the helper writes to it; otherwise the helper picks a temp path and the caller is responsible for deleting it after reading.",
+      "type": "object",
+      "required": ["type", "id", "method", "payload"],
+      "properties": {
+        "type":   { "const": "request" },
+        "id":     { "$ref": "#/$defs/Uuid" },
+        "method": { "const": "screen.capture" },
+        "payload": {
+          "type": "object",
+          "required": ["format"],
+          "properties": {
+            "display_id":  { "type": "string", "description": "Opaque display id from screen.list_displays. Omit for the primary/main display." },
+            "output_path": { "type": "string", "description": "Absolute path the helper will write the encoded image to." },
+            "format":      { "type": "string", "enum": ["jpeg", "png"] },
+            "quality":     { "type": "integer", "minimum": 0, "maximum": 100, "description": "JPEG quality 0-100; ignored for PNG." }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ScreenCaptureResponse": {
+      "type": "object",
+      "required": ["type", "id", "ok", "result"],
+      "properties": {
+        "type":   { "const": "response" },
+        "id":     { "$ref": "#/$defs/Uuid" },
+        "ok":     { "const": true },
+        "result": {
+          "type": "object",
+          "required": ["path", "width", "height", "captured_at"],
+          "properties": {
+            "path":         { "type": "string" },
+            "width":        { "type": "integer", "minimum": 1 },
+            "height":       { "type": "integer", "minimum": 1 },
+            "captured_at":  { "$ref": "#/$defs/Iso8601" },
+            "display_id":   { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ScreenListDisplaysRequest": {
+      "type": "object",
+      "required": ["type", "id", "method"],
+      "properties": {
+        "type":    { "const": "request" },
+        "id":      { "$ref": "#/$defs/Uuid" },
+        "method":  { "const": "screen.list_displays" },
+        "payload": { "type": "object", "additionalProperties": false }
+      },
+      "additionalProperties": false
+    },
+
+    "ScreenListDisplaysResponse": {
+      "type": "object",
+      "required": ["type", "id", "ok", "result"],
+      "properties": {
+        "type":   { "const": "response" },
+        "id":     { "$ref": "#/$defs/Uuid" },
+        "ok":     { "const": true },
+        "result": {
+          "type": "object",
+          "required": ["displays"],
+          "properties": {
+            "displays": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "name", "width", "height", "is_main"],
+                "properties": {
+                  "id":      { "type": "string" },
+                  "name":    { "type": "string" },
+                  "width":   { "type": "integer", "minimum": 1 },
+                  "height":  { "type": "integer", "minimum": 1 },
+                  "is_main": { "type": "boolean" }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "$ref": "#/$defs/MessageEnvelope"
+}

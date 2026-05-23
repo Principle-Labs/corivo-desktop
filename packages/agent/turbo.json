@@ -1,0 +1,24 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "cache": false,
+      "outputs": [
+        "../../apps/desktop/src-tauri/binaries/corivo-agent-aarch64-apple-darwin",
+        "../../apps/desktop/src-tauri/binaries/corivo-agent-x86_64-apple-darwin",
+        "../../apps/desktop/src-tauri/binaries/corivo-agent-universal-apple-darwin",
+        "../../apps/desktop/src-tauri/binaries/corivo-agent-x86_64-pc-windows-msvc.exe"
+      ]
+    },
+    "build:debug": {
+      "cache": false,
+      "outputs": [
+        "../../apps/desktop/src-tauri/binaries/corivo-agent-aarch64-apple-darwin",
+        "../../apps/desktop/src-tauri/binaries/corivo-agent-x86_64-apple-darwin",
+        "../../apps/desktop/src-tauri/binaries/corivo-agent-universal-apple-darwin",
+        "../../apps/desktop/src-tauri/binaries/corivo-agent-x86_64-pc-windows-msvc.exe"
+      ]
+    }
+  }
+}

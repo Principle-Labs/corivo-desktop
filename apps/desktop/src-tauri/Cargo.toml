@@ -1,0 +1,161 @@
+[package]
+name = "corivo-app"
+version = "0.4.6"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+default-run = "corivo-app"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "corivo_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset", "macos-private-api", "tray-icon", "devtools"] }
+tauri-plugin-opener = "2"
+tauri-plugin-store = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-clipboard-manager = "2"
+async-trait = "0.1"
+base64 = "0.22"
+image = "0.25"
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "stream"], default-features = false }
+oauth2 = { version = "5", default-features = false, features = ["reqwest", "rustls-tls"] }
+url = "2"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+# Sentry: panic handler 自动捕获崩溃 + tracing integration 把 tracing::error!
+# 自动转成 events、tracing::warn!/info! 转成 breadcrumbs。一个 init 覆盖
+# CLAUDE.md 监控清单里 90% 的场景，新增 error log 不用再手工埋点。
+sentry = { version = "0.48.1", features = ["tracing"] }
+# Phase 6: `xcap` is no longer used for screen capture (that moved to
+# the helper sidecar) but the notification overlay still uses
+# `xcap::Monitor` / `xcap::Window` for display + window enumeration in
+# `providers/notification/screen_metrics`. Replacing those with
+# NSScreen / Tauri's built-in monitor API is Phase 7 cleanup.
+xcap = "0.9.4"
+rusqlite = { version = "0.31", features = ["bundled", "chrono", "serde_json"] }
+jieba-rs = "0.7"
+r2d2 = "0.8"
+r2d2_sqlite = "0.24"
+rand = "0.8"
+sys-info = "0.9"
+# 用于首次启动时按操作系统语言初始化 ui_language / response_language
+# (Config::default 改为英文兜底；非 zh-* 区域 → English，zh-* → 简中)。
+sys-locale = "0.3"
+uuid = { version = "1", features = ["v4", "v5"] }
+ulid = "1"
+sha2 = "0.10"
+# Privacy filter (docs/privacy-filter-spec.md): blake3 是 classify cache 的
+# 哈希算法（比 sha2 快一个量级，碰撞强度足够缓存键用），lru 是 spans 缓存
+# 的容器。`ort` / `tokenizers` 在下一阶段（推理实装）才会引入。
+blake3 = "1.5"
+lru = "0.12"
+# Privacy filter 下载器用 `StreamExt::next` 消费 reqwest::Response::bytes_stream()
+# 的 chunk 流。`reqwest` 自己的 stream feature 已经把 futures-core 拉了进来,
+# 但 StreamExt 这个 trait 还是要显式从 futures-util 引。
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+hex = "0.4"
+regex = "1"
+ts-rs = { version = "10", features = ["chrono-impl", "no-serde-warnings"] }
+# Wire-protocol types for the standalone corivo-mcp sidecar live in
+# packages/mcp. This crate consumes the library half (`corivo_mcp::proto`)
+# so mcp_bridge's UDS server speaks the same envelope the sidecar binary
+# emits. The binary itself is built/staged by `packages/mcp/build.mjs`,
+# not by this crate's [[bin]] table.
+corivo-mcp = { path = "../../../packages/mcp" }
+
+[features]
+default = ["test-support"]
+# Exposes test-only helpers (e.g. `MockLlm`) to integration tests in `tests/`.
+# Kept in `default` so `cargo test` / `cargo build` both work out of the box
+# inside this workspace; release builders that want to strip the helpers can
+# pass `--no-default-features`.
+test-support = []
+# Pulls in Corivo-private cloud implementations under `services::cloud::corivo`
+# (Google sign-in, Stripe top-ups, managed model directory, Composio
+# connectors, Sentry telemetry, corivo-policy updater). Disabled by default
+# so the open-source build links a pure-local binary; closed builds toggle
+# this on via `cargo build --features corivo-cloud`.
+#
+# The OSS tree intentionally does not ship the private impl module; the flag
+# exists so shared source can keep precise `#[cfg(feature = "corivo-cloud")]`
+# gates without rustc treating the cfg as unexpected in normal OSS builds.
+corivo-cloud = []
+
+[dev-dependencies]
+wiremock = "0.6"
+tempfile = "3"
+insta = { version = "1", features = ["yaml"] }
+tokio = { version = "1", features = ["full", "test-util"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
+objc2 = "0.6.4"
+objc2-app-kit = { version = "0.3.2", features = [
+    "NSWindow", "NSScreen", "NSWorkspace", "NSRunningApplication",
+    "NSEvent",
+    # NSImage / NSBitmapImageRep power the FocusCard's app-icon fetch
+    # in commands/app_icon.rs. We resolve the foreground app's NSImage
+    # via NSRunningApplication.icon, then feed it through
+    # NSBitmapImageRep.representationUsingType:PNG to get a base64
+    # data URL. NSImageRep is the parent class returned by
+    # `imageRepsWithData:` — needed to downcast to NSBitmapImageRep.
+    "NSImage", "NSImageRep", "NSBitmapImageRep",
+    "block2",
+] }
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = ["CGWindowLevel"] }
+core-graphics = "0.25.0"
+# Phase 6 + 7 cleanup: Vision OCR, AX walks, AX events, foreground
+# monitor all live in the capture helper sidecar now
+# (`packages/desktop-helpers/{macos,windows}/`). `objc2-vision` is gone.
+# `accessibility-sys` retains two callers on the parent side:
+#   1. CO-31: a no-prompt AXIsProcessTrusted() at boot in lib.rs to
+#      register Corivo.app as the responsible process for Accessibility,
+#      so TCC attributes the helper's AX calls up to us instead of
+#      listing "Corivo Capture Helper" separately.
+#   2. The dev-only `dump_ax` bin (per-app adapter selector scouting).
+accessibility-sys = "0.2"
+objc2-foundation = { version = "0.3", features = [
+    "NSString", "NSArray", "NSError", "NSDictionary",
+    "NSNotification", "NSOperation",
+    # NSURL + NSData are the return types of NSWorkspace.URLForApplication…
+    # and NSImage.TIFFRepresentation (commands/app_icon.rs).
+    "NSURL", "NSData",
+    "block2",
+] }
+core-foundation = "0.10"
+block2 = "0.6"
+window-vibrancy = "0.6"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+# Cmd+Shift+O 召回主窗口靠这套 RegisterEventHotKey 包装。Quick Ask 的
+# 双击 ⌥ 不走这里 (单修饰键这个 API 不支持，见
+# `services/double_tap_hotkey.rs`)，所以两条路并存。
+tauri-plugin-global-shortcut = "2"
+# 用于 updater 安装完成后自动重启 (`relaunch()`)。注册插件 + 在
+# capabilities/default.json 里 grant `process:allow-restart` 缺一不可，
+# 否则 webview 调过来会被 Tauri 的 ACL 直接拒绝。
+tauri-plugin-process = "2"
+# Deep link 仅用于"返回 Corivo"按钮把窗口拉前台 —— OAuth token 链路
+# 仍然走 loopback（PKCE + state 全在 Rust 进程内，不经过任何 deep
+# link）。配 single-instance 是 deep-link 插件文档明确要求的：用户
+# 在 web 里点按钮时如果 Corivo 已经在跑，必须把 URL 路由进既存进程
+# 而不是启第二个；这个插件一定要 first 注册才生效。
+tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }

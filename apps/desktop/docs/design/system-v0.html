@@ -1,0 +1,2274 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corivo · Design System v0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ════════════════════════════════════════════════
+     PRIMITIVES — never reference these directly in components
+     ════════════════════════════════════════════════ */
+  :root {
+    /* Surface */
+    --paper-50:  #FDFCF9;
+    --paper-100: #F8F7F3;
+    --paper-200: #F0EEE6;
+    --paper-300: #E8E5DA;
+    --paper-400: #DAD5C7;
+
+    --night-50:  #2F2B22;
+    --night-100: #272319;
+    --night-200: #1E1B16;
+    --night-300: #161410;
+    --night-400: #0F0E0B;
+
+    /* Ink (warm neutral scale) */
+    --ink-1000: #1A1916;
+    --ink-900:  #2B2925;
+    --ink-800:  #423E37;
+    --ink-700:  #5A574F;
+    --ink-600:  #7A746A;
+    --ink-500:  #98917E;
+    --ink-400:  #B5AE9C;
+    --ink-300:  #CFCABE;
+    --ink-200:  #E5E0D2;
+    --ink-100:  #F0EAD9;
+    --ink-50:   #F5F2E9;
+    --ink-25:   #FFFEFB;
+
+    /* Amber */
+    --amber-700: #6B4216;
+    --amber-600: #8E5A1F;
+    --amber-500: #A86B22;
+    --amber-400: #C0894A;
+    --amber-300: #D5A878;
+    --amber-200: #E6C19A;
+    --amber-100: #ECDFC5;
+
+    /* Brand · Mascot 本色 — 不进系统语义层,仅角色出场使用 */
+    --brand-coral:      #EF7551;
+    --brand-coral-soft: #FCEDDF;
+
+    /* Spacing scale (4-base) */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+    --space-20: 80px;
+    --space-24: 96px;
+
+    /* Radii */
+    --r-xs: 4px;
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 20px;
+    --r-pill: 999px;
+
+    /* Type families */
+    --font-sans: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+    --font-display: -apple-system, "SF Pro Display", "PingFang SC", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+
+    /* Motion */
+    --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --dur-quick: 120ms;
+    --dur-base: 180ms;
+    --dur-slow: 280ms;
+    --dur-page: 400ms;
+  }
+
+  /* ════════════════════════════════════════════════
+     SEMANTIC — light theme defaults
+     Components only reference these.
+     ════════════════════════════════════════════════ */
+  :root,
+  [data-theme="light"] {
+    --bg:           var(--paper-100);  /* page */
+    --bg-elevated:  var(--ink-25);     /* card */
+    --bg-subtle:    var(--paper-200);  /* hovered, sub surface */
+    --bg-deep:      var(--paper-300);  /* deeper surface */
+    --bg-deeper:    var(--paper-400);  /* deepest util */
+
+    --fg:           var(--ink-1000);
+    --fg-strong:    var(--ink-1000);
+    --fg-muted:     var(--ink-700);
+    --fg-subtle:    var(--ink-500);
+    --fg-faint:     var(--ink-400);
+    --fg-on-accent: #FFFFFF;
+    --fg-on-ink:    var(--paper-100);
+
+    --accent:        var(--amber-500);
+    --accent-hover:  var(--amber-600);
+    --accent-press:  var(--amber-700);
+    --accent-soft:   var(--amber-100);
+    --accent-tint:   rgba(168, 107, 34, 0.06);
+    --accent-fg-on-soft: var(--amber-700);
+
+    --border:        rgba(28, 26, 23, 0.07);
+    --border-strong: rgba(28, 26, 23, 0.13);
+    --focus-ring:    rgba(28, 26, 23, 0.10);
+
+    --shadow-sm:
+      0 0 0 0.5px rgba(28, 26, 23, 0.05),
+      0 1px 2px   rgba(28, 26, 23, 0.04);
+    --shadow-md:
+      0 0 0 0.5px rgba(28, 26, 23, 0.06),
+      0 2px 4px   rgba(28, 26, 23, 0.04),
+      0 12px 32px rgba(28, 26, 23, 0.06);
+    --shadow-lg:
+      0 0 0 0.5px rgba(28, 26, 23, 0.07),
+      0 4px 8px   rgba(28, 26, 23, 0.05),
+      0 24px 64px rgba(28, 26, 23, 0.10);
+
+    --grain-opacity: 0.035;
+    --grain-blend: multiply;
+
+    /* Glass (Quick Ask 浮层) */
+    --glass-bg: rgba(252, 251, 248, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.20);
+    --glass-blur: blur(28px) saturate(1.6);
+  }
+
+  /* ════════════════════════════════════════════════
+     SEMANTIC — dark theme overrides
+     ════════════════════════════════════════════════ */
+  [data-theme="dark"] {
+    --bg:           var(--night-300);
+    --bg-elevated:  var(--night-200);
+    --bg-subtle:    var(--night-100);
+    --bg-deep:      var(--night-50);
+    --bg-deeper:    #383428;
+
+    --fg:           var(--ink-50);
+    --fg-strong:    var(--ink-25);
+    --fg-muted:     var(--ink-300);
+    --fg-subtle:    var(--ink-500);
+    --fg-faint:     var(--ink-600);
+    --fg-on-accent: var(--night-300);
+    --fg-on-ink:    var(--night-300);
+
+    --accent:        var(--amber-400);
+    --accent-hover:  var(--amber-300);
+    --accent-press:  var(--amber-200);
+    --accent-soft:   rgba(192, 137, 74, 0.14);
+    --accent-tint:   rgba(192, 137, 74, 0.10);
+    --accent-fg-on-soft: var(--amber-300);
+
+    --border:        rgba(245, 242, 233, 0.07);
+    --border-strong: rgba(245, 242, 233, 0.13);
+    --focus-ring:    rgba(245, 242, 233, 0.14);
+
+    --shadow-sm:
+      inset 0 0.5px 0 rgba(245, 242, 233, 0.05),
+      0 0 0 0.5px   rgba(0, 0, 0, 0.45),
+      0 1px 2px     rgba(0, 0, 0, 0.35);
+    --shadow-md:
+      inset 0 0.5px 0 rgba(245, 242, 233, 0.07),
+      0 0 0 0.5px   rgba(0, 0, 0, 0.45),
+      0 4px 10px    rgba(0, 0, 0, 0.40),
+      0 16px 40px   rgba(0, 0, 0, 0.35);
+    --shadow-lg:
+      inset 0 0.5px 0 rgba(245, 242, 233, 0.09),
+      0 0 0 0.5px   rgba(0, 0, 0, 0.50),
+      0 8px 16px    rgba(0, 0, 0, 0.45),
+      0 32px 80px   rgba(0, 0, 0, 0.50);
+
+    --grain-opacity: 0.06;
+    --grain-blend: screen;
+
+    --glass-bg: rgba(28, 26, 21, 0.62);
+    --glass-border: rgba(245, 242, 233, 0.10);
+    --glass-blur: blur(32px) saturate(1.4);
+  }
+
+  /* ════════════════════════════════════════════════
+     RESET + base
+     ════════════════════════════════════════════════ */
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: var(--grain-opacity);
+    mix-blend-mode: var(--grain-blend);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+    transition: opacity var(--dur-base) var(--ease-out);
+  }
+  [data-theme="dark"] body::before {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+  }
+
+  main {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 96px 40px 200px;
+    position: relative;
+  }
+
+  /* ════════════════════════════════════════════════
+     THEME TOGGLE (fixed)
+     ════════════════════════════════════════════════ */
+  .theme-toggle {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 100;
+    display: inline-flex;
+    padding: 3px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-pill);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .tt-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--fg-subtle);
+    letter-spacing: -0.005em;
+    transition: all var(--dur-quick) var(--ease-out);
+  }
+  .tt-btn svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+  }
+  .tt-btn:hover { color: var(--fg-muted); }
+  .tt-btn.active {
+    background: var(--bg-deep);
+    color: var(--fg-strong);
+  }
+
+  /* ════════════════════════════════════════════════
+     TYPE primitives
+     ════════════════════════════════════════════════ */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    font-weight: 500;
+  }
+  .display {
+    font-family: var(--font-display);
+    font-size: 56px;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    margin: 24px 0 28px;
+    color: var(--fg-strong);
+  }
+  .lede {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--fg-muted);
+    max-width: 620px;
+    margin: 0;
+  }
+
+  /* ════════════════════════════════════════════════
+     HERO + Brand lockup
+     ════════════════════════════════════════════════ */
+  .brand-lockup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 40px;
+    color: var(--fg-muted);
+  }
+  .brand-lockup .focus-mark {
+    width: 24px;
+    height: 24px;
+    color: var(--fg-muted);
+  }
+  .brand-lockup .wordmark {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--fg-strong);
+  }
+  .brand-lockup .sep { color: var(--border-strong); }
+  .brand-lockup .eyebrow { font-size: 10px; }
+
+  /* ════════════════════════════════════════════════
+     Section structure
+     ════════════════════════════════════════════════ */
+  section { margin-top: 112px; }
+  section > header { margin-bottom: 36px; }
+  section > header .eyebrow { display: block; margin-bottom: 12px; }
+  section > header h2 {
+    font-family: var(--font-display);
+    font-size: 32px;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--fg-strong);
+  }
+  section > header p {
+    color: var(--fg-muted);
+    margin: 0;
+    max-width: 620px;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  h3.sub {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--fg-muted);
+    margin: 0 0 16px;
+  }
+  code, .mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--fg-subtle);
+  }
+
+  /* ════════════════════════════════════════════════
+     Diff card (what changed)
+     ════════════════════════════════════════════════ */
+  .diff-note {
+    margin-top: 48px;
+    padding: 28px 32px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-left: 2px solid var(--fg-muted);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-sm);
+  }
+  .diff-note .diff-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    margin-bottom: 14px;
+  }
+  .diff-note ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .diff-note li {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--fg-muted);
+    padding-left: 18px;
+    position: relative;
+  }
+  .diff-note li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 9px;
+    width: 6px; height: 1px;
+    background: var(--fg-subtle);
+  }
+  .diff-note li strong { color: var(--fg-strong); font-weight: 600; }
+
+  /* ════════════════════════════════════════════════
+     COLOR — swatches
+     ════════════════════════════════════════════════ */
+  .swatch-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .swatch { background: var(--bg-elevated); }
+  .swatch .chip { height: 96px; display: block; }
+  .swatch .meta {
+    padding: 12px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .swatch .name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--fg-strong);
+    letter-spacing: -0.005em;
+  }
+  .swatch .hex {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--fg-subtle);
+  }
+
+  /* Theme · side-by-side preview */
+  .theme-preview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .tp {
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    border: 0.5px solid var(--border);
+  }
+  .tp-light { background: #F8F7F3; color: #1A1916; }
+  .tp-dark  { background: #161410; color: #F5F2E9; }
+  .tp-head {
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 0.5px solid;
+  }
+  .tp-light .tp-head { border-color: rgba(28, 26, 23, 0.07); }
+  .tp-dark  .tp-head { border-color: rgba(245, 242, 233, 0.07); }
+  .tp-head .tp-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: var(--r-pill);
+  }
+  .tp-light .tp-tag { background: rgba(28, 26, 23, 0.05); color: #5A574F; }
+  .tp-dark  .tp-tag { background: rgba(245, 242, 233, 0.07); color: #C9C4B5; }
+  .tp-head .tp-title { font-weight: 600; font-size: 13px; letter-spacing: -0.005em; }
+  .tp-body {
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .tp-card {
+    padding: 16px 18px;
+    border-radius: var(--r-md);
+  }
+  .tp-light .tp-card {
+    background: #FCFBF8;
+    box-shadow: 0 0 0 0.5px rgba(28, 26, 23, 0.06), 0 2px 4px rgba(28, 26, 23, 0.04), 0 12px 32px rgba(28, 26, 23, 0.06);
+  }
+  .tp-dark .tp-card {
+    background: #1E1B16;
+    box-shadow: inset 0 0.5px 0 rgba(245, 242, 233, 0.07), 0 0 0 0.5px rgba(0, 0, 0, 0.45), 0 4px 10px rgba(0, 0, 0, 0.40);
+  }
+  .tp-card .tp-card-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .tp-light .tp-card-meta { color: #98917E; }
+  .tp-dark .tp-card-meta { color: #8E897A; }
+  .tp-card .tp-card-title { font-weight: 600; font-size: 14px; letter-spacing: -0.005em; margin-bottom: 4px; }
+  .tp-card .tp-card-body { font-size: 13px; line-height: 1.55; }
+  .tp-light .tp-card-body { color: #5A574F; }
+  .tp-dark  .tp-card-body { color: #ADA897; }
+
+  .tp-button-row { display: flex; gap: 8px; }
+  .tp-btn {
+    height: 32px;
+    padding: 0 14px;
+    border-radius: var(--r-sm);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    border: none;
+    cursor: default;
+  }
+  .tp-light .tp-btn-primary { background: #1A1916; color: #F8F7F3; }
+  .tp-dark  .tp-btn-primary { background: #F5F2E9; color: #161410; }
+  .tp-light .tp-btn-ghost { background: transparent; color: #1A1916; border: 0.5px solid rgba(28, 26, 23, 0.13); }
+  .tp-dark  .tp-btn-ghost { background: transparent; color: #F5F2E9; border: 0.5px solid rgba(245, 242, 233, 0.13); }
+
+  .tp-amber-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .tp-light .tp-amber-pill { background: rgba(168, 107, 34, 0.07); color: #6B4216; }
+  .tp-dark  .tp-amber-pill { background: rgba(192, 137, 74, 0.14); color: #D5A878; }
+  .tp-amber-pill::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+  .tp-light .tp-amber-pill::before { background: #A86B22; }
+  .tp-dark  .tp-amber-pill::before { background: #C0894A; }
+
+  /* ════════════════════════════════════════════════
+     Tokens table
+     ════════════════════════════════════════════════ */
+  .token-table {
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--bg-elevated);
+  }
+  .tt-row {
+    display: grid;
+    grid-template-columns: 200px 80px 1fr 1fr;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 18px;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 13px;
+  }
+  .tt-row:last-child { border-bottom: none; }
+  .tt-row.head {
+    background: var(--bg-subtle);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+  }
+  .tt-row .tt-name { font-family: var(--font-mono); font-size: 12px; color: var(--fg-strong); }
+  .tt-row .tt-preview {
+    width: 56px; height: 24px;
+    border-radius: var(--r-xs);
+    border: 0.5px solid var(--border-strong);
+  }
+  .tt-row .tt-light, .tt-row .tt-dark { font-family: var(--font-mono); font-size: 11px; color: var(--fg-subtle); }
+
+  /* ════════════════════════════════════════════════
+     Type scale
+     ════════════════════════════════════════════════ */
+  .type-scale {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    border-top: 0.5px solid var(--border);
+    padding-top: 32px;
+  }
+  .type-row {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    align-items: baseline;
+    gap: 32px;
+  }
+  .type-row .ref {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .t-display { font-family: var(--font-display); font-size: 48px; font-weight: 600; line-height: 1.05; letter-spacing: -0.025em; color: var(--fg-strong); }
+  .t-h1      { font-family: var(--font-display); font-size: 32px; font-weight: 600; line-height: 1.18; letter-spacing: -0.02em; color: var(--fg-strong); }
+  .t-h2      { font-family: var(--font-display); font-size: 24px; font-weight: 600; line-height: 1.3; letter-spacing: -0.013em; color: var(--fg-strong); }
+  .t-h3      { font-size: 18px; font-weight: 600; line-height: 1.4; letter-spacing: -0.005em; color: var(--fg-strong); }
+  .t-body-l  { font-size: 17px; line-height: 1.6; color: var(--fg-muted); }
+  .t-body    { font-size: 15px; line-height: 1.6; color: var(--fg); }
+  .t-small   { font-size: 13px; line-height: 1.55; color: var(--fg-muted); }
+  .t-caption { font-size: 12px; line-height: 1.5; color: var(--fg-subtle); letter-spacing: 0.02em; }
+
+  /* ════════════════════════════════════════════════
+     Spacing / radius / shadow visualizations
+     ════════════════════════════════════════════════ */
+  .scale-row {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 16px;
+    align-items: end;
+  }
+  .scale-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .scale-cell .scale-bar {
+    background: var(--accent);
+    border-radius: 1px;
+  }
+  .scale-cell .scale-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.04em;
+    text-align: center;
+  }
+  .scale-cell .scale-meta strong { display: block; color: var(--fg-strong); font-weight: 500; }
+
+  .radius-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 16px;
+  }
+  .radius-cell {
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    height: 80px;
+    display: flex;
+    align-items: end;
+    justify-content: center;
+    padding-bottom: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.04em;
+  }
+
+  .surface-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+  .surface-card {
+    background: var(--bg-elevated);
+    border-radius: var(--r-lg);
+    padding: 28px 22px;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .surface-card .surface-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--fg-strong);
+    letter-spacing: -0.005em;
+  }
+  .surface-card .surface-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+  }
+  .s-hairline { border: 0.5px solid var(--border); }
+  .s-sm { box-shadow: var(--shadow-sm); }
+  .s-md { box-shadow: var(--shadow-md); }
+  .s-lg { box-shadow: var(--shadow-lg); }
+
+  /* Motion preview */
+  .motion-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .motion-cell {
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 24px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .motion-cell .m-name { font-size: 12px; font-weight: 600; color: var(--fg-strong); letter-spacing: -0.005em; }
+  .motion-cell .m-meta { font-family: var(--font-mono); font-size: 10px; color: var(--fg-subtle); }
+  .motion-track {
+    height: 4px;
+    background: var(--bg-subtle);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+  .motion-fill {
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    border-radius: 2px;
+    transform-origin: left;
+    animation: motion-demo 2.4s infinite;
+  }
+  .m-quick   .motion-fill { animation-duration: 1.4s; animation-timing-function: var(--ease-out); }
+  .m-base    .motion-fill { animation-duration: 1.8s; animation-timing-function: var(--ease-out); }
+  .m-slow    .motion-fill { animation-duration: 2.4s; animation-timing-function: var(--ease-out); }
+  .m-spring  .motion-fill { animation-duration: 2.2s; animation-timing-function: var(--ease-spring); }
+  @keyframes motion-demo {
+    0%, 12% { transform: scaleX(0); }
+    50%, 62% { transform: scaleX(1); }
+    100% { transform: scaleX(0); transform-origin: right; }
+  }
+
+  /* ════════════════════════════════════════════════
+     Iconography · Focus mark
+     ════════════════════════════════════════════════ */
+  .focus-mark { display: inline-block; flex-shrink: 0; }
+
+  .icon-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 2fr;
+    gap: 24px;
+    align-items: stretch;
+  }
+  .icon-hero {
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 56px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .icon-hero .focus-mark { width: 56px; height: 56px; color: var(--fg-muted); }
+  .icon-hero .ih-name { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: -0.01em; color: var(--fg-strong); }
+  .icon-hero .ih-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-subtle); }
+
+  .icon-set {
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 24px;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1px;
+    background: var(--border);
+    overflow: hidden;
+  }
+  .icon-cell {
+    background: var(--bg-elevated);
+    padding: 18px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .icon-cell svg { width: 20px; height: 20px; color: var(--fg-muted); }
+  .icon-cell .ic-name { font-family: var(--font-mono); font-size: 9px; color: var(--fg-subtle); letter-spacing: 0.04em; text-align: center; }
+
+  /* ════════════════════════════════════════════════
+     Brand · Mascot
+     ════════════════════════════════════════════════ */
+  .brand-block {
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm);
+  }
+  .logo-sizes {
+    display: flex;
+    align-items: end;
+    gap: 32px;
+    padding: 36px 32px 28px;
+    flex-wrap: wrap;
+  }
+  .ls-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .ls-cell img {
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+    box-shadow: var(--shadow-sm);
+  }
+  .ls-cell .ls-px {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.04em;
+  }
+
+  .mascot-hero-block {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 48px;
+    padding: 40px;
+    align-items: center;
+  }
+  .mh-img {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 220px;
+    background: var(--brand-coral-soft);
+    border-radius: var(--r-lg);
+    border: 0.5px solid var(--border);
+  }
+  [data-theme="dark"] .mh-img { background: rgba(239, 117, 81, 0.10); }
+  .mh-img img {
+    width: 160px;
+    height: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .mh-info { display: flex; flex-direction: column; gap: 10px; }
+  .mh-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+  }
+  .mh-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--fg-strong);
+  }
+  .mh-desc {
+    font-size: 14px;
+    color: var(--fg-muted);
+    line-height: 1.6;
+  }
+  .mh-uses {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .mh-uses li {
+    font-size: 13px;
+    color: var(--fg-muted);
+    padding-left: 16px;
+    position: relative;
+  }
+  .mh-uses li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 9px;
+    width: 6px; height: 1px;
+    background: var(--fg-subtle);
+  }
+
+  .register-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .reg-card {
+    padding: 24px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-md);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .reg-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .reg-head svg,
+  .reg-head img {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  .reg-head img { user-select: none; -webkit-user-drag: none; }
+  .reg-head .reg-label {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--fg-strong);
+  }
+  .reg-card ul {
+    margin: 0; padding: 0; list-style: none;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .reg-card ul li {
+    font-size: 13px;
+    color: var(--fg-muted);
+    padding-left: 14px;
+    position: relative;
+  }
+  .reg-card ul li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 9px;
+    width: 5px; height: 1px;
+    background: var(--fg-subtle);
+  }
+  .reg-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--fg-subtle);
+    border-top: 0.5px solid var(--border);
+    padding-top: 12px;
+    margin-top: auto;
+  }
+
+  .brand-token-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .bt-cell {
+    padding: 18px 22px 20px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-md);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .bt-chip {
+    width: 100%;
+    height: 56px;
+    border-radius: var(--r-sm);
+    border: 0.5px solid var(--border);
+    margin-bottom: 8px;
+  }
+  .bt-name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--fg-strong);
+    font-weight: 500;
+  }
+  .bt-hex {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--fg-subtle);
+  }
+  .bt-note {
+    font-size: 12px;
+    color: var(--fg-muted);
+    line-height: 1.55;
+    margin-top: 6px;
+  }
+  .bt-note strong { color: var(--fg-strong); font-weight: 600; }
+
+  /* ════════════════════════════════════════════════
+     COMPONENTS
+     ════════════════════════════════════════════════ */
+  .components-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .components-grid .span-2 { grid-column: span 2; }
+  .comp-cell {
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .comp-cell .comp-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .comp-cell .comp-note {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--fg-subtle);
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 18px;
+    border-radius: var(--r-sm);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    border: 0.5px solid transparent;
+    transition: all var(--dur-quick) var(--ease-out);
+    background: transparent;
+    color: var(--fg);
+  }
+  .btn-primary { background: var(--fg-strong); color: var(--fg-on-ink); }
+  .btn-primary:hover { background: var(--ink-900); transform: translateY(-0.5px); }
+  [data-theme="dark"] .btn-primary:hover { background: var(--ink-100); }
+  .btn-ghost { border-color: var(--border-strong); color: var(--fg); }
+  .btn-ghost:hover { background: var(--bg-subtle); }
+  .btn-text { color: var(--fg-muted); padding: 0 8px; }
+  .btn-text:hover { color: var(--fg-strong); }
+  .btn-accent { background: var(--accent); color: var(--fg-on-accent); }
+  .btn-accent:hover { background: var(--accent-hover); }
+  .btn-destructive { color: #B85450; border-color: rgba(184, 84, 80, 0.3); }
+  .btn-destructive:hover { background: rgba(184, 84, 80, 0.08); }
+  [data-theme="dark"] .btn-destructive { color: #E68682; border-color: rgba(230, 134, 130, 0.3); }
+  [data-theme="dark"] .btn-destructive:hover { background: rgba(230, 134, 130, 0.10); }
+
+  .btn-sm { height: 28px; padding: 0 12px; font-size: 12px; border-radius: var(--r-xs); }
+  .btn-lg { height: 42px; padding: 0 22px; font-size: 15px; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  /* ── Input ── */
+  .input-shell { display: flex; flex-direction: column; gap: 8px; }
+  .input-shell label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--fg-muted);
+    letter-spacing: -0.005em;
+  }
+  .input {
+    height: 38px;
+    padding: 0 14px;
+    border: 0.5px solid var(--border-strong);
+    background: var(--bg);
+    border-radius: var(--r-sm);
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--fg);
+    outline: none;
+    transition: all var(--dur-quick) var(--ease-out);
+  }
+  .input::placeholder { color: var(--fg-subtle); }
+  .input:focus {
+    border-color: var(--fg-muted);
+    background: var(--bg-elevated);
+    box-shadow: 0 0 0 4px var(--focus-ring);
+  }
+
+  .input-search {
+    position: relative;
+  }
+  .input-search .input { padding-left: 36px; padding-right: 56px; }
+  .input-search svg.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    color: var(--fg-subtle);
+    pointer-events: none;
+  }
+  .input-search .kbd-hint {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    gap: 2px;
+    pointer-events: none;
+  }
+
+  /* ── Toggle ── */
+  .toggle-row { display: flex; flex-direction: column; gap: 16px; }
+  .toggle-shell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .toggle-shell .tog-label { font-size: 14px; color: var(--fg); font-weight: 500; letter-spacing: -0.005em; }
+  .toggle-shell .tog-desc { font-size: 12px; color: var(--fg-subtle); margin-top: 2px; }
+  .toggle {
+    width: 36px;
+    height: 22px;
+    background: var(--bg-deep);
+    border-radius: var(--r-pill);
+    position: relative;
+    cursor: pointer;
+    border: 0.5px solid var(--border-strong);
+    transition: all var(--dur-base) var(--ease-out);
+    flex-shrink: 0;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: var(--bg-elevated);
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    transition: all var(--dur-base) var(--ease-out);
+  }
+  .toggle.on {
+    background: var(--fg-strong);
+    border-color: var(--fg-strong);
+  }
+  .toggle.on::after {
+    left: 17px;
+    background: var(--fg-on-ink);
+  }
+
+  /* ── Slider ── */
+  .slider-shell { display: flex; flex-direction: column; gap: 8px; }
+  .slider-track {
+    height: 4px;
+    background: var(--bg-deep);
+    border-radius: 2px;
+    position: relative;
+  }
+  .slider-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: var(--fg-strong);
+    border-radius: 2px;
+    width: 60%;
+  }
+  .slider-thumb {
+    position: absolute;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border-strong);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: var(--shadow-sm);
+  }
+  .slider-meta {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: inline-flex;
+    border-bottom: 0.5px solid var(--border);
+    gap: 0;
+  }
+  .tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--fg-muted);
+    cursor: pointer;
+    position: relative;
+    transition: color var(--dur-quick) var(--ease-out);
+    letter-spacing: -0.005em;
+  }
+  .tab:hover { color: var(--fg-strong); }
+  .tab.active { color: var(--fg-strong); font-weight: 500; }
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    left: 12px; right: 12px;
+    bottom: -0.5px;
+    height: 1.5px;
+    background: var(--fg-strong);
+    border-radius: 1px;
+  }
+
+  /* ── List ── */
+  .list {
+    display: flex;
+    flex-direction: column;
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--bg-elevated);
+  }
+  .list-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    padding: 14px 18px;
+    border-bottom: 0.5px solid var(--border);
+    align-items: center;
+    transition: background var(--dur-quick) var(--ease-out);
+    cursor: default;
+  }
+  .list-item:last-child { border-bottom: none; }
+  .list-item:hover { background: var(--bg-subtle); }
+  .list-item.active { background: var(--bg-subtle); }
+  .list-item .li-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--fg);
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .list-item .li-meta {
+    font-size: 12px;
+    color: var(--fg-subtle);
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Tags / status ── */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: var(--r-pill);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    border: 0.5px solid transparent;
+  }
+  .tag-neutral { background: var(--bg-subtle); color: var(--fg-muted); border-color: var(--border); }
+  .tag-accent  { background: var(--accent-soft); color: var(--accent-fg-on-soft); }
+  .tag-muted   { background: var(--bg-deep); color: var(--fg-subtle); }
+  .tag .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  /* ── Card ── */
+  .card {
+    padding: 20px 22px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-sm);
+  }
+  .card .c-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .card .c-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--fg-strong);
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .card .c-body {
+    font-size: 13px;
+    color: var(--fg-muted);
+    line-height: 1.55;
+  }
+
+  /* ── Avatar ── */
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--amber-300), var(--amber-500));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 13px;
+    color: #FFFFFF;
+    letter-spacing: -0.01em;
+    border: 0.5px solid var(--border);
+    flex-shrink: 0;
+  }
+  .avatar-lg { width: 44px; height: 44px; font-size: 16px; }
+  .avatar-sm { width: 24px; height: 24px; font-size: 11px; }
+
+  /* ── Kbd ── */
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--bg-deep);
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    border-radius: 4px;
+    border: 0.5px solid var(--border);
+    line-height: 1;
+  }
+  .kbd-row { display: inline-flex; gap: 2px; align-items: center; }
+
+  /* ── Empty state ── */
+  .empty-state {
+    width: 100%;
+    padding: 48px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-lg);
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .empty-state .focus-mark { width: 32px; height: 32px; color: var(--accent); }
+  .empty-state .es-text {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--fg-strong);
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin: 0;
+  }
+  .empty-state .es-hint {
+    font-size: 13px;
+    color: var(--fg-subtle);
+    margin: 0;
+  }
+
+  /* ── Skeleton ── */
+  .skel-shell { display: flex; flex-direction: column; gap: 12px; }
+  .skel-line {
+    height: 12px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--bg-subtle) 0%, var(--bg-deep) 50%, var(--bg-subtle) 100%);
+    background-size: 200% 100%;
+    animation: skel-shine 1.6s ease-in-out infinite;
+  }
+  @keyframes skel-shine {
+    0%, 100% { background-position: 0% 0; opacity: 0.7; }
+    50% { background-position: -100% 0; opacity: 1; }
+  }
+  .skel-w-full { width: 100%; }
+  .skel-w-7 { width: 70%; }
+  .skel-w-5 { width: 50%; }
+
+  /* ── Toast (mock) ── */
+  .toast {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--fg-strong);
+    color: var(--fg-on-ink);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-md);
+    font-size: 13px;
+    letter-spacing: -0.005em;
+  }
+  .toast .toast-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+  /* ── Dialog mock ── */
+  .dialog-mock {
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    width: 100%;
+    max-width: 380px;
+  }
+  .dialog-mock .dlg-head {
+    padding: 18px 22px 12px;
+  }
+  .dialog-mock .dlg-title { font-family: var(--font-display); font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--fg-strong); margin: 0 0 4px; }
+  .dialog-mock .dlg-desc { font-size: 13px; color: var(--fg-muted); margin: 0; line-height: 1.55; }
+  .dialog-mock .dlg-body { padding: 12px 22px 20px; font-size: 13px; color: var(--fg-muted); line-height: 1.6; }
+  .dialog-mock .dlg-foot {
+    padding: 14px 22px;
+    background: var(--bg-subtle);
+    border-top: 0.5px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* ── Drawer mock ── */
+  .drawer-mock {
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 280px;
+  }
+  .drawer-mock .drw-head {
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .drawer-mock .drw-title { font-size: 13px; font-weight: 600; color: var(--fg-strong); letter-spacing: -0.005em; }
+  .drawer-mock .drw-close {
+    width: 24px; height: 24px;
+    border-radius: var(--r-xs);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--fg-subtle);
+    cursor: pointer;
+  }
+  .drawer-mock .drw-close:hover { background: var(--bg-subtle); color: var(--fg-strong); }
+  .drawer-mock .drw-body {
+    padding: 16px 18px;
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .drawer-mock .drw-image {
+    background: linear-gradient(135deg, var(--ink-200), var(--ink-300));
+    border-radius: var(--r-sm);
+    aspect-ratio: 16 / 10;
+    border: 0.5px solid var(--border);
+  }
+  .drawer-mock .drw-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.06em;
+  }
+  .drawer-mock .drw-text {
+    font-size: 12px;
+    color: var(--fg-muted);
+    line-height: 1.55;
+  }
+
+  /* ════════════════════════════════════════════════
+     Footer
+     ════════════════════════════════════════════════ */
+  footer {
+    margin-top: 160px;
+    padding-top: 40px;
+    border-top: 0.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  footer p { margin: 0; color: var(--fg-subtle); font-size: 13px; line-height: 1.6; }
+  footer .sig {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-subtle);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  hr.rule {
+    border: 0;
+    height: 0;
+    border-top: 0.5px solid var(--border);
+    margin: 64px 0 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- Theme toggle (fixed top-right) -->
+<div class="theme-toggle" role="group" aria-label="主题切换">
+  <button class="tt-btn active" data-theme-set="light">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+    </svg>
+    Light
+  </button>
+  <button class="tt-btn" data-theme-set="dark">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+    Dark
+  </button>
+</div>
+
+<main>
+
+  <!-- ────────────────────────── HERO ────────────────────────── -->
+  <header class="hero">
+    <div class="brand-lockup">
+      <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;" aria-hidden="true">
+        <path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/>
+        <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/>
+      </svg>
+      <span class="wordmark">Corivo</span>
+      <span class="sep">·</span>
+      <span class="eyebrow">Step 2A · Design System v0</span>
+    </div>
+
+    <h1 class="display">把语言变成乐高。</h1>
+    <p class="lede">
+      v0.1 把"想要的质感"摊出来了;这一份把它拆成 token、组件、Light/Dark 双主题,后面所有界面都是这套乐高拼出来的——任何一个色值、间距、阴影,都能追溯到这里。
+    </p>
+
+    <aside class="diff-note">
+      <div class="diff-eyebrow">v0.1 → 2A · 这次加了四件事</div>
+      <ul>
+        <li><strong>Dark Mode</strong> · 完整的暗色主题 token,跟随系统或手动切换 — 用右上角切换可以实时看效果</li>
+        <li><strong>Semantic Tokens</strong> · 引入语义层(<code>--fg</code> / <code>--bg</code> / <code>--accent</code> ...),组件从此不再直接引用色阶 — 这是双主题的根</li>
+        <li><strong>组件库雏形</strong> · 把产品需要的所有基础积木都列了出来 — Button / Input / Toggle / Slider / Tabs / List / Tag / Card / Empty / Skeleton / Kbd / Toast / Dialog / Drawer</li>
+        <li><strong>Brand Assets · 双 register</strong> · logo 与 mascot 作为独立资产纳入,新增 <code>--brand-coral</code>;Focus Mark 仍是日常系统印记,小人只在角色出场的时刻露脸</li>
+      </ul>
+    </aside>
+  </header>
+
+  <!-- ────────────────────────── 1 · Theme overview ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">01 · Theme · Light + Dark</span>
+      <h2>白天的纸,深夜的木。</h2>
+      <p>Light 是纸感的暖白(被太阳晒过的纸)。Dark 不是 OLED 的死黑,是深夜书房里被台灯照过的深木桌面 —— 同样温暖,只是把光关了。两套都用同一组 amber 印记保持品牌一致。</p>
+    </header>
+
+    <div class="theme-preview-grid">
+
+      <div class="tp tp-light">
+        <div class="tp-head">
+          <span class="tp-tag">Light</span>
+          <span class="tp-title">纸感</span>
+        </div>
+        <div class="tp-body">
+          <div class="tp-card">
+            <div class="tp-card-meta">14:32 · macOS</div>
+            <div class="tp-card-title">把这一节整理成 bullet</div>
+            <div class="tp-card-body">在你看屏幕的时候,我也在,但很轻。</div>
+          </div>
+          <div class="tp-button-row">
+            <button class="tp-btn tp-btn-primary">主操作</button>
+            <button class="tp-btn tp-btn-ghost">次要</button>
+          </div>
+          <div>
+            <span class="tp-amber-pill">Active · 流式输出</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tp tp-dark">
+        <div class="tp-head">
+          <span class="tp-tag">Dark</span>
+          <span class="tp-title">深木</span>
+        </div>
+        <div class="tp-body">
+          <div class="tp-card">
+            <div class="tp-card-meta">23:08 · macOS</div>
+            <div class="tp-card-title">把这一节整理成 bullet</div>
+            <div class="tp-card-body">夜里思路慢一点,我也慢一点。</div>
+          </div>
+          <div class="tp-button-row">
+            <button class="tp-btn tp-btn-primary">主操作</button>
+            <button class="tp-btn tp-btn-ghost">次要</button>
+          </div>
+          <div>
+            <span class="tp-amber-pill">Active · 流式输出</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <p class="mono" style="margin-top: 24px; padding: 16px 20px; background: var(--bg-subtle); border-radius: var(--r-md); border: 0.5px solid var(--border);">
+      // 默认跟随系统外观,用户在 Settings · General 里可以手动锁定。本文档右上角有 Live 切换器。
+    </p>
+  </section>
+
+  <!-- ────────────────────────── 2 · Color · Primitives ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">02 · Color · Primitives</span>
+      <h2>原始色阶 · 组件不直接引用。</h2>
+      <p>所有颜色先在这里定义,再通过下一节的语义层映射到主题。直接在组件里写 <code>--ink-700</code> 是错的,要写 <code>--fg-muted</code>。</p>
+    </header>
+
+    <h3 class="sub">Surface · Light(纸)/ Dark(夜)</h3>
+    <div class="swatch-row" style="grid-template-columns: repeat(8, 1fr);">
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--paper-50);"></span><span class="meta"><span class="hex">paper-50</span><span class="hex">#FDFCF9</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--paper-100);"></span><span class="meta"><span class="hex">paper-100</span><span class="hex">#F8F7F3</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--paper-200);"></span><span class="meta"><span class="hex">paper-200</span><span class="hex">#F0EEE6</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--paper-300);"></span><span class="meta"><span class="hex">paper-300</span><span class="hex">#E8E5DA</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--night-50);"></span><span class="meta"><span class="hex">night-50</span><span class="hex">#2F2B22</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--night-100);"></span><span class="meta"><span class="hex">night-100</span><span class="hex">#272319</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--night-200);"></span><span class="meta"><span class="hex">night-200</span><span class="hex">#1E1B16</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--night-300);"></span><span class="meta"><span class="hex">night-300</span><span class="hex">#161410</span></span></div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 48px;">Ink · 通用墨色阶(明暗复用)</h3>
+    <div class="swatch-row" style="grid-template-columns: repeat(11, 1fr);">
+      <div class="swatch"><span class="chip" style="height: 56px; background: var(--ink-25);"></span><span class="meta"><span class="hex" style="font-size:9px;">25</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 56px; background: var(--ink-50);"></span><span class="meta"><span class="hex" style="font-size:9px;">50</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 56px; background: var(--ink-100);"></span><span class="meta"><span class="hex" style="font-size:9px;">100</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 56px; background: var(--ink-200);"></span><span class="meta"><span class="hex" style="font-size:9px;">200</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 56px; background: var(--ink-300);"></span><span class="meta"><span class="hex" style="font-size:9px;">300</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 56px; background: var(--ink-400);"></span><span class="meta"><span class="hex" style="font-size:9px;">400</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 56px; background: var(--ink-500);"></span><span class="meta"><span class="hex" style="font-size:9px;">500</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 56px; background: var(--ink-600);"></span><span class="meta"><span class="hex" style="font-size:9px;">600</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 56px; background: var(--ink-700);"></span><span class="meta"><span class="hex" style="font-size:9px;">700</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 56px; background: var(--ink-900);"></span><span class="meta"><span class="hex" style="font-size:9px;">900</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 56px; background: var(--ink-1000);"></span><span class="meta"><span class="hex" style="font-size:9px;">1000</span></span></div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 48px;">Amber · 印染</h3>
+    <div class="swatch-row" style="grid-template-columns: repeat(7, 1fr);">
+      <div class="swatch"><span class="chip" style="height: 72px; background: var(--amber-100);"></span><span class="meta"><span class="hex">100</span><span class="hex">#ECDFC5</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 72px; background: var(--amber-200);"></span><span class="meta"><span class="hex">200</span><span class="hex">#E6C19A</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 72px; background: var(--amber-300);"></span><span class="meta"><span class="hex">300</span><span class="hex">#D5A878</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 72px; background: var(--amber-400);"></span><span class="meta"><span class="hex">400 ★dk</span><span class="hex">#C0894A</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 72px; background: var(--amber-500);"></span><span class="meta"><span class="hex">500 ★lt</span><span class="hex">#A86B22</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 72px; background: var(--amber-600);"></span><span class="meta"><span class="hex">600</span><span class="hex">#8E5A1F</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 72px; background: var(--amber-700);"></span><span class="meta"><span class="hex">700</span><span class="hex">#6B4216</span></span></div>
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 3 · Color · Semantic ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">03 · Color · Semantic</span>
+      <h2>组件只跟语义层对话。</h2>
+      <p>这一层把原始色映射成"含义"——背景、前景、强调、边界、阴影。换主题等于换映射表,组件代码一行不动。</p>
+    </header>
+
+    <div class="token-table">
+      <div class="tt-row head">
+        <div>Token</div>
+        <div></div>
+        <div>Light · 映射</div>
+        <div>Dark · 映射</div>
+      </div>
+      <div class="tt-row">
+        <div class="tt-name">--bg</div>
+        <div class="tt-preview" style="background: var(--bg);"></div>
+        <div class="tt-light">paper-100</div>
+        <div class="tt-dark">night-300</div>
+      </div>
+      <div class="tt-row">
+        <div class="tt-name">--bg-elevated</div>
+        <div class="tt-preview" style="background: var(--bg-elevated);"></div>
+        <div class="tt-light">ink-25</div>
+        <div class="tt-dark">night-200</div>
+      </div>
+      <div class="tt-row">
+        <div class="tt-name">--bg-subtle</div>
+        <div class="tt-preview" style="background: var(--bg-subtle);"></div>
+        <div class="tt-light">paper-200</div>
+        <div class="tt-dark">night-100</div>
+      </div>
+      <div class="tt-row">
+        <div class="tt-name">--bg-deep</div>
+        <div class="tt-preview" style="background: var(--bg-deep);"></div>
+        <div class="tt-light">paper-300</div>
+        <div class="tt-dark">night-50</div>
+      </div>
+      <div class="tt-row">
+        <div class="tt-name">--fg</div>
+        <div class="tt-preview" style="background: var(--fg);"></div>
+        <div class="tt-light">ink-1000</div>
+        <div class="tt-dark">ink-50</div>
+      </div>
+      <div class="tt-row">
+        <div class="tt-name">--fg-muted</div>
+        <div class="tt-preview" style="background: var(--fg-muted);"></div>
+        <div class="tt-light">ink-700</div>
+        <div class="tt-dark">ink-300</div>
+      </div>
+      <div class="tt-row">
+        <div class="tt-name">--fg-subtle</div>
+        <div class="tt-preview" style="background: var(--fg-subtle);"></div>
+        <div class="tt-light">ink-500</div>
+        <div class="tt-dark">ink-500</div>
+      </div>
+      <div class="tt-row">
+        <div class="tt-name">--accent</div>
+        <div class="tt-preview" style="background: var(--accent);"></div>
+        <div class="tt-light">amber-500</div>
+        <div class="tt-dark">amber-400</div>
+      </div>
+      <div class="tt-row">
+        <div class="tt-name">--accent-soft</div>
+        <div class="tt-preview" style="background: var(--accent-soft);"></div>
+        <div class="tt-light">amber-100</div>
+        <div class="tt-dark">amber-400 @14%</div>
+      </div>
+      <div class="tt-row">
+        <div class="tt-name">--border</div>
+        <div class="tt-preview" style="background: var(--border);"></div>
+        <div class="tt-light">ink-1000 @7%</div>
+        <div class="tt-dark">ink-50 @7%</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 4 · Typography ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">04 · Typography</span>
+      <h2>系统字 + 字距,8 阶。</h2>
+      <p>规则与 v0.1 一致:全 Sans、负字距收大字、正字距开小字、不用 Italic。这里只列尺度,字体细节去 v0.1 看。</p>
+    </header>
+
+    <div class="type-scale">
+      <div class="type-row"><span class="ref">Display · 48</span><span class="t-display">工作时,安静地在场。</span></div>
+      <div class="type-row"><span class="ref">H1 · 32</span><span class="t-h1">在合适的时候,说一句合适的话</span></div>
+      <div class="type-row"><span class="ref">H2 · 24</span><span class="t-h2">写作时它陪你查资料,不打断思路</span></div>
+      <div class="type-row"><span class="ref">H3 · 18</span><span class="t-h3">把刚才看的页面整理成几条要点</span></div>
+      <div class="type-row"><span class="ref">Body L · 17</span><span class="t-body-l">这一段比正文略大,用在 lede 或对话里需要被注意到的句子。</span></div>
+      <div class="type-row"><span class="ref">Body · 15</span><span class="t-body">默认正文。中英文混排时按 macOS 原生节奏走——既不挤,也不松。</span></div>
+      <div class="type-row"><span class="ref">Small · 13</span><span class="t-small">次要文字、说明、辅助标签。视觉上要"退后一步",但仍能读清楚。</span></div>
+      <div class="type-row"><span class="ref">Caption · 12</span><span class="t-caption">最小可读字号,用于元数据、时间戳、技术性标签。</span></div>
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 5 · Spacing / Radii / Shadows / Motion ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">05 · Surface · Spacing / Radii / Shadows / Motion</span>
+      <h2>四种节奏 token。</h2>
+      <p>间距走 4 倍数;圆角五档够用;阴影分 sm/md/lg(暗色用顶部高光 + 投影);动效四档,从 hover 到页面切换。</p>
+    </header>
+
+    <h3 class="sub">Spacing · 4 base</h3>
+    <div class="scale-row">
+      <div class="scale-cell"><div class="scale-bar" style="width:4px; height:4px;"></div><div class="scale-meta"><strong>1</strong>4px</div></div>
+      <div class="scale-cell"><div class="scale-bar" style="width:8px; height:8px;"></div><div class="scale-meta"><strong>2</strong>8px</div></div>
+      <div class="scale-cell"><div class="scale-bar" style="width:12px; height:12px;"></div><div class="scale-meta"><strong>3</strong>12px</div></div>
+      <div class="scale-cell"><div class="scale-bar" style="width:16px; height:16px;"></div><div class="scale-meta"><strong>4</strong>16px</div></div>
+      <div class="scale-cell"><div class="scale-bar" style="width:24px; height:16px;"></div><div class="scale-meta"><strong>6</strong>24px</div></div>
+      <div class="scale-cell"><div class="scale-bar" style="width:32px; height:16px;"></div><div class="scale-meta"><strong>8</strong>32px</div></div>
+      <div class="scale-cell"><div class="scale-bar" style="width:48px; height:16px;"></div><div class="scale-meta"><strong>12</strong>48px</div></div>
+      <div class="scale-cell"><div class="scale-bar" style="width:64px; height:16px;"></div><div class="scale-meta"><strong>16</strong>64px</div></div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 48px;">Radius</h3>
+    <div class="radius-row">
+      <div class="radius-cell" style="border-radius: var(--r-xs);">xs · 4</div>
+      <div class="radius-cell" style="border-radius: var(--r-sm);">sm · 6</div>
+      <div class="radius-cell" style="border-radius: var(--r-md);">md · 10</div>
+      <div class="radius-cell" style="border-radius: var(--r-lg);">lg · 14</div>
+      <div class="radius-cell" style="border-radius: var(--r-xl);">xl · 20</div>
+      <div class="radius-cell" style="border-radius: var(--r-pill);">pill</div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 48px;">Shadow · 双主题感受不同(暗色靠顶部高光 + 投影)</h3>
+    <div class="surface-row">
+      <div class="surface-card s-hairline">
+        <span class="surface-name">Hairline</span>
+        <span class="surface-meta">border only<br>无阴影</span>
+      </div>
+      <div class="surface-card s-sm">
+        <span class="surface-name">sm</span>
+        <span class="surface-meta">0.5px ring<br>+ 1px y</span>
+      </div>
+      <div class="surface-card s-md">
+        <span class="surface-name">md</span>
+        <span class="surface-meta">+ 2px / 12px<br>(暗 + inset)</span>
+      </div>
+      <div class="surface-card s-lg">
+        <span class="surface-name">lg</span>
+        <span class="surface-meta">+ 4px / 24px<br>floating</span>
+      </div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 48px;">Motion · 持续动画演示(看缓动差异)</h3>
+    <div class="motion-row">
+      <div class="motion-cell m-quick">
+        <div class="m-name">quick · 120ms</div>
+        <div class="motion-track"><div class="motion-fill"></div></div>
+        <div class="m-meta">hover · focus<br>ease-out</div>
+      </div>
+      <div class="motion-cell m-base">
+        <div class="m-name">base · 180ms</div>
+        <div class="motion-track"><div class="motion-fill"></div></div>
+        <div class="m-meta">toggle · open<br>ease-out</div>
+      </div>
+      <div class="motion-cell m-slow">
+        <div class="m-name">slow · 280ms</div>
+        <div class="motion-track"><div class="motion-fill"></div></div>
+        <div class="m-meta">drawer · dialog<br>ease-out</div>
+      </div>
+      <div class="motion-cell m-spring">
+        <div class="m-name">spring · 220ms</div>
+        <div class="motion-track"><div class="motion-fill"></div></div>
+        <div class="m-meta">浮层入场<br>ease-spring</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 6 · Iconography ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">06 · Iconography</span>
+      <h2>Focus Mark + 一组 1.25px 线性图标。</h2>
+      <p>Focus Mark 是 Corivo 的视觉签名(详见 v0.1)。其余功能图标走 1.25px stroke / round caps / 24×24 viewBox,跟 Lucide 同语言但跟 Focus Mark 同一手感。</p>
+    </header>
+
+    <div class="icon-grid">
+
+      <div class="icon-hero">
+        <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/>
+          <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/>
+        </svg>
+        <div class="ih-name">Focus Mark</div>
+        <div class="ih-tag">Visual signature</div>
+      </div>
+
+      <div class="icon-set">
+        <div class="icon-cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="ic-name">Ask</span>
+        </div>
+        <div class="icon-cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35"/></svg>
+          <span class="ic-name">Search</span>
+        </div>
+        <div class="icon-cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          <span class="ic-name">New</span>
+        </div>
+        <div class="icon-cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span class="ic-name">Settings</span>
+        </div>
+        <div class="icon-cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+          <span class="ic-name">Skills</span>
+        </div>
+        <div class="icon-cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span class="ic-name">Recent</span>
+        </div>
+        <div class="icon-cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          <span class="ic-name">Pinned</span>
+        </div>
+        <div class="icon-cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          <span class="ic-name">Download</span>
+        </div>
+        <div class="icon-cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          <span class="ic-name">Delete</span>
+        </div>
+        <div class="icon-cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          <span class="ic-name">Close</span>
+        </div>
+        <div class="icon-cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span class="ic-name">Check</span>
+        </div>
+        <div class="icon-cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          <span class="ic-name">Info</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 7 · Brand · Mascot ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">07 · Brand · Mascot</span>
+      <h2>系统印记 + 角色出场,各司其职。</h2>
+      <p>Focus Mark 是日常工作时安静在场的它(系统印记)。这只小人,是它偶尔露脸的样子(角色出场)。两个 register 不矛盾——日常克制,关键时刻一只暖色露一下,反差正好造出温度。</p>
+    </header>
+
+    <h3 class="sub">App Icon · 多尺度</h3>
+    <div class="brand-block">
+      <div class="logo-sizes">
+        <div class="ls-cell"><img src="assets/corivo-logo.png" style="width:16px;height:16px;border-radius:4px;" alt="" /><span class="ls-px">16</span></div>
+        <div class="ls-cell"><img src="assets/corivo-logo.png" style="width:32px;height:32px;border-radius:7px;" alt="" /><span class="ls-px">32</span></div>
+        <div class="ls-cell"><img src="assets/corivo-logo.png" style="width:64px;height:64px;border-radius:14px;" alt="" /><span class="ls-px">64</span></div>
+        <div class="ls-cell"><img src="assets/corivo-logo.png" style="width:128px;height:128px;border-radius:28px;" alt="" /><span class="ls-px">128</span></div>
+        <div class="ls-cell"><img src="assets/corivo-logo.png" style="width:200px;height:200px;border-radius:44px;" alt="" /><span class="ls-px">200</span></div>
+      </div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 48px;">Mascot · 角色出场</h3>
+    <div class="brand-block">
+      <div class="mascot-hero-block">
+        <div class="mh-img">
+          <img src="assets/corivo-mascot.svg" alt="Corivo mascot" />
+        </div>
+        <div class="mh-info">
+          <div class="mh-tag">Corivo · Visual Character</div>
+          <div class="mh-title">小人</div>
+          <div class="mh-desc">头顶两道斜线,是"我刚轻轻出现"的视觉叙事;闭嘴的微笑是"伙伴而非服务员";色彩永远是 brand-coral,跨明暗主题不变。</div>
+          <ul class="mh-uses">
+            <li>App icon · Dock / Finder / About</li>
+            <li>启动画面</li>
+            <li>Onboarding · Welcome 与 Done</li>
+            <li>主窗口 · 全新安装的初次空状态</li>
+            <li>"成就时刻"的偶尔露脸(可选)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 48px;">双 register · 何时用哪个</h3>
+    <div class="register-grid">
+      <div class="reg-card">
+        <div class="reg-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="color: var(--fg-muted);">
+            <path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/>
+            <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/>
+          </svg>
+          <span class="reg-label">Focus Mark · 系统印记</span>
+        </div>
+        <ul>
+          <li>Sidebar 品牌位</li>
+          <li>Quick Ask context tag</li>
+          <li>引用 frame chip</li>
+          <li>状态徽标 · 对话气泡前缀</li>
+          <li>键盘提示 · 工具调用</li>
+        </ul>
+        <div class="reg-meta">高频 · 14–24px · 颜色随系统(墨色/amber)</div>
+      </div>
+      <div class="reg-card">
+        <div class="reg-head">
+          <img src="assets/corivo-mascot.svg" alt="" />
+          <span class="reg-label">Mascot · 角色出场</span>
+        </div>
+        <ul>
+          <li>App icon · Dock / Finder</li>
+          <li>启动画面 · About 页</li>
+          <li>Onboarding · Welcome / Done</li>
+          <li>初次空状态(主窗口)</li>
+          <li>"成就时刻"(可选)</li>
+        </ul>
+        <div class="reg-meta">极少 · 64px+ · 永远 brand-coral 不变</div>
+      </div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 48px;">附加 token · brand-coral</h3>
+    <div class="brand-token-row">
+      <div class="bt-cell">
+        <div class="bt-chip" style="background: var(--brand-coral);"></div>
+        <div class="bt-name">--brand-coral</div>
+        <div class="bt-hex">#EF7551</div>
+        <div class="bt-note">Mascot 本色。<strong>不进系统组件</strong> — 不做按钮主色、不做 accent 替代。仅在角色出场场景使用。</div>
+      </div>
+      <div class="bt-cell">
+        <div class="bt-chip" style="background: var(--brand-coral-soft);"></div>
+        <div class="bt-name">--brand-coral-soft</div>
+        <div class="bt-hex">#FCEDDF</div>
+        <div class="bt-note">Mascot 衬底,与 logo 背景同族。可用于 mascot 出现时的卡片背景或装饰区域。</div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ────────────────────────── 8 · Components ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">08 · Components</span>
+      <h2>所有积木 · 按需取用。</h2>
+      <p>每一块都引用语义 token,跟主题一起明暗切换。复杂组件(Dialog / Drawer / Toast)在这里用 mock 形式呈现尺度与肌理,真实交互在 Step 2B 各场景里落实。</p>
+    </header>
+
+    <div class="components-grid">
+
+      <!-- Buttons -->
+      <div class="comp-cell span-2">
+        <span class="comp-label">Buttons · 主操作走 fg-strong,Accent 仅在限定场景</span>
+        <div class="btn-row">
+          <button class="btn btn-primary">主要操作</button>
+          <button class="btn btn-ghost">次要</button>
+          <button class="btn btn-text">取消</button>
+          <button class="btn btn-accent">Accent · 限定</button>
+          <button class="btn btn-destructive">销毁</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm">small</button>
+          <button class="btn btn-primary">base</button>
+          <button class="btn btn-primary btn-lg">large</button>
+        </div>
+        <span class="comp-note">// 主操作 = fg-strong(墨色)。Accent 只在"流式中""新会话引导"等少数场景。</span>
+      </div>
+
+      <!-- Inputs -->
+      <div class="comp-cell">
+        <span class="comp-label">Input · text + focus</span>
+        <div class="input-shell">
+          <label>问点什么</label>
+          <input class="input" placeholder="或者直接双击 ⌥ 召唤我" />
+        </div>
+        <div class="input-shell">
+          <label>Number(采集间隔 / 秒)</label>
+          <input class="input" type="number" value="5" style="max-width: 120px;" />
+        </div>
+      </div>
+
+      <div class="comp-cell">
+        <span class="comp-label">Search · ⌘K</span>
+        <div class="input-search">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input class="input" placeholder="搜索会话…" />
+          <span class="kbd-hint">
+            <span class="kbd">⌘</span><span class="kbd">K</span>
+          </span>
+        </div>
+        <span class="comp-note">// 浮层时全宽,Sidebar 内时 Compact。</span>
+      </div>
+
+      <!-- Toggle / Slider -->
+      <div class="comp-cell">
+        <span class="comp-label">Toggle</span>
+        <div class="toggle-row">
+          <div class="toggle-shell">
+            <div>
+              <div class="tog-label">最小化到托盘</div>
+              <div class="tog-desc">关闭主窗口时收到状态栏</div>
+            </div>
+            <div class="toggle on" role="switch" aria-checked="true"></div>
+          </div>
+          <div class="toggle-shell">
+            <div>
+              <div class="tog-label">开机自启</div>
+              <div class="tog-desc">macOS 登录后自动运行</div>
+            </div>
+            <div class="toggle" role="switch" aria-checked="false"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp-cell">
+        <span class="comp-label">Slider · Thinking Level</span>
+        <div class="slider-shell">
+          <div class="slider-track">
+            <div class="slider-fill"></div>
+            <div class="slider-thumb" style="left: 60%;"></div>
+          </div>
+          <div class="slider-meta">
+            <span>None</span>
+            <span style="color: var(--fg-strong); font-weight: 500;">Basic</span>
+            <span>Deep</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="comp-cell span-2">
+        <span class="comp-label">Tabs · Settings 风</span>
+        <div class="tabs">
+          <div class="tab">General</div>
+          <div class="tab active">Capture & Privacy</div>
+          <div class="tab">Exec Agent</div>
+          <div class="tab">Skills</div>
+          <div class="tab">About</div>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div class="comp-cell span-2">
+        <span class="comp-label">List · 会话列表</span>
+        <div class="list">
+          <div class="list-item active">
+            <span class="li-title">关于刚才那个 spec 的几个 follow-up 问题</span>
+            <span class="li-meta">2m ago</span>
+          </div>
+          <div class="list-item">
+            <span class="li-title">把 SessionManager 的实现整理成 ADR</span>
+            <span class="li-meta">14m ago</span>
+          </div>
+          <div class="list-item">
+            <span class="li-title">VC 沟通时被问到的三个问题</span>
+            <span class="li-meta">yesterday</span>
+          </div>
+          <div class="list-item">
+            <span class="li-title">2026 Q2 路线图初稿讨论</span>
+            <span class="li-meta">2d ago</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tags / Card -->
+      <div class="comp-cell">
+        <span class="comp-label">Tags · 状态徽标</span>
+        <div class="btn-row">
+          <span class="tag tag-neutral">捕捉中</span>
+          <span class="tag tag-accent"><span class="dot"></span>流式输出</span>
+          <span class="tag tag-muted">已停止</span>
+        </div>
+      </div>
+
+      <div class="comp-cell">
+        <span class="comp-label">Card · 引用帧</span>
+        <div class="card">
+          <div class="c-meta">14:32 · figma.com</div>
+          <div class="c-title">Quick Ask · 浮层结构草图</div>
+          <div class="c-body">从屏幕底部缓慢浮现,200ms 内到位,不弹跳。</div>
+        </div>
+      </div>
+
+      <!-- Avatar / Kbd -->
+      <div class="comp-cell">
+        <span class="comp-label">Avatar</span>
+        <div class="btn-row" style="align-items: center; gap: 12px;">
+          <div class="avatar avatar-sm">L</div>
+          <div class="avatar">L</div>
+          <div class="avatar avatar-lg">LZ</div>
+        </div>
+      </div>
+
+      <div class="comp-cell">
+        <span class="comp-label">Kbd · 快捷键标记</span>
+        <div class="btn-row" style="font-size: 13px; color: var(--fg-muted);">
+          <span class="kbd-row"><span class="kbd">⌘</span><span class="kbd">K</span></span>
+          <span class="kbd-row"><span class="kbd">⌘</span><span class="kbd">↵</span></span>
+          <span class="kbd-row"><span class="kbd">⌥</span><span class="kbd">⌥</span></span>
+          <span class="kbd-row"><span class="kbd">esc</span></span>
+        </div>
+      </div>
+
+      <!-- Empty / Skeleton -->
+      <div class="comp-cell">
+        <span class="comp-label">Empty State</span>
+        <div class="empty-state" style="padding: 32px;">
+          <svg class="focus-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5H9"/><path d="M15 5H19V9"/><path d="M19 15V19H15"/><path d="M9 19H5V15"/><circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/></svg>
+          <p class="es-text">还没问过我什么。</p>
+          <p class="es-hint">双击 ⌥,或在这里开始一句话。</p>
+        </div>
+      </div>
+
+      <div class="comp-cell">
+        <span class="comp-label">Skeleton</span>
+        <div class="skel-shell">
+          <div class="skel-line skel-w-7"></div>
+          <div class="skel-line skel-w-full"></div>
+          <div class="skel-line skel-w-full"></div>
+          <div class="skel-line skel-w-5"></div>
+        </div>
+      </div>
+
+      <!-- Toast -->
+      <div class="comp-cell span-2">
+        <span class="comp-label">Toast · sonner 替代</span>
+        <div class="btn-row">
+          <div class="toast">
+            <span class="toast-dot"></span>
+            <span>已切换到 BYOK 模式</span>
+          </div>
+          <div class="toast" style="background: #B85450; color: #FFFFFF;">
+            <span class="toast-dot" style="background: #FFFFFF;"></span>
+            <span>API key 验证失败</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 9 · Overlays ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">09 · Overlays · Mocks</span>
+      <h2>Dialog / Drawer · 形态预览。</h2>
+      <p>真实使用方式去 Step 2B 的具体场景看。这里只展示外形与肌理,确认尺度对了再往下。</p>
+    </header>
+
+    <div class="components-grid">
+
+      <div class="comp-cell">
+        <span class="comp-label">Dialog · Permission Request</span>
+        <div class="dialog-mock">
+          <div class="dlg-head">
+            <h3 class="dlg-title">允许 Corivo 读取这个文件吗?</h3>
+            <p class="dlg-desc">corivo-agent 请求工具调用 · read_file</p>
+          </div>
+          <div class="dlg-body">
+            <code style="background: var(--bg-subtle); padding: 8px 12px; border-radius: var(--r-sm); display: block; font-size: 11px;">{ "path": "/Users/lz/projects/foo.ts" }</code>
+          </div>
+          <div class="dlg-foot">
+            <button class="btn btn-ghost btn-sm">拒绝</button>
+            <button class="btn btn-primary btn-sm">允许</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp-cell">
+        <span class="comp-label">Drawer · Frame 详情(右侧抽屉)</span>
+        <div class="drawer-mock">
+          <div class="drw-head">
+            <span class="drw-title">corivo-architecture-v3-spec.md</span>
+            <div class="drw-close">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </div>
+          </div>
+          <div class="drw-body">
+            <div class="drw-image"></div>
+            <div class="drw-meta">14:32 · macOS · ax+ocr</div>
+            <div class="drw-text">"…在 ExecAgent 中,会话上下文由 SessionManager 持久化为 jsonl,每条消息按 turn 序列化。重启后从最新 turn 反向读取直到达到 max_context_tokens…"</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <footer>
+    <p class="sig">Design System v0 · 2026-05-09</p>
+    <p>这是 Step 2A 的全部产物。Token 体系建立完成,Light/Dark 双主题完整,组件库覆盖了产品所需的所有基础积木。如果这套系统对了,我会进 <strong>Step 2B</strong> —— 把它拼成五张精稿:Quick Ask 浮层 · 主窗口 Ask · Frame Drawer · Onboarding · Settings(Capture & Privacy)。</p>
+  </footer>
+
+</main>
+
+<script>
+  (function() {
+    const root = document.documentElement;
+    const buttons = document.querySelectorAll('.tt-btn');
+    const apply = (theme) => {
+      root.dataset.theme = theme;
+      try { localStorage.setItem('corivo-theme', theme); } catch (e) {}
+      buttons.forEach(b => {
+        b.classList.toggle('active', b.dataset.themeSet === theme);
+      });
+    };
+    let saved = null;
+    try { saved = localStorage.getItem('corivo-theme'); } catch (e) {}
+    const initial = saved
+      || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    apply(initial);
+    buttons.forEach(b => {
+      b.addEventListener('click', () => apply(b.dataset.themeSet));
+    });
+  })();
+</script>
+
+</body>
+</html>

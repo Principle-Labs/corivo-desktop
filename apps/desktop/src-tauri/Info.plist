@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Corivo.app — partial Info.plist merged into the Tauri-generated one
+  at bundle time.
+
+  Every NS*UsageDescription lives on the parent. The embedded
+  CorivoCaptureHelper.app deliberately omits these so TCC walks the
+  responsible-process chain up to us; the dialog copy users see is
+  whatever string we write here.
+
+  Keep these strings short and user-readable in 中文 — they're shown
+  verbatim in the system permission dialog under "Corivo would like
+  to access X. (Reason)".
+
+  LSApplicationCategoryType + LSMinimumSystemVersion + most other
+  bundle-level keys are still set by Tauri from tauri.conf.json. Don't
+  duplicate them here.
+-->
+<plist version="1.0">
+<dict>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>Corivo 通过屏幕录制把你正在做的事记成可搜索的时间线，离开应用时可以快速找回。</string>
+
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Corivo 录制会议音频以便事后转写和搜索。仅在你显式开始录制时录入。</string>
+
+  <key>NSAudioCaptureUsageDescription</key>
+  <string>Corivo 捕获其他应用的音频以便会议转写。仅在你显式开始录制时启用。</string>
+
+  <key>NSAppleEventsUsageDescription</key>
+  <string>Corivo 读取浏览器当前标签页的 URL 以提供更精准的上下文搜索。</string>
+
+  <key>NSCameraUsageDescription</key>
+  <string>Corivo 不主动使用摄像头；此项仅为 macOS 沙箱沿用预留。</string>
+</dict>
+</plist>

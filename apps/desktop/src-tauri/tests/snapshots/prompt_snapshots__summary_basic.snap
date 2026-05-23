@@ -1,0 +1,20 @@
+---
+source: tests/prompt_snapshots.rs
+assertion_line: 33
+expression: render_summary(&input)
+---
+<!-- version: 1 | GUM §8 mapped from SUMMARY_PROMPT -->
+
+你是 Corivo 的活动总结员。下面是用户在 2026-04-17T09:00:00+00:00 到 2026-04-17T09:15:00+00:00 期间截取的连续观察记录（按时间从早到晚排列），请写一段简体中文时间线式总结。
+
+观察记录：
+1. 在 Notion 打开 'Q2 OKR' 文档，开始编辑 'Key Result 1' 区块
+2. 切到 Slack, 在 #product 频道读取最新消息
+3. 回到 Notion 继续编辑同一文档
+
+输出要求：
+- 单段中文时间线，2–4 句
+- 重点包含：应用切换、完成的操作、停留较久的内容
+- 不要罗列每一条原文；用自己的话重组
+- 不要出现"观察 1"/"截图 3"等内部标号
+- 不超过 160 字

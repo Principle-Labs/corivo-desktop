@@ -1,0 +1,21 @@
+{
+  "id": "feishu-cli",
+  "name": {
+    "zh": "飞书 CLI",
+    "en": "Feishu CLI"
+  },
+  "description": {
+    "zh": "通过本机飞书命令行工具执行本地工作流，不需要 Corivo 托管 OAuth。",
+    "en": "Use a local Feishu command-line tool for local workflows without Corivo-hosted OAuth."
+  },
+  "version": "0.1.0",
+  "icon": "",
+  "auth": {
+    "type": "cliInstall",
+    "binary": "lark",
+    "installPrompt": {
+      "zh": "请检查这台机器是否已经安装飞书/lark CLI。如果没有，请根据当前操作系统推荐安装方式，获得我的确认后安装，并引导我完成登录。",
+      "en": "Check whether the Feishu/lark CLI is installed on this machine. If not, recommend the right install method for this OS, ask for my confirmation, install it, and guide me through login."
+    }
+  }
+}

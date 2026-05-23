@@ -1,0 +1,11 @@
+{
+  "name": "@corivo/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Standalone corivo-mcp sidecar (Rust). JSON-RPC 2.0 stdio MCP server used by external MCP clients; forwards tool calls to the Corivo main process via UDS. Built into apps/desktop/src-tauri/binaries/ for Tauri externalBin.",
+  "scripts": {
+    "build": "node ./build.mjs release",
+    "build:debug": "node ./build.mjs debug",
+    "clean": "node ./build.mjs clean"
+  }
+}

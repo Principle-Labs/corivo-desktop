@@ -1,0 +1,22 @@
+{
+  "name": "corivo-desktop",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@11.1.1",
+  "scripts": {
+    "dev": "turbo run dev --filter=*",
+    "build": "turbo run build --filter=*",
+    "test": "turbo run test --filter=*",
+    "lint": "turbo run lint --filter=*",
+    "type-check": "turbo run type-check --filter=*",
+    "typegen": "pnpm --filter @corivo/desktop typegen",
+    "app:dev": "pnpm --filter @corivo/desktop dev",
+    "app:build": "turbo run build --filter=@corivo/desktop",
+    "app:build:x64": "turbo run build:x64 --filter=@corivo/desktop"
+  },
+  "devDependencies": {
+    "turbo": "^2.9.14",
+    "typescript": "~5.8.3"
+  }
+}

@@ -1,0 +1,166 @@
+//! Background agent task framework (memory-system-spec §11).
+//!
+//! Where it sits in the system:
+//!
+//! ```text
+//! scheduler.rs               runner.rs                       sidecar
+//! ─────────────              ──────────                      ───────
+//! daily tick / idle hook     ┌────────────────────────┐     spawn corivo-agent
+//!     │                      │ BackgroundAgentTaskRunner│ →   (system_prompt_extra
+//!     ▼                      │                        │      = task.system_prompt())
+//! FIFO queue + semaphore  →  │ • insert kind='system' │     (initial user message
+//! (single in-flight task)    │   chat_thread          │      = task.initial_user_message())
+//!                            │ • build SidecarInput   │     (tools.native filtered
+//!                            │   with whitelisted     │       to task.tool_whitelist())
+//!                            │   tools, discard       │
+//!                            │   StreamEmitter        │
+//!                            │ • run via shared       │
+//!                            │   exec_agent runner    │
+//!                            │ • accumulate text →    │
+//!                            │   consume_output()     │
+//!                            └────────────────────────┘
+//! ```
+//!
+//! The task itself is just a trait the spec describes (§11.4): kind,
+//! system_prompt, initial_user_message, tool_whitelist, max_turns,
+//! consume_output. Each task type lives in its own module
+//! (e.g. `services::session_learner::task`) and implements the trait.
+//!
+//! Two important invariants vs. user-facing turns:
+//!
+//! * **Visibility**: `kind='system'` threads are filtered out of every
+//!   user-facing list query. The sidecar gets the thread_id as
+//!   `session_id` like any turn, so the jsonl session store still
+//!   accumulates a real trace under
+//!   `${sessions_dir}/<thread_id>.jsonl`.
+//! * **Tools**: the task supplies a whitelist of native tool names; the
+//!   runner intersects it with the full registry. Writes (`save_note`)
+//!   are not in any task's whitelist by design — all side effects flow
+//!   through `consume_output`, where the Rust side validates the
+//!   agent's reply before mutating any store.
+
+pub mod log;
+pub mod runner;
+pub mod scheduler;
+
+use async_trait::async_trait;
+use std::sync::Arc;
+
+use crate::commands::config::AppState;
+use crate::db::repos::chat::{ChatMessageRepo, ChatThreadRepo};
+use crate::db::repos::notes::NotesRepo;
+use crate::domain::chat::SystemTaskKind;
+use crate::domain::config::{ApiShape, ThinkingLevel};
+use crate::error::Result;
+use crate::services::cloud::CloudSessionService;
+use crate::services::exec_agent::CorivoAuth;
+use crate::services::model_catalog::ModelCatalog;
+use std::path::PathBuf;
+
+pub use runner::TaskOutcome;
+pub use scheduler::{BackgroundAgentScheduler, ScheduleEnqueue};
+
+/// Inputs every task needs to actually run a sidecar turn. Filled in
+/// by `BackgroundAgentScheduler` from `AppState` so individual tasks
+/// don't have to plumb State around.
+pub struct TaskDeps {
+    pub db_pool: crate::db::pool::DbPool,
+    pub chat_threads: Arc<dyn ChatThreadRepo>,
+    pub chat_messages: Arc<dyn ChatMessageRepo>,
+    pub notes_repo: Arc<dyn NotesRepo>,
+    pub frames_repo: Arc<dyn crate::db::repos::frames::FrameRepo>,
+    pub auth: CorivoAuth,
+    pub model_id: String,
+    pub api_shape: ApiShape,
+    pub thinking_level: ThinkingLevel,
+    pub compaction_model_id: String,
+    pub sessions_dir: PathBuf,
+    pub app_data_dir: PathBuf,
+    pub bundled_skills_dir: Option<PathBuf>,
+    pub bridge_pending: crate::services::exec_agent::mcp_bridge::PendingMap,
+    pub app: tauri::AppHandle<tauri::Wry>,
+    /// Live cloud session handle. Background tasks are always
+    /// CorivoProxy (they're built from `session.fetch_agent_creds()` above),
+    /// so this is `Some` whenever the deps make it past `from_state`.
+    /// Passed through to the runner so an `auth_failed` from the
+    /// sidecar can trigger a cloud-session refresh just like the
+    /// user-facing chat path.
+    pub cloud_session: Arc<dyn CloudSessionService>,
+}
+
+impl TaskDeps {
+    /// Build TaskDeps from AppState. Returns `None` when the app is
+    /// still mid-boot (a repo / session / model catalog isn't ready);
+    /// the scheduler treats that as "skip this tick, try next interval".
+    pub async fn from_state(state: &AppState, app: tauri::AppHandle<tauri::Wry>) -> Option<Self> {
+        let chat_threads = state.chat_threads.as_ref()?.clone();
+        let chat_messages = state.chat_messages.as_ref()?.clone();
+        let notes_repo = state.notes_repo.as_ref()?.clone();
+        let frames_repo = state.frames_repo.as_ref()?.clone();
+        // Pending map lives on AppState directly now; the UDS bridge is
+        // optional and only relevant for external corivo-mcp clients.
+        let bridge_pending = state.permission_pending.clone();
+        let session = state.cloud.session.clone();
+        let catalog: Arc<ModelCatalog> = state.model_catalog.as_ref()?.clone();
+        let creds = session.fetch_agent_creds().await.ok()?;
+        let entry = catalog.active_entry()?;
+        let cfg = state.config_service.get();
+        let db_pool = state.db.pool();
+        let app_data_dir = tauri::Manager::path(&app).app_data_dir().ok()?;
+        let sessions_dir = app_data_dir.join("corivo-agent-sessions");
+        let bundled_skills_dir = tauri::Manager::path(&app)
+            .resource_dir()
+            .ok()
+            .map(|d| d.join("bundled-skills"))
+            .filter(|p| p.is_dir());
+        let compaction_model_id = match entry.client_protocol {
+            ApiShape::Anthropic => "claude-haiku-4-5".to_string(),
+            ApiShape::Openai | ApiShape::OpenaiResponses => "gpt-4o-mini".to_string(),
+        };
+        Some(TaskDeps {
+            db_pool,
+            chat_threads,
+            chat_messages,
+            notes_repo,
+            frames_repo,
+            auth: CorivoAuth::CorivoProxy {
+                gateway_url: creds.api_host,
+                api_key: creds.api_key,
+            },
+            model_id: entry.upstream_model,
+            api_shape: entry.client_protocol,
+            thinking_level: cfg.exec_agent.thinking_level,
+            compaction_model_id,
+            sessions_dir,
+            app_data_dir,
+            bundled_skills_dir,
+            bridge_pending,
+            app,
+            cloud_session: session,
+        })
+    }
+}
+
+/// memory-system-spec §11.4 contract.
+///
+/// Implementors live in `services::session_learner` etc. The trait is
+/// async only on `consume_output` because that's the only step that
+/// hits the database; the others are pure config lookups.
+#[async_trait]
+pub trait BackgroundAgentTask: Send + Sync {
+    fn kind(&self) -> SystemTaskKind;
+    fn system_prompt(&self) -> String;
+    fn initial_user_message(&self) -> String;
+    fn tool_whitelist(&self) -> &'static [&'static str];
+    fn max_turns(&self) -> u32 {
+        20
+    }
+    /// Process the sidecar's final assistant message. The runner
+    /// already stripped streaming framing; you get the plain text.
+    async fn consume_output(
+        &self,
+        output: String,
+        outcome: &TaskOutcome,
+        deps: &TaskDeps,
+    ) -> Result<()>;
+}

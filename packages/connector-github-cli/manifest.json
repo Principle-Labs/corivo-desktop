@@ -1,0 +1,21 @@
+{
+  "id": "github-cli",
+  "name": {
+    "zh": "GitHub CLI",
+    "en": "GitHub CLI"
+  },
+  "description": {
+    "zh": "通过本机 gh CLI 处理 GitHub 工作流，不需要 Corivo 托管 OAuth。",
+    "en": "Use the local gh CLI for GitHub workflows without Corivo-hosted OAuth."
+  },
+  "version": "0.1.0",
+  "icon": "",
+  "auth": {
+    "type": "cliInstall",
+    "binary": "gh",
+    "installPrompt": {
+      "zh": "请检查这台机器是否已经安装 GitHub CLI (`gh`)。如果没有，请根据当前操作系统推荐安装方式，获得我的确认后安装，并引导我运行 `gh auth login`。",
+      "en": "Check whether GitHub CLI (`gh`) is installed on this machine. If not, recommend the right install method for this OS, ask for my confirmation, install it, and guide me through `gh auth login`."
+    }
+  }
+}

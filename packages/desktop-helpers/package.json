@@ -1,0 +1,11 @@
+{
+  "name": "@corivo/desktop-helpers",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Native capture-helper sidecars (Swift on macOS, C++/CMake on Windows). Built into apps/desktop/src-tauri/binaries/ for Tauri externalBin.",
+  "scripts": {
+    "build": "node ./build.mjs debug",
+    "build:release": "node ./build.mjs release",
+    "clean": "node ./build.mjs clean"
+  }
+}

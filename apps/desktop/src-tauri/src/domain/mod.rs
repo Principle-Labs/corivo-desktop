@@ -1,0 +1,9 @@
+pub mod chat;
+pub mod config;
+pub mod embedding;
+pub mod focus_context;
+pub mod frame;
+pub mod ipc_error;
+pub mod note;
+pub mod privacy;
+pub mod snapshot_envelope;

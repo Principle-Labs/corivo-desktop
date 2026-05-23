@@ -1,0 +1,5 @@
+# SwiftPM build artifacts. The compiled binary is staged into
+# apps/desktop/src-tauri/binaries/ by build.sh; nothing under .build/
+# needs to live in version control.
+.build/
+Package.resolved

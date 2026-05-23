@@ -1,0 +1,1019 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corivo · Tone Reference v0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* ── Surface · 暖白纸感 ──────────────────────── */
+    --bg-page:     #FBF8F2;   /* 主底色:温暖的纸 */
+    --bg-card:     #FFFEFB;   /* 卡片:近白但不死白 */
+    --bg-subtle:   #F4EFE5;   /* 次级面:更深一阶 */
+    --bg-deep:     #ECE6D8;   /* 输入框 / 分隔区底色 */
+
+    /* ── Ink · 偏暖的墨色阶 ──────────────────────── */
+    --ink-1000:    #1A1916;   /* 主文 (不用纯黑) */
+    --ink-900:     #2B2925;
+    --ink-800:     #423E37;
+    --ink-700:     #5A574F;
+    --ink-600:     #7A746A;
+    --ink-500:     #98917E;
+    --ink-400:     #B5AE9C;
+    --ink-300:     #CFCABE;
+    --ink-200:     #E5E0D2;
+    --ink-100:     #F0EAD9;
+
+    /* ── Amber · 琥珀光,不是荧光橙 ────────────────── */
+    --amber-700:   #845118;   /* hover / pressed */
+    --amber-600:   #A86B22;
+    --amber-500:   #C8842B;   /* primary — 极少用 */
+    --amber-400:   #DCA458;
+    --amber-300:   #E8C28E;
+    --amber-100:   #F5E4C2;
+    --amber-tint:  rgba(200, 132, 43, 0.07);
+
+    /* ── 边界 ─────────────────────────────────── */
+    --hairline:        rgba(28, 26, 23, 0.07);  /* 0.5px 等效 */
+    --hairline-strong: rgba(28, 26, 23, 0.13);
+
+    /* ── 阴影:双层叠加 ─────────────────────────── */
+    --shadow-sm:
+      0 0 0 0.5px rgba(28, 26, 23, 0.05),
+      0 1px 2px   rgba(28, 26, 23, 0.04);
+    --shadow-md:
+      0 0 0 0.5px rgba(28, 26, 23, 0.06),
+      0 2px 4px   rgba(28, 26, 23, 0.04),
+      0 12px 32px rgba(28, 26, 23, 0.06);
+    --shadow-lg:
+      0 0 0 0.5px rgba(28, 26, 23, 0.07),
+      0 4px 8px   rgba(28, 26, 23, 0.05),
+      0 24px 64px rgba(28, 26, 23, 0.10);
+
+    /* ── 字体 ─────────────────────────────────── */
+    --font-sans: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+    --font-display: "Instrument Serif", "Songti SC", Georgia, serif;
+    --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+
+    /* ── 节奏 ─────────────────────────────────── */
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 20px;
+
+    /* ── 缓动 ─────────────────────────────────── */
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-page);
+    color: var(--ink-1000);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    letter-spacing: 0.005em;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 纸张颗粒感 — 极轻 */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.04;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+  }
+
+  main {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 120px 40px 200px;
+    position: relative;
+  }
+
+  /* ─────────────────── Type ─────────────────── */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+    font-weight: 500;
+  }
+  .display {
+    font-family: var(--font-display);
+    font-size: 64px;
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+    font-weight: 400;
+    margin: 24px 0 24px;
+    color: var(--ink-1000);
+  }
+  .display em {
+    font-style: italic;
+    color: var(--amber-600);
+  }
+  .lede {
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--ink-700);
+    max-width: 560px;
+    margin: 0;
+  }
+
+  section {
+    margin-top: 128px;
+  }
+  section > header {
+    margin-bottom: 40px;
+  }
+  section > header .eyebrow {
+    display: block;
+    margin-bottom: 12px;
+  }
+  section > header h2 {
+    font-family: var(--font-display);
+    font-size: 36px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    font-weight: 400;
+    margin: 0 0 12px;
+  }
+  section > header p {
+    color: var(--ink-700);
+    margin: 0;
+    max-width: 540px;
+  }
+
+  h3.sub {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink-700);
+    margin: 0 0 16px;
+    text-transform: none;
+  }
+
+  code, .mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-600);
+    letter-spacing: 0;
+  }
+
+  /* ─────────────────── Color swatches ─────────────────── */
+  .swatch-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 1px;
+    background: var(--hairline);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .swatch {
+    background: var(--bg-card);
+    padding: 0;
+  }
+  .swatch .chip {
+    height: 96px;
+    display: block;
+  }
+  .swatch .meta {
+    padding: 12px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .swatch .name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-900);
+  }
+  .swatch .hex {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-500);
+  }
+
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 32px;
+  }
+  .compare-card {
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+  .compare-card .label {
+    padding: 14px 18px;
+    font-size: 12px;
+    color: var(--ink-700);
+    border-bottom: 0.5px solid var(--hairline);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .compare-card .label .tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .compare-card .label.is .tag    { background: #E8F0E0; color: #4A6B2D; }
+  .compare-card .label.isnt .tag  { background: var(--bg-deep); color: var(--ink-600); }
+  .compare-card .body {
+    padding: 32px;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ─────────────────── Type scale ─────────────────── */
+  .type-scale {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    border-top: 0.5px solid var(--hairline);
+    padding-top: 32px;
+  }
+  .type-row {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    align-items: baseline;
+    gap: 32px;
+  }
+  .type-row .ref {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-500);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .t-display { font-family: var(--font-display); font-size: 56px; line-height: 1.05; letter-spacing: -0.015em; font-weight: 400; }
+  .t-h1      { font-size: 32px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; }
+  .t-h2      { font-size: 24px; font-weight: 600; line-height: 1.3; }
+  .t-h3      { font-size: 18px; font-weight: 600; line-height: 1.4; }
+  .t-body-l  { font-size: 17px; line-height: 1.55; color: var(--ink-800); }
+  .t-body    { font-size: 15px; line-height: 1.6; color: var(--ink-900); }
+  .t-small   { font-size: 13px; line-height: 1.55; color: var(--ink-700); }
+  .t-caption { font-size: 12px; line-height: 1.5; color: var(--ink-600); }
+
+  .mixed-sample {
+    margin-top: 48px;
+    padding: 32px 36px;
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm);
+  }
+  .mixed-sample p {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--ink-900);
+    letter-spacing: 0.01em;
+  }
+  .mixed-sample p + p { margin-top: 16px; }
+
+  /* ─────────────────── Surfaces / shadows ─────────────────── */
+  .surface-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+  .surface-card {
+    background: var(--bg-card);
+    border-radius: var(--r-lg);
+    padding: 28px 22px;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .surface-card .surface-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-900);
+  }
+  .surface-card .surface-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+  }
+  .s-hairline { border: 0.5px solid var(--hairline); }
+  .s-sm { box-shadow: var(--shadow-sm); }
+  .s-md { box-shadow: var(--shadow-md); }
+  .s-lg { box-shadow: var(--shadow-lg); }
+
+  /* ─────────────────── Components ─────────────────── */
+  .components-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .comp-cell {
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-lg);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .comp-cell .comp-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 18px;
+    border-radius: var(--r-sm);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+    cursor: pointer;
+    border: 0.5px solid transparent;
+    transition: all 160ms var(--ease);
+    background: transparent;
+    color: var(--ink-1000);
+  }
+  .btn-primary {
+    background: var(--ink-1000);
+    color: var(--bg-page);
+  }
+  .btn-primary:hover {
+    background: var(--ink-900);
+    transform: translateY(-0.5px);
+  }
+  .btn-amber {
+    background: var(--amber-500);
+    color: #FFFFFF;
+  }
+  .btn-amber:hover { background: var(--amber-600); }
+  .btn-ghost {
+    border-color: var(--hairline-strong);
+    color: var(--ink-900);
+  }
+  .btn-ghost:hover {
+    background: var(--bg-subtle);
+    border-color: var(--hairline-strong);
+  }
+  .btn-text {
+    color: var(--ink-700);
+    padding: 0 8px;
+  }
+  .btn-text:hover { color: var(--ink-1000); }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  /* Input */
+  .input-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .input-shell label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-700);
+  }
+  .input {
+    height: 38px;
+    padding: 0 14px;
+    border: 0.5px solid var(--hairline-strong);
+    background: var(--bg-page);
+    border-radius: var(--r-sm);
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink-1000);
+    outline: none;
+    transition: all 160ms var(--ease);
+  }
+  .input::placeholder { color: var(--ink-500); }
+  .input:focus {
+    border-color: var(--ink-900);
+    background: var(--bg-card);
+    box-shadow: 0 0 0 4px rgba(28, 26, 23, 0.04);
+  }
+
+  /* List item */
+  .list {
+    display: flex;
+    flex-direction: column;
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--bg-card);
+  }
+  .list-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    padding: 14px 18px;
+    border-bottom: 0.5px solid var(--hairline);
+    align-items: center;
+    transition: background 120ms var(--ease);
+    cursor: default;
+  }
+  .list-item:last-child { border-bottom: none; }
+  .list-item:hover { background: var(--bg-subtle); }
+  .list-item .li-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-1000);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .list-item .li-meta {
+    font-size: 12px;
+    color: var(--ink-500);
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+  }
+
+  /* Card */
+  .small-card {
+    padding: 20px 22px;
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-sm);
+  }
+  .small-card .sc-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .small-card .sc-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-1000);
+    margin-bottom: 6px;
+  }
+  .small-card .sc-body {
+    font-size: 13px;
+    color: var(--ink-700);
+    line-height: 1.55;
+  }
+
+  /* ─────────────────── Corivo micro mockup ─────────────────── */
+  .corivo-stage {
+    margin-top: 12px;
+    padding: 56px;
+    background: linear-gradient(180deg, #EEE9DC 0%, #E5DFD0 100%);
+    border-radius: var(--r-xl);
+    border: 0.5px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+  }
+
+  .quick-ask {
+    width: 100%;
+    max-width: 560px;
+    background: var(--bg-card);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    border: 0.5px solid var(--hairline);
+  }
+  .qa-context {
+    padding: 14px 18px;
+    border-bottom: 0.5px solid var(--hairline);
+    background: var(--bg-card);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .qa-context .qa-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    background: linear-gradient(135deg, var(--amber-400), var(--amber-600));
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+  }
+  .qa-context .qa-app {
+    font-size: 13px;
+    color: var(--ink-900);
+    font-weight: 500;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .qa-context .qa-app span {
+    color: var(--ink-500);
+    font-weight: 400;
+  }
+  .qa-context .qa-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--amber-500);
+    box-shadow: 0 0 0 3px var(--amber-tint);
+  }
+  .qa-input {
+    padding: 22px 22px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .qa-input .qa-text {
+    font-size: 15px;
+    color: var(--ink-1000);
+    line-height: 1.5;
+    min-height: 24px;
+  }
+  .qa-input .qa-text .breath {
+    display: inline-block;
+    width: 1.5px;
+    height: 16px;
+    background: var(--amber-500);
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: breathe 1.6s ease-in-out infinite;
+    border-radius: 1px;
+    transform-origin: center;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.35; transform: scaleY(0.92); }
+    50%      { opacity: 1;    transform: scaleY(1.05); }
+  }
+  .qa-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--ink-500);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .qa-meta .kbd {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--bg-deep);
+    color: var(--ink-700);
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+
+  .empty-state {
+    width: 100%;
+    max-width: 560px;
+    padding: 44px;
+    background: var(--bg-card);
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-lg);
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+  }
+  .empty-state .es-mark {
+    width: 32px;
+    height: 32px;
+    margin: 0 auto 16px;
+    border-radius: 8px;
+    background: var(--amber-tint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .empty-state .es-mark::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber-500);
+  }
+  .empty-state .es-text {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--ink-900);
+    line-height: 1.3;
+    font-weight: 400;
+    letter-spacing: -0.005em;
+  }
+  .empty-state .es-hint {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--ink-500);
+  }
+
+  /* ─────────────────── 是 / 不是 ─────────────────── */
+  .is-isnt {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 0.5px solid var(--hairline);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--hairline);
+    margin-top: 12px;
+  }
+  .ii-cell {
+    background: var(--bg-card);
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ii-cell .ii-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-500);
+  }
+  .ii-cell.is .ii-tag    { color: #4A6B2D; }
+  .ii-cell.isnt .ii-tag  { color: var(--ink-500); }
+  .ii-cell .ii-text {
+    font-size: 14px;
+    color: var(--ink-900);
+    font-weight: 500;
+  }
+  .ii-cell.isnt .ii-text {
+    color: var(--ink-600);
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-300);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  /* ─────────────────── Footer ─────────────────── */
+  footer {
+    margin-top: 160px;
+    padding-top: 40px;
+    border-top: 0.5px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  footer p {
+    margin: 0;
+    color: var(--ink-600);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  footer .sig {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ─────────────────── Helpers ─────────────────── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  hr.rule {
+    border: 0;
+    height: 0;
+    border-top: 0.5px solid var(--hairline);
+    margin: 64px 0 0;
+  }
+</style>
+</head>
+<body>
+
+<main>
+
+  <!-- ────────────────────────── HEADER ────────────────────────── -->
+  <header>
+    <span class="eyebrow">Corivo · Tone Reference v0</span>
+    <h1 class="display">这不是稿子,<br>是几块<em>墙板</em>。</h1>
+    <p class="lede">
+      在画第一张界面之前,先把"想要的质感"摊出来给你看。<br>
+      没有最终色值、没有界面、没有承诺——只是色温、字呼吸、阴影厚度的样片。
+    </p>
+  </header>
+
+  <!-- ────────────────────────── 1 · 色 ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">01 · Surface & Color</span>
+      <h2>暖白纸感,与一束琥珀光。</h2>
+      <p>底色不是白,是被太阳晒过一会儿的纸。Amber 不是高饱和的橙,是琥珀里折出来的那束光——它平时退后,只在最该被注意的瞬间出现。</p>
+    </header>
+
+    <h3 class="sub">Surface · 一组暖白</h3>
+    <div class="swatch-row">
+      <div class="swatch">
+        <span class="chip" style="background: var(--bg-page);"></span>
+        <span class="meta">
+          <span class="name">Page</span>
+          <span class="hex">#FBF8F2</span>
+        </span>
+      </div>
+      <div class="swatch">
+        <span class="chip" style="background: var(--bg-card); border-right: 0.5px solid var(--hairline);"></span>
+        <span class="meta">
+          <span class="name">Card</span>
+          <span class="hex">#FFFEFB</span>
+        </span>
+      </div>
+      <div class="swatch">
+        <span class="chip" style="background: var(--bg-subtle);"></span>
+        <span class="meta">
+          <span class="name">Subtle</span>
+          <span class="hex">#F4EFE5</span>
+        </span>
+      </div>
+      <div class="swatch">
+        <span class="chip" style="background: var(--bg-deep);"></span>
+        <span class="meta">
+          <span class="name">Deep</span>
+          <span class="hex">#ECE6D8</span>
+        </span>
+      </div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 48px;">Ink · 偏暖的墨色阶</h3>
+    <div class="swatch-row" style="grid-template-columns: repeat(9, 1fr);">
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-1000);"></span><span class="meta"><span class="hex">1000</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-900);"></span><span class="meta"><span class="hex">900</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-800);"></span><span class="meta"><span class="hex">800</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-700);"></span><span class="meta"><span class="hex">700</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-500);"></span><span class="meta"><span class="hex">500</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-400);"></span><span class="meta"><span class="hex">400</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-300);"></span><span class="meta"><span class="hex">300</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-200);"></span><span class="meta"><span class="hex">200</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 64px; background: var(--ink-100);"></span><span class="meta"><span class="hex">100</span></span></div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 48px;">Amber · 琥珀光,不是橙色</h3>
+    <div class="swatch-row" style="grid-template-columns: repeat(6, 1fr);">
+      <div class="swatch"><span class="chip" style="height: 80px; background: var(--amber-700);"></span><span class="meta"><span class="name">700</span><span class="hex">#845118</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 80px; background: var(--amber-600);"></span><span class="meta"><span class="name">600</span><span class="hex">#A86B22</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 80px; background: var(--amber-500);"></span><span class="meta"><span class="name">500 ★</span><span class="hex">#C8842B</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 80px; background: var(--amber-400);"></span><span class="meta"><span class="name">400</span><span class="hex">#DCA458</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 80px; background: var(--amber-300);"></span><span class="meta"><span class="name">300</span><span class="hex">#E8C28E</span></span></div>
+      <div class="swatch"><span class="chip" style="height: 80px; background: var(--amber-100);"></span><span class="meta"><span class="name">100</span><span class="hex">#F5E4C2</span></span></div>
+    </div>
+
+    <div class="compare">
+      <div class="compare-card">
+        <div class="label is"><span class="tag">是</span><span>琥珀光 · 沉、暖、含蓄</span></div>
+        <div class="body" style="background: var(--amber-500);"></div>
+      </div>
+      <div class="compare-card">
+        <div class="label isnt"><span class="tag">不是</span><span>荧光橙 · 浮、刺、廉价</span></div>
+        <div class="body" style="background: #FF8C2A;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 2 · 字 ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">02 · Typography</span>
+      <h2>字像印出来,不像渲染出来。</h2>
+      <p>显示字用 Instrument Serif —— 编辑级的衬线,带一点书卷气;正文用 SF Pro / 苹方 —— macOS 原生的工艺标准。中英按 1.125 的模数走呼吸。</p>
+    </header>
+
+    <div class="type-scale">
+      <div class="type-row"><span class="ref">Display · 56</span><span class="t-display">Corivo,<em>你工作时坐在你旁边的那个人。</em></span></div>
+      <div class="type-row"><span class="ref">H1 · 32</span><span class="t-h1">在合适的时候,说一句合适的话。</span></div>
+      <div class="type-row"><span class="ref">H2 · 24</span><span class="t-h2">写作时它陪你查资料,不打断你的思路</span></div>
+      <div class="type-row"><span class="ref">H3 · 18</span><span class="t-h3">把刚才看的页面整理成几条要点</span></div>
+      <div class="type-row"><span class="ref">Body L · 17</span><span class="t-body-l">这一段比正文略大,用在 lede、引言或对话中需要被注意到的句子。</span></div>
+      <div class="type-row"><span class="ref">Body · 15</span><span class="t-body">默认正文。中英文混排时按 0.005em 字距走,行高 1.6,让字之间有呼吸的空隙——既不挤,也不松。</span></div>
+      <div class="type-row"><span class="ref">Small · 13</span><span class="t-small">次要文字、说明、辅助标签。在视觉上要"退后一步",但仍然能读清楚。</span></div>
+      <div class="type-row"><span class="ref">Caption · 12</span><span class="t-caption">最小可读字号,用于元数据、时间戳、技术性标签。</span></div>
+    </div>
+
+    <div class="mixed-sample">
+      <p>"刚才那个 PR 里 reviewer 提到的 race condition,具体在哪一段?" —— Corivo 在你打字时,已经从你过去 15 分钟看过的 GitHub diff 里把上下文翻了出来。它不抢答,等你说完。</p>
+      <p>这段话里中文和 English、半角与全角、code 标识与人话混在一起。<code>useChatStream()</code> 这样的 mono 在正文里出现时,要恰好跟正文对齐,不能凸出来一截。</p>
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 3 · 边界与质感 ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">03 · Surface · Borders & Shadows</span>
+      <h2>0.5px 描边,双层叠影。</h2>
+      <p>区分"工程师 demo"和"成熟产品"的不是大方向,是这些 0.5 个像素的事。Retina 上的 0.5px 才是真正的"线",1px 已经像被加粗了的笔画。阴影从来不是单层——近距离的锐影定形状,远距离的弥散给重量。</p>
+    </header>
+
+    <div class="surface-row">
+      <div class="surface-card s-hairline">
+        <span class="surface-name">Hairline</span>
+        <span class="surface-meta">0.5px solid<br>rgba(28,26,23,.07)</span>
+      </div>
+      <div class="surface-card s-sm">
+        <span class="surface-name">Shadow · sm</span>
+        <span class="surface-meta">0.5px ring<br>+ 1px y</span>
+      </div>
+      <div class="surface-card s-md">
+        <span class="surface-name">Shadow · md</span>
+        <span class="surface-meta">0.5px ring<br>+ 2px + 12px</span>
+      </div>
+      <div class="surface-card s-lg">
+        <span class="surface-name">Shadow · lg</span>
+        <span class="surface-meta">0.5px ring<br>+ 4px + 24px</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 4 · 组件 ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">04 · Components</span>
+      <h2>几块基础积木。</h2>
+      <p>这些不是组件库,只是把上面所有原则塞进同一个最小尺度看看——它们摞起来,就是后面所有界面的肌肉。</p>
+    </header>
+
+    <div class="components-grid">
+
+      <div class="comp-cell">
+        <span class="comp-label">Button</span>
+        <div class="btn-row">
+          <button class="btn btn-primary">主要操作</button>
+          <button class="btn btn-ghost">次要</button>
+          <button class="btn btn-text">取消</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-amber">Amber · 限定场景</button>
+        </div>
+        <span class="mono">主操作默认走深墨色,Amber 仅在最需要"品牌印记"时出现。</span>
+      </div>
+
+      <div class="comp-cell">
+        <span class="comp-label">Input</span>
+        <div class="input-shell">
+          <label>问点什么</label>
+          <input class="input" placeholder="或者直接双击 ⌥ 召唤我" />
+        </div>
+        <span class="mono">焦点状态用 4px 的弱光圈,而不是粗描边。</span>
+      </div>
+
+      <div class="comp-cell" style="grid-column: span 2;">
+        <span class="comp-label">List</span>
+        <div class="list">
+          <div class="list-item">
+            <span class="li-title">关于刚才那个 spec 的几个 follow-up 问题</span>
+            <span class="li-meta">2m ago</span>
+          </div>
+          <div class="list-item">
+            <span class="li-title">把 SessionManager 的实现整理成 ADR</span>
+            <span class="li-meta">14m ago</span>
+          </div>
+          <div class="list-item">
+            <span class="li-title">VC 沟通时被问到的三个问题</span>
+            <span class="li-meta">yesterday</span>
+          </div>
+          <div class="list-item">
+            <span class="li-title">2026 Q2 路线图初稿讨论</span>
+            <span class="li-meta">2d ago</span>
+          </div>
+        </div>
+        <span class="mono">悬停时背景轻微提亮,不画选中描边。</span>
+      </div>
+
+      <div class="comp-cell">
+        <span class="comp-label">Small Card</span>
+        <div class="small-card">
+          <div class="sc-meta">14:32 · figma.com</div>
+          <div class="sc-title">Quick Ask · 浮层结构草图</div>
+          <div class="sc-body">从屏幕底部缓慢浮现,200ms 内到位,不弹跳。</div>
+        </div>
+      </div>
+
+      <div class="comp-cell">
+        <span class="comp-label">Tag · status</span>
+        <div class="btn-row">
+          <span class="btn btn-ghost" style="height: 26px; padding: 0 12px; font-size: 12px; cursor: default;">捕捉中</span>
+          <span class="btn" style="height: 26px; padding: 0 12px; font-size: 12px; background: var(--amber-tint); color: var(--amber-700); border-color: transparent; cursor: default;">流式输出</span>
+          <span class="btn" style="height: 26px; padding: 0 12px; font-size: 12px; background: var(--bg-deep); color: var(--ink-700); border-color: transparent; cursor: default;">已停止</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 5 · Corivo 微样片 ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">05 · A glimpse of Corivo</span>
+      <h2>把它放进一个最小场景。</h2>
+      <p>这不是 Quick Ask 的最终设计,只是把上面所有原则压缩进一个浮层卡片——你可以借它判断"这个味儿对不对"。注意那根光标,它在呼吸。</p>
+    </header>
+
+    <div class="corivo-stage">
+
+      <div class="quick-ask">
+        <div class="qa-context">
+          <div class="qa-icon"></div>
+          <div class="qa-app">在看 <span>· corivo-architecture-v3-spec.md · 第 4 节</span></div>
+          <div class="qa-dot"></div>
+        </div>
+        <div class="qa-input">
+          <div class="qa-text">把这一节的核心三件事整理成 bullet<span class="breath"></span></div>
+          <div class="qa-meta">
+            <span>正在读屏</span>
+            <span><span class="kbd">⌘</span><span class="kbd">↵</span> 发送 · <span class="kbd">esc</span> 收起</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-state">
+        <div class="es-mark"></div>
+        <div class="es-text">还没问过我什么。</div>
+        <div class="es-hint">双击 ⌥,或在这里开始一句话。</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ────────────────────────── 6 · 是 / 不是 ────────────────────────── -->
+  <section>
+    <header>
+      <span class="eyebrow">06 · Is / Isn't</span>
+      <h2>用两列把判据钉死。</h2>
+      <p>这八对是后面所有设计决策的快速 review 表。任何一张稿子做完,左右两列对一遍,如果偏向右列,就要回去改。</p>
+    </header>
+
+    <div class="is-isnt">
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">暖白纸感</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">死白 / 工业灰</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">琥珀光,出现得克制</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">满屏 amber gradient</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">字像印出来</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">字像 LCD 渲染</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">慢半拍但稳的动效</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">弹跳张扬的入场</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">0.5px 描边</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">1px 笔画感</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">双层阴影,有重量</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">单层硬阴影</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">空状态像同事说话</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">"暂无数据"</span></div>
+
+      <div class="ii-cell is"><span class="ii-tag">是</span><span class="ii-text">系统字 + macOS 原生工艺</span></div>
+      <div class="ii-cell isnt"><span class="ii-tag">不是</span><span class="ii-text">Material / Ant 工业感</span></div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <footer>
+    <p class="sig">Tone Reference v0 · 2026-05-09</p>
+    <p>这一份是色温、字呼吸、阴影厚度的"墙板"——不是界面、不是承诺。如果整体气质对了,我会进 Step 1:重新组织信息架构(把"提问 / 时间线 / Quick Ask / 设置"拧成一件事)。如果哪几块不对,我们调完底再往下走。</p>
+  </footer>
+
+</main>
+
+</body>
+</html>

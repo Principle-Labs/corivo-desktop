@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  CorivoCaptureHelper.app/Contents/Info.plist
+
+  Intentionally minimal. The four keys below are what TCC's
+  responsible-process attribution needs to recognise this as a "child
+  helper of Corivo.app" rather than a separate TCC subject:
+
+    - CFBundleIdentifier: stable ID (so TCC.db can key off it for any
+      categories that don't get fully attributed up to the parent).
+      The dotted form mirrors Apple's xpc-helper convention; it
+      doesn't *cause* attribution but makes log scans easier.
+    - CFBundleExecutable / CFBundleName: required by Launch Services.
+    - LSUIElement = YES: keep the helper out of the Dock and Cmd+Tab.
+      Without this, AppKit linkage causes Launch Services to register
+      the process and bounce its icon (this was CO-31).
+
+  CRITICAL: do NOT add any NS*UsageDescription here. If you do, tccd
+  treats this bundle as its own TCC subject and the user sees a
+  separate "Corivo Capture Helper" entry in System Settings → Privacy.
+  All usage descriptions live in apps/desktop/src-tauri/Info.plist.
+-->
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>ai.corivo.desktop.capture-helper</string>
+  <key>CFBundleName</key>
+  <string>Corivo Capture Helper</string>
+  <key>CFBundleExecutable</key>
+  <string>CorivoCaptureHelper</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.1.0</string>
+  <key>CFBundleVersion</key>
+  <string>0.1.0</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>14.0</string>
+  <key>LSUIElement</key>
+  <true/>
+</dict>
+</plist>

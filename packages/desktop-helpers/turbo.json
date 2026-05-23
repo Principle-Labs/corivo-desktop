@@ -1,0 +1,42 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": [
+        "build.mjs",
+        "macos/Sources/**",
+        "macos/Package.swift",
+        "macos/build.sh",
+        "macos/HelperInfo.plist",
+        "macos/Helper.entitlements",
+        "windows/src/**",
+        "windows/CMakeLists.txt",
+        "windows/build.ps1",
+        "package.json"
+      ],
+      "outputs": [
+        "../../apps/desktop/src-tauri/binaries/CorivoCaptureHelper.app/**",
+        "../../apps/desktop/src-tauri/binaries/corivo-capture-helper-*"
+      ]
+    },
+    "build:release": {
+      "inputs": [
+        "build.mjs",
+        "macos/Sources/**",
+        "macos/Package.swift",
+        "macos/build.sh",
+        "macos/HelperInfo.plist",
+        "macos/Helper.entitlements",
+        "windows/src/**",
+        "windows/CMakeLists.txt",
+        "windows/build.ps1",
+        "package.json"
+      ],
+      "outputs": [
+        "../../apps/desktop/src-tauri/binaries/CorivoCaptureHelper.app/**",
+        "../../apps/desktop/src-tauri/binaries/corivo-capture-helper-*"
+      ]
+    }
+  }
+}

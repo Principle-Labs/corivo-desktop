@@ -1,0 +1,57 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build artifacts
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+dist-ssr/
+**/dist-ssr/
+.next/
+**/.next/
+.turbo/
+**/.turbo/
+.worktrees/
+**/.worktrees/
+*.tsbuildinfo
+**/latest.json
+
+# Local config
+*.local
+.env
+.env.*
+# Templates carrying no secrets are checked in so contributors know
+# which vars are required.
+!*.env.example
+
+# Tauri / sidecars
+**/src-tauri/target/
+**/src-tauri/gen/
+**/src-tauri/binaries/
+packages/agent/.build/
+packages/mcp/target/
+packages/desktop-helpers/macos/.build/
+packages/desktop-helpers/windows/build/
+# Updater minisign secret (private key). The pubkey is checked in via
+# tauri.conf.json#plugins.updater.pubkey when forks set one up.
+.tauri/
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.pnpm-store
+.zed
+.claude

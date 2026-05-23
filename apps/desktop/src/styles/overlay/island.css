@@ -1,0 +1,312 @@
+.island-stage {
+  background: transparent;
+}
+
+.top-island {
+  position: relative;
+  isolation: isolate;
+  transform-origin: top center;
+  overflow: visible;
+  background: transparent;
+  color: white;
+}
+
+.top-island__shell {
+  position: absolute;
+  top: 0;
+  z-index: 0;
+  display: block;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.top-island__shell-path {
+  fill: black;
+}
+
+.top-island__surface {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: transparent;
+  color: inherit;
+}
+
+.top-island__content {
+  display: flex;
+  position: relative;
+  height: 100%;
+  width: 100%;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 16px;
+}
+
+.top-island__content[data-layout="expanded"] {
+  justify-content: flex-start;
+  padding: 10px 16px 16px;
+}
+
+.top-island__headline {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: var(--island-compact-height, 46px);
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.top-island__headline[data-layout="center"] {
+  justify-content: center;
+}
+
+.top-island__headline[data-layout="start"] {
+  justify-content: flex-start;
+}
+
+.top-island__headline[data-layout="split"],
+.top-island__headline[data-layout="split-expanded"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--island-notch-gap, 0px) minmax(0, 1fr);
+  gap: 0;
+  align-items: center;
+}
+
+.top-island__content[data-layout="expanded"] .top-island__headline {
+  min-height: 36px;
+}
+
+.top-island__headline-left,
+.top-island__headline-right {
+  min-width: 0;
+}
+
+.top-island__headline-left {
+  justify-self: end;
+}
+
+.top-island__headline-right {
+  justify-self: start;
+}
+
+.top-island__headline-left-inner {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.top-island__headline-meta {
+  white-space: nowrap;
+  font-size: 0.76rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.top-island__headline-gap {
+  width: 100%;
+  height: 100%;
+}
+
+.top-island__icon {
+  position: relative;
+  height: 7px;
+  width: 19px;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.top-island__icon::before,
+.top-island__icon::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  /* Honey amber gradient — system-v0 §02 (was #fbbf24/#d97706 yellow). */
+  background: radial-gradient(circle at 35% 30%, #d5a878, #a86b22 70%);
+  box-shadow: 0 0 8px rgba(168, 107, 34, 0.55);
+  transform-origin: center;
+}
+
+.top-island__icon::before {
+  left: 0;
+  animation: corivo-eye-breathe 3.4s ease-in-out infinite,
+    corivo-eye-blink 5.2s ease-in-out infinite;
+}
+
+.top-island__icon::after {
+  right: 0;
+  animation: corivo-eye-breathe 3.4s ease-in-out infinite 80ms,
+    corivo-eye-blink 5.2s ease-in-out infinite 80ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top-island__icon::before,
+  .top-island__icon::after {
+    animation: none;
+  }
+}
+
+.top-island__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.83rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.top-island__body {
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
+  transform-origin: top center;
+  pointer-events: none;
+}
+
+.top-island__body[data-in-flow="false"] {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 100%;
+  margin-top: 0;
+}
+
+.top-island__body[data-in-flow="true"] {
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+  pointer-events: auto;
+}
+
+.top-island__body[data-layout="full-width"] {
+  left: -16px;
+  right: -16px;
+  width: calc(100% + 32px);
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.top-island__body::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0.14) 12%,
+    rgba(255, 255, 255, 0.16) 88%,
+    rgba(255, 255, 255, 0)
+  );
+}
+
+.top-island__body-title {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.top-island__body-copy {
+  margin-top: 9px;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-height: 1.38;
+  font-size: 0.98rem;
+  font-weight: 560;
+  color: rgba(255, 255, 255, 0.96);
+  text-wrap: balance;
+}
+
+.top-island__feedback {
+  margin-top: 12px;
+}
+
+.top-island__feedback-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-island__feedback-input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.94);
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.top-island__feedback-input::placeholder {
+  color: rgba(255, 255, 255, 0.46);
+}
+
+.top-island__feedback-input:focus {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.top-island__feedback-input:disabled {
+  opacity: 0.7;
+}
+
+.top-island__feedback-submit {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.92);
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.top-island__feedback-submit:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.top-island__feedback-error {
+  margin-top: 7px;
+  font-size: 0.76rem;
+  color: rgba(255, 189, 189, 0.92);
+}
+
+.top-island__feedback-confirmation {
+  margin-top: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  padding: 9px 12px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.88);
+}
