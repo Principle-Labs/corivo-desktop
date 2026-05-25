@@ -26,6 +26,7 @@ pub mod privacy_filter;
 pub mod quick_ask_window;
 pub mod recall;
 pub mod retention;
+pub mod scheduled_workflows;
 pub mod session_learner;
 pub mod skill_share;
 pub mod snapshot_consumer;
