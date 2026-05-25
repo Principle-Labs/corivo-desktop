@@ -114,7 +114,28 @@ const SCHEMA_SQL: &str = include_str!("schema.sql");
 ///     purge-and-apply 会把历史 ax_text 一并丢掉(pre-release 期可弃)。
 ///   * 模型加载 / hook / settings UI 在后续 commit 接入,本 commit
 ///     只把 schema + domain 类型先就位。
-pub const TARGET_SCHEMA_VERSION: i64 = 1500;
+/// v1510 — 新增 `workflow_schedules` + `workflow_runs` 两张表
+///   (`services::scheduled_workflows`). 定义本体落到文件系统
+///   (`$APPDATA/corivo/workflows/<slug>/WORKFLOW.md`),表只承载触发器
+///   + 运行态 + 历史。purge-and-apply,新表无历史。
+/// v1511 — `workflow_schedules` 增 `source` + `created_by_thread_id` 两列。
+///   source 区分用户创建 vs agent 通过 `schedule_task` native tool 创建;
+///   created_by_thread_id 指向触发创建的 chat_thread(ON DELETE SET NULL)。
+///   purge-and-apply,新列无历史。
+/// v1512 — workflow 通知策略 + 已读跟踪 (PR6)。
+///   * `workflow_schedules.notify_policy ∈ ('always','on_change','silent')`
+///     让 workflow 作者控制 macOS banner / in-app toast 的触发条件。
+///   * `workflow_runs` 增 `summary` / `content_hash` / `acknowledged_at`
+///     —— summary 喂 banner 正文; content_hash 用于 on_change 去重;
+///     acknowledged_at 驱动 sidebar 未读 dot。
+///   purge-and-apply,新列无历史。
+/// v1513 — `workflow_runs.slug` 上原本挂着
+///   `REFERENCES workflow_schedules(slug) ON DELETE CASCADE`,但"立即运行
+///   一个没排时间的 workflow"(WORKFLOW.md 在磁盘上、schedules 表里没行)
+///   是合法路径,每次 record_run 都被 FK 拒掉,UI 永远卡在"正在运行"。
+///   去掉 FK,改由 `delete_schedule` 显式清理 `workflow_runs` 行。
+///   purge-and-apply,旧 runs 历史丢弃(本来就只有 0 行)。
+pub const TARGET_SCHEMA_VERSION: i64 = 1513;
 
 /// Every table name that any ancestor of this schema introduced. Drop
 /// order matters: children before parents (FKs) when foreign_keys are
@@ -198,12 +219,16 @@ const LEGACY_TABLES: &[&str] = &[
     // v300..v600 only, dropped at v700 (用户主动标注层撤回)
     "saved_clips",
     // v1400+ live tables — purge-and-apply on later bumps (e.g.
-    // v1420 → v1430) must drop these too, otherwise schema.sql's
+    // v1420 → v1510) must drop these too, otherwise schema.sql's
     // `CREATE TABLE` fails with "table X already exists". The
     // matching `*_fts` virtual tables are caught by
     // `drop_orphan_fts_vtables`, no need to list them here.
     "notes",
     "background_agent_task_checkpoints",
+    // v1510 additions — drop on later bumps so schema.sql's CREATE
+    // TABLE can re-create them without colliding.
+    "workflow_runs",
+    "workflow_schedules",
     "schema_version",
 ];
 

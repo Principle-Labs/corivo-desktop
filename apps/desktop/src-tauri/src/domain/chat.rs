@@ -90,6 +90,11 @@ impl ChatThreadKind {
 pub enum SystemTaskKind {
     PersonaDistill,
     SessionMemoryLearning,
+    /// `services::scheduled_workflows` — a user-authored workflow fired
+    /// by the workflow Ticker. `workflow_runs.thread_id` ↔
+    /// `chat_threads.id` is what connects a given system thread back
+    /// to its slug.
+    ScheduledWorkflow,
 }
 
 impl SystemTaskKind {
@@ -97,6 +102,7 @@ impl SystemTaskKind {
         match self {
             Self::PersonaDistill => "persona_distill",
             Self::SessionMemoryLearning => "session_memory_learning",
+            Self::ScheduledWorkflow => "scheduled_workflow",
         }
     }
 
@@ -104,6 +110,7 @@ impl SystemTaskKind {
         match raw {
             "persona_distill" => Some(Self::PersonaDistill),
             "session_memory_learning" => Some(Self::SessionMemoryLearning),
+            "scheduled_workflow" => Some(Self::ScheduledWorkflow),
             _ => None,
         }
     }

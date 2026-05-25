@@ -7,3 +7,4 @@ pub mod ipc_error;
 pub mod note;
 pub mod privacy;
 pub mod snapshot_envelope;
+pub mod workflow;

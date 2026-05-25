@@ -17,6 +17,7 @@
     "core:window:allow-show",
     "core:window:allow-set-size",
     "core:window:allow-set-position",
-    "fs:allow-app-read-recursive"
+    "fs:allow-app-read-recursive",
+    "notification:default"
   ]
 }

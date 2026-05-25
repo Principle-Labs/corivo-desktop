@@ -499,6 +499,134 @@ CREATE TABLE background_agent_task_checkpoints (
 );
 
 ------------------------------------------------------------------------
+-- workflow_schedules — scheduled workflow runtime state (v1510).
+--
+-- Definitions live on the filesystem under
+-- `$APPDATA/corivo/workflows/<slug>/WORKFLOW.md` (system prompt
+-- template + tool whitelist in frontmatter). This table only tracks
+-- the *when* + *what happened*:
+--   trigger_kind / trigger_expr — see services::scheduled_workflows::trigger
+--   next_run_at  — Ticker fires when this is <= now()
+--   last_run_at  — most recent firing (NULL = never run)
+--   last_status  — 'success' | 'failure' | NULL
+--
+-- One schedule per slug. v1 deliberately doesn't support "many
+-- triggers per workflow" — keeps the Ticker scan trivially indexable
+-- and matches the structured-picker UI.
+------------------------------------------------------------------------
+
+CREATE TABLE workflow_schedules (
+    slug          TEXT PRIMARY KEY,
+    trigger_kind  TEXT NOT NULL
+        CHECK (trigger_kind IN ('interval', 'daily', 'weekly', 'once', 'cron')),
+    trigger_expr  TEXT NOT NULL,                            -- JSON-tagged Trigger payload
+    enabled       INTEGER NOT NULL DEFAULT 0
+        CHECK (enabled IN (0, 1)),
+    last_run_at   TEXT
+        CHECK (last_run_at IS NULL OR last_run_at GLOB '????-??-??T??:??:??.???Z'),
+    next_run_at   TEXT
+        CHECK (next_run_at IS NULL OR next_run_at GLOB '????-??-??T??:??:??.???Z'),
+    last_status   TEXT
+        CHECK (last_status IS NULL OR last_status IN ('success', 'failure')),
+    -- v1511: who originally created this schedule.
+    --   'user'  — authored from the /workflows UI.
+    --   'agent' — the corivo-agent called the `schedule_task` native
+    --             tool mid-conversation. The UI surfaces an "由 Corivo
+    --             自动创建" badge for these so the user can audit + prune.
+    -- `source` is preserved across user edits (UPDATE never overwrites
+    -- it) so the audit trail survives the user fine-tuning an agent-
+    -- proposed schedule.
+    source        TEXT NOT NULL DEFAULT 'user'
+        CHECK (source IN ('user', 'agent')),
+    -- v1511: when source='agent', the chat_thread the agent was driving
+    -- when it issued `schedule_task`. ON DELETE SET NULL preserves the
+    -- workflow row when the originating thread is deleted (the schedule
+    -- itself is still meaningful).
+    created_by_thread_id TEXT
+        REFERENCES chat_threads(id) ON DELETE SET NULL,
+    -- v1512: notification policy chosen by the workflow author (UI
+    -- drawer / schedule_task tool parameter / WORKFLOW.md frontmatter).
+    --   'always'    — fire macOS banner + in-app toast every successful run
+    --   'on_change' — only when this run's content_hash differs from the
+    --                 previous run for this slug (suppresses "same weekly
+    --                 summary again" spam)
+    --   'silent'    — never push; still write to workflow_runs and the
+    --                 sidebar Corivo 提议 section
+    notify_policy TEXT NOT NULL DEFAULT 'always'
+        CHECK (notify_policy IN ('always', 'on_change', 'silent')),
+    created_at    TEXT NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        CHECK (created_at GLOB '????-??-??T??:??:??.???Z'),
+    updated_at    TEXT NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        CHECK (updated_at GLOB '????-??-??T??:??:??.???Z')
+);
+
+-- Ticker scans `WHERE enabled = 1 AND next_run_at <= now()` — partial
+-- index keeps the hot path tiny when most schedules are paused or
+-- already-fired one-shots (`next_run_at IS NULL`).
+CREATE INDEX idx_workflow_schedules_due
+    ON workflow_schedules(next_run_at)
+    WHERE enabled = 1 AND next_run_at IS NOT NULL;
+
+------------------------------------------------------------------------
+-- workflow_runs — one row per dispatched run (v1510).
+--
+-- Written by `ScheduledWorkflowTask::consume_output`. `thread_id`
+-- points at the chat_threads row the BackgroundAgentScheduler created
+-- with kind='system' + system_task='scheduled_workflow' — the
+-- workflow history sub-route renders that thread inline.
+------------------------------------------------------------------------
+
+CREATE TABLE workflow_runs (
+    id              TEXT PRIMARY KEY,                       -- ULID
+    -- No FK to workflow_schedules: a run-now click on a definition
+    -- that has a WORKFLOW.md but no schedule row is a valid flow,
+    -- and the previous FK ON DELETE CASCADE rejected every such
+    -- insert as a FOREIGN KEY constraint failure. Definitions live
+    -- on the filesystem (`$APPDATA/corivo/workflows/<slug>/`);
+    -- workflow_runs is a flat audit log keyed by slug, and
+    -- workflows_delete is responsible for clearing its own rows.
+    slug            TEXT NOT NULL,
+    thread_id       TEXT
+        REFERENCES chat_threads(id) ON DELETE SET NULL,
+    status          TEXT NOT NULL CHECK (status IN ('success', 'failure')),
+    started_at      TEXT NOT NULL
+        CHECK (started_at GLOB '????-??-??T??:??:??.???Z'),
+    finished_at     TEXT NOT NULL
+        CHECK (finished_at GLOB '????-??-??T??:??:??.???Z'),
+    error_message   TEXT,
+    -- v1512: notification payload + read tracking.
+    --   summary       — short body text (~140 chars) used for macOS
+    --                   banner / in-app toast / sidebar preview.
+    --                   Truncated assistant final text on success;
+    --                   error_message on failure.
+    --   content_hash  — sha256 of the raw assistant output. Used by
+    --                   notify_policy='on_change' to skip duplicate
+    --                   pushes when this run produced the same content
+    --                   as the previous run for this slug.
+    --   acknowledged_at — when the user opened/read this run via the
+    --                   sidebar "Corivo 提议" section or the history
+    --                   dialog. NULL = unread (feeds the sidebar dot).
+    summary         TEXT,
+    content_hash    TEXT,
+    acknowledged_at TEXT
+        CHECK (acknowledged_at IS NULL OR acknowledged_at GLOB '????-??-??T??:??:??.???Z'),
+    created_at      TEXT NOT NULL
+        DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        CHECK (created_at GLOB '????-??-??T??:??:??.???Z')
+);
+
+-- Sidebar 's unread badge query: COUNT(*) WHERE acknowledged_at IS NULL.
+-- Partial index keeps the lookup cheap once most rows have been read.
+CREATE INDEX idx_workflow_runs_unread
+    ON workflow_runs(slug, started_at DESC)
+    WHERE acknowledged_at IS NULL;
+
+CREATE INDEX idx_workflow_runs_slug
+    ON workflow_runs(slug, started_at DESC);
+
+------------------------------------------------------------------------
 -- Schema-version sentinel.
 --
 -- Bump history (see migrations.rs):
@@ -558,6 +686,29 @@ CREATE TABLE background_agent_task_checkpoints (
 --               * chat_messages 加 search_tokens 列 + chat_messages_fts
 --                 虚表(仅 status='complete' 入索引)。
 --               * 统一召回层 services::memory 上线。
+--   1513      → workflow_runs.slug 不再 FK 到 workflow_schedules。
+--               run-now 一个没排时间的 workflow(WORKFLOW.md 在磁盘上、
+--               schedules 表里没行)是合法路径,旧的 FK ON DELETE CASCADE
+--               把每次 record_run 都拒成 FOREIGN KEY constraint failed,
+--               UI 永远卡在「正在运行...」。改由 delete_schedule 显式
+--               清理 workflow_runs 行(参见 store.rs::delete_schedule)。
+--   1512      → workflow_schedules 增 notify_policy; workflow_runs
+--               增 summary / content_hash / acknowledged_at 三列。
+--               支撑 PR6：macOS banner + in-app toast + sidebar 「Corivo 提议」
+--               未读分区。notify_policy ∈ ('always','on_change','silent')
+--               让 workflow 作者控制噪声;on_change 用 content_hash 比上
+--               一次同 slug 的输出来去重。
+--   1511      → workflow_schedules 增 source + created_by_thread_id 两列。
+--               source ∈ ('user','agent') 区分定时任务是用户在 /workflows
+--               UI 手写的,还是 agent 通过 `schedule_task` native tool
+--               自创建的(后者 UI 上贴 "由 Corivo 自动创建" badge)。
+--   1510      → 新增 workflow_schedules + workflow_runs 两张表
+--               (services::scheduled_workflows). 定义文件仍在
+--               $APPDATA/corivo/workflows/<slug>/WORKFLOW.md;表只承
+--               载触发器、enabled、next_run_at、last_run_at、运行历史。
+--               chat_threads.system_task CHECK 不再硬约束枚举值,
+--               所以新增 'scheduled_workflow' kind 无需再 bump
+--               schema(SystemTaskKind 是开放枚举,见 domain::chat)。
 --   1500      → privacy-filter-spec Phase 1 地基：frames 增加
 --               `ax_text_pii_spans` (TEXT, JSON) 列，记录 OpenAI
 --               privacy-filter 模型识别出的 PII span。purge-and-apply
@@ -585,4 +736,4 @@ CREATE TABLE schema_version (
         CHECK (applied_at GLOB '????-??-??T??:??:??.???Z')
 );
 
-INSERT INTO schema_version (version) VALUES (1500);
+INSERT INTO schema_version (version) VALUES (1513);

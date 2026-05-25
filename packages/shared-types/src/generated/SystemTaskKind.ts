@@ -5,4 +5,4 @@
  * enum (forward-compatible) so a new task lands without breaking
  * existing rows.
  */
-export type SystemTaskKind = "persona_distill" | "session_memory_learning";
+export type SystemTaskKind = "persona_distill" | "session_memory_learning" | "scheduled_workflow";
