@@ -38,6 +38,7 @@ import {
   useSettingsRequestedCardId,
 } from "@/stores/settings-dialog-store";
 
+import { PrivacyFilterSection } from "./privacy-filter-section";
 import { FieldGroup, SectionHeader, SettingsSkeleton } from "./settings-shared";
 
 const EXCLUSION_KEY = ["exclusion-list"] as const;
@@ -55,7 +56,8 @@ export const EXCLUSIONS_CARD_ID = "exclusions";
  *   2. Recent 24h inspector — frame count, size, peak hour, 24-bar histogram
  *   3. Quick Ask hotkey display
  *   4. Exclusion list
- *   5. System permissions (screen recording + AX)
+ *   5. PII filter — local-redaction model toggle + categories + maintenance
+ *   6. System permissions (screen recording + AX)
  *
  * Replaces the old Permissions tab — they were two halves of the same
  * "what Corivo sees" surface and were artificially split.
@@ -100,6 +102,10 @@ export function CapturePrivacySection() {
       <div id={EXCLUSIONS_CARD_ID} ref={exclusionsRef} className="scroll-mt-4">
         <ExclusionTabsCard />
       </div>
+      {/* PII filter 渲染为 3 个 FieldGroup(启用 / 类目 / 维护),
+          和上面的 cards 共用同一条 hairline 节奏。详见
+          privacy-filter-section.tsx 的注释。 */}
+      <PrivacyFilterSection />
       <PermissionsCard />
     </div>
   );

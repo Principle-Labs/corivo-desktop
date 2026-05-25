@@ -21,14 +21,16 @@ import {
   setPrivacySettings,
 } from "@/lib/tauri"
 
-import { FieldGroup, SectionHeader, SettingsSkeleton } from "./settings-shared"
+import { FieldGroup, SettingsSkeleton } from "./settings-shared"
 
 // React Query keys —— 集中放,免得 typo
 const STATUS_KEY = ["privacy-model-status"] as const
 const SETTINGS_KEY = ["privacy-settings"] as const
 
 /**
- * PII filter Settings 入口。
+ * PII filter Settings 入口。**作为 Capture & Privacy 下的一组
+ * FieldGroup 嵌入**——不再自带 SectionHeader / 外层 max-w-xl 容器,
+ * 由父级 (capture-privacy-section.tsx) 统一布局。
  *
  * 状态机:
  *   1. 模型未下载, enabled=false (默认/初始)
@@ -106,10 +108,9 @@ export function PrivacyFilterSection() {
 
   if (status.isLoading || settings.isLoading) {
     return (
-      <div className="max-w-xl space-y-8">
-        <SectionHeader title="PII 过滤" description="加载中…" />
+      <FieldGroup title="PII 过滤">
         <SettingsSkeleton />
-      </div>
+      </FieldGroup>
     )
   }
 
@@ -117,9 +118,9 @@ export function PrivacyFilterSection() {
   const currentSettings = settings.data
   if (!modelStatus || !currentSettings) {
     return (
-      <div className="max-w-xl space-y-8">
-        <SectionHeader title="PII 过滤" description="无法读取状态" />
-      </div>
+      <FieldGroup title="PII 过滤">
+        <p className="text-xs text-muted-foreground">无法读取状态</p>
+      </FieldGroup>
     )
   }
 
@@ -128,14 +129,14 @@ export function PrivacyFilterSection() {
   const isEnabled = currentSettings.enabled
 
   return (
-    <div className="max-w-xl space-y-8">
-      <SectionHeader
-        title="PII 过滤"
-        description="把屏幕文本发给 AI 之前,先在本地用 OpenAI privacy-filter 模型识别人名、邮箱、电话等敏感信息并打码。整个过程在本地完成,文本不会因为这次检测而离开你的设备。"
-      />
-
-      {/* 主开关 + 状态卡 */}
-      <FieldGroup title="启用状态">
+    <>
+      {/* 主开关 + 状态卡。FieldGroup 标题用功能名,描述紧跟其后 ——
+          这样作为 Capture & Privacy 下的一段嵌入,功能识别清楚但不
+          额外吃掉一个页面级 H2。 */}
+      <FieldGroup title="PII 过滤">
+        <p className="mb-3 text-xs text-muted-foreground">
+          把屏幕文本发给 AI 之前,先在本地用 OpenAI privacy-filter 模型识别人名、邮箱、电话等敏感信息并打码。整个过程在本地完成,文本不会因为这次检测而离开你的设备。
+        </p>
         {!isDownloaded ? (
           <NotDownloadedCard
             status={modelStatus}
@@ -198,7 +199,7 @@ export function PrivacyFilterSection() {
           </div>
         </FieldGroup>
       ) : null}
-    </div>
+    </>
   )
 }
 

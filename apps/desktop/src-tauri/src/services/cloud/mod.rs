@@ -47,7 +47,7 @@ pub(crate) mod private_hooks;
 
 // The closed-source overlay (`cloud::corivo`) ships only in the
 // private Corivo monorepo and is materialized into this directory by
-// `corivo-app/scripts/build-private.mjs` when building under the
+// `corivo-app/scripts/prepare-submodule.mjs` when building under the
 // `corivo-cloud` cargo feature. OSS builds leave this feature off, so
 // the module reference is dead code and the directory does not need
 // to exist — see ../../../../README.md for how the trait split works.
