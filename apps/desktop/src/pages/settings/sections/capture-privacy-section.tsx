@@ -26,6 +26,7 @@ import {
   exclusionList,
   exclusionRemove,
   framesList,
+  fromInvokeError,
   getCaptureStatus,
   openAxSettings,
   openSystemSettingsPrivacy,
@@ -116,13 +117,13 @@ function CaptureToggleCard() {
     mutationFn: startCapture,
     onSuccess: () =>
       void queryClient.invalidateQueries({ queryKey: ["capture-status"] }),
-    onError: (error) => toast.error(t.common.setupFailed(String(error))),
+    onError: (error) => toast.error(t.common.setupFailed(fromInvokeError(error))),
   });
   const stopMutation = useMutation({
     mutationFn: stopCapture,
     onSuccess: () =>
       void queryClient.invalidateQueries({ queryKey: ["capture-status"] }),
-    onError: (error) => toast.error(t.common.setupFailed(String(error))),
+    onError: (error) => toast.error(t.common.setupFailed(fromInvokeError(error))),
   });
 
   const phase = status.data?.phase ?? "stopped";
@@ -338,7 +339,7 @@ function AppExclusionList() {
       void queryClient.invalidateQueries({ queryKey: EXCLUSION_KEY });
     },
     onError: (error: unknown) => {
-      toast.error(t.common.addFailed(String(error)));
+      toast.error(t.common.addFailed(fromInvokeError(error)));
     },
   });
   const removeMutation = useMutation({
@@ -347,7 +348,7 @@ function AppExclusionList() {
       void queryClient.invalidateQueries({ queryKey: EXCLUSION_KEY });
     },
     onError: (error: unknown) => {
-      toast.error(t.common.deleteFailed(String(error)));
+      toast.error(t.common.deleteFailed(fromInvokeError(error)));
     },
   });
 

@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { cn } from "@repo/ui/lib/utils";
 
 import { useTranslation } from "@/i18n";
-import { markOnboardingCompleted } from "@/lib/tauri";
+import { fromInvokeError, markOnboardingCompleted } from "@/lib/tauri";
 
 /**
  * Shortcut step — final onboarding screen (v3 redesign,
@@ -35,7 +35,7 @@ export function ShortcutStep() {
       void navigate({ to: "/", replace: true });
     },
     onError: (error: unknown) => {
-      toast.error(t.common.saveFailed(String(error)));
+      toast.error(t.common.saveFailed(fromInvokeError(error)));
     },
   });
 

@@ -8,6 +8,7 @@ import { useTranslation } from "@/i18n";
 import {
   devOpenDevtools,
   devRevealDataDir,
+  fromInvokeError,
   resetOnboarding,
   type DevWindowLabel,
 } from "@/lib/tauri";
@@ -54,14 +55,14 @@ export function DeveloperSection() {
       toast.success(t.settings.developer.devtoolsOpened(displayName));
     },
     onError: (error: unknown) => {
-      toast.error(t.settings.developer.devtoolsFailed(String(error)));
+      toast.error(t.settings.developer.devtoolsFailed(fromInvokeError(error)));
     },
   });
 
   const revealDataDirMutation = useMutation({
     mutationFn: devRevealDataDir,
     onError: (error: unknown) => {
-      toast.error(t.settings.developer.revealDataDir.failed(String(error)));
+      toast.error(t.settings.developer.revealDataDir.failed(fromInvokeError(error)));
     },
   });
 
@@ -72,7 +73,7 @@ export function DeveloperSection() {
       navigate({ to: "/onboarding/permission" });
     },
     onError: (error: unknown) => {
-      toast.error(t.settings.developer.resetOnboarding.failed(String(error)));
+      toast.error(t.settings.developer.resetOnboarding.failed(fromInvokeError(error)));
     },
   });
 
@@ -87,7 +88,7 @@ export function DeveloperSection() {
       await writeText(payload);
       toast.success(t.settings.developer.copyConfig.success);
     } catch (error) {
-      toast.error(t.settings.developer.copyConfig.failed(String(error)));
+      toast.error(t.settings.developer.copyConfig.failed(fromInvokeError(error)));
     }
   }
 

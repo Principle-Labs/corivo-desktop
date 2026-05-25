@@ -29,7 +29,7 @@ import {
 import { useBillingMe } from "@/hooks/use-billing"
 import { useCapabilities } from "@/hooks/use-capabilities"
 import { useTranslation } from "@/i18n"
-import { authLogout } from "@/lib/tauri"
+import { authLogout, fromInvokeError } from "@/lib/tauri"
 import { openBillingDialog } from "@/stores/billing-dialog-store"
 import { openSettingsDialog } from "@/stores/settings-dialog-store"
 import { applyAuthStatus, useUserProfile } from "@/stores/user-profile-store"
@@ -92,7 +92,7 @@ export function UserCard() {
       window.location.reload()
     },
     onError: (error: unknown) => {
-      toast.error(t.common.logoutFailed(String(error)))
+      toast.error(t.common.logoutFailed(fromInvokeError(error)))
     },
   })
 

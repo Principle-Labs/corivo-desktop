@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslation } from "@/i18n";
-import { getConfig, setConfig } from "@/lib/tauri";
+import { fromInvokeError, getConfig, setConfig } from "@/lib/tauri";
 import type { Config } from "@/lib/types";
 
 const CONFIG_QUERY_KEY = ["config"] as const;
@@ -60,7 +60,7 @@ export function useConfig() {
       void queryClient.invalidateQueries({ queryKey: CONFIG_QUERY_KEY });
     },
     onError: (error: unknown) => {
-      toast.error(t.common.saveFailed(String(error)));
+      toast.error(t.common.saveFailed(fromInvokeError(error)));
     },
   });
 

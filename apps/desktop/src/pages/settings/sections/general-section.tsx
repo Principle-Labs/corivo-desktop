@@ -19,6 +19,7 @@ import { useTranslation } from "@/i18n";
 import type { Language, ThemePreference } from "@/lib/types";
 import {
   dataHardDelete,
+  fromInvokeError,
   getAutostartEnabled,
   resetOnboarding,
   setAutostartEnabled,
@@ -46,7 +47,7 @@ export function GeneralSection() {
       toast.success(t.settings.general.autostartUpdated);
     },
     onError: (error: unknown) => {
-      toast.error(t.common.setupFailed(String(error)));
+      toast.error(t.common.setupFailed(fromInvokeError(error)));
     },
   });
   const resetOnboardingMutation = useMutation({
@@ -56,7 +57,7 @@ export function GeneralSection() {
       navigate({ to: "/onboarding/permission" });
     },
     onError: (error: unknown) => {
-      toast.error(t.common.resetFailed(String(error)));
+      toast.error(t.common.resetFailed(fromInvokeError(error)));
     },
   });
   const [confirmText, setConfirmText] = useState("");
@@ -76,7 +77,7 @@ export function GeneralSection() {
       void queryClient.invalidateQueries();
     },
     onError: (error: unknown) => {
-      toast.error(t.common.deleteOpFailed(String(error)));
+      toast.error(t.common.deleteOpFailed(fromInvokeError(error)));
     },
   });
 

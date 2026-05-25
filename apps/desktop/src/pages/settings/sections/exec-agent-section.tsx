@@ -13,6 +13,7 @@ import { useTranslation } from "@/i18n";
 import {
   authLogout,
   authStatus,
+  fromInvokeError,
   modelsGetAvailable,
   modelsRefresh,
   type ModelMeta,
@@ -77,7 +78,7 @@ export function ExecAgentSection() {
       toast.success(t.settings.execAgent.modelsRefreshed);
     },
     onError: (error) =>
-      toast.error(t.settings.execAgent.refreshFailed(String(error))),
+      toast.error(t.settings.execAgent.refreshFailed(fromInvokeError(error))),
   });
 
   const logout = useMutation({
@@ -92,7 +93,7 @@ export function ExecAgentSection() {
       void navigate({ to: "/login", replace: true });
     },
     onError: (error) =>
-      toast.error(t.common.logoutFailed(String(error))),
+      toast.error(t.common.logoutFailed(fromInvokeError(error))),
   });
 
   // BYOK section is collapsed by default — surfaced as "advanced" so
