@@ -179,6 +179,7 @@ tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
+window-vibrancy = "0.6"
 windows-sys = { version = "0.61.2", features = [
     "Win32_Foundation",
     "Win32_System_Threading",

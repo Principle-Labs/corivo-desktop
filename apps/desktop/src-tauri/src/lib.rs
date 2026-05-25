@@ -895,8 +895,9 @@ fn with_platform_plugins<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri
     builder
 }
 
-/// Apply NSVisualEffectView vibrancy to the Quick Ask window so the
-/// background uses macOS's native blur instead of CSS `backdrop-filter`.
+/// Apply the native translucent backdrop to the Quick Ask window:
+/// NSVisualEffectView on macOS, Acrylic on Windows. The webview stays
+/// transparent and the OS draws the frosted material underneath.
 /// The window is created up-front by `tauri.conf.json` (`visible: false`),
 /// so `get_webview_window` succeeds during `setup`.
 ///
@@ -907,6 +908,11 @@ fn with_platform_plugins<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri
 /// stepped.
 #[cfg(target_os = "macos")]
 const QUICK_ASK_CORNER_RADIUS: f64 = 18.0;
+
+#[cfg(target_os = "windows")]
+const QUICK_ASK_WINDOWS_ACRYLIC_TINT: window_vibrancy::Color = (248, 241, 230, 170);
+#[cfg(target_os = "windows")]
+const QUICK_ASK_WINDOWS_BLUR_TINT: window_vibrancy::Color = (248, 241, 230, 145);
 
 fn apply_quick_ask_vibrancy<R: Runtime>(app: &AppHandle<R>) {
     #[cfg(target_os = "macos")]
@@ -926,7 +932,34 @@ fn apply_quick_ask_vibrancy<R: Runtime>(app: &AppHandle<R>) {
         }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        use window_vibrancy::{apply_acrylic, apply_blur};
+
+        let Some(window) = app.get_webview_window(QUICK_ASK_WINDOW_LABEL) else {
+            tracing::warn!("quick_ask.vibrancy.window_missing");
+            return;
+        };
+
+        // Acrylic is the Windows "frosted glass" material for transient
+        // surfaces. If the OS build does not support it, fall back to
+        // blur-behind so the transparent quick-ask webview still has an
+        // opaque-ish native backdrop instead of disappearing.
+        match apply_acrylic(&window, Some(QUICK_ASK_WINDOWS_ACRYLIC_TINT)) {
+            Ok(()) => tracing::info!("quick_ask.vibrancy.acrylic_applied"),
+            Err(acrylic_error) => {
+                tracing::warn!(
+                    ?acrylic_error,
+                    "quick_ask.vibrancy.acrylic_failed_falling_back_to_blur"
+                );
+                if let Err(blur_error) = apply_blur(&window, Some(QUICK_ASK_WINDOWS_BLUR_TINT)) {
+                    tracing::warn!(?blur_error, "quick_ask.vibrancy.blur_apply_failed");
+                }
+            }
+        }
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         let _ = app;
     }

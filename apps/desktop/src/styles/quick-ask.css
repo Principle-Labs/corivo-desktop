@@ -193,21 +193,21 @@ body[data-quick-ask-root="true"] #root {
      window (see below); see also `manualResized` in QuickAskWindow.tsx
      where the observer is gated so there's no feedback loop with the
      fixed shell height. */
-  /* Background blur is provided by macOS NSVisualEffectView (see
-     `apply_quick_ask_vibrancy` in src-tauri/src/lib.rs). The CSS layer
-     stays transparent so the native material shows through.
+  /* Background blur is provided by the native window backdrop (macOS
+     NSVisualEffectView, Windows Acrylic; see `apply_quick_ask_vibrancy`
+     in src-tauri/src/lib.rs). The CSS layer stays transparent so the
+     native material shows through.
 
      `border-radius` MUST match `QUICK_ASK_CORNER_RADIUS` in
      `src-tauri/src/lib.rs` — the vibrancy view uses that value for
      its rounded mask, and any drift makes the corners look stepped
      (CSS box clipped at one radius, native blur at another).
 
-     The drop-shadow is drawn natively by AppKit (`shadow: true` on the
-     `quick-ask` window in `tauri.conf.json`). macOS computes it from the
-     vibrancy view's alpha mask, so it follows the rounded corners
-     automatically — no CSS `box-shadow` needed (and none would render
-     anyway: the shell fills the entire window so anything outside the
-     box would be clipped by the OS frame).
+     The drop-shadow is drawn natively by the window manager (`shadow:
+     true` on the `quick-ask` window in `tauri.conf.json`). No CSS
+     `box-shadow` needed (and none would render anyway: the shell fills
+     the entire window so anything outside the box would be clipped by
+     the OS frame).
 
      No `border` here on purpose — the native shadow already gives the
      edge enough definition; a 1px stroke on top reads as an ugly hard
