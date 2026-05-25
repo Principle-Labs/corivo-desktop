@@ -266,6 +266,23 @@ export const zh = {
         unread: "有新回复",
         error: "执行失败",
       },
+      workflow: {
+        // Prefix used in the sidebar in front of the workflow's
+        // display name so a workflow run row reads as "⏰ 每日回顾"
+        // not "每日回顾" alone. The clock glyph is inline so it
+        // still works in the macOS title-bar overflow surface where
+        // an icon font might not be wired up.
+        prefixIcon: "⏰",
+        statusSuccess: "成功",
+        statusFailure: "失败",
+        // Banner shown above the transcript when the viewer is in
+        // read-only mode for a workflow run. Composed inline so the
+        // viewer can interpolate the workflow name + when it ran.
+        bannerTitle: (name: string) => `工作流：${name}`,
+        bannerSubtitle: (when: string) => `${when} 运行 · 只读视图`,
+        bannerManageAction: "去管理工作流",
+        readOnlyHint: "工作流运行结果只读 · 如需调整请去管理页编辑或重新运行",
+      },
     },
     placeholderTitle: "新 task",
     composer: {
@@ -275,7 +292,6 @@ export const zh = {
       send: "交给 Corivo",
       stop: "暂停",
       stopHint: "暂停推进",
-      contextHint: "含 focus context · 答复会附引用",
     },
     empty: {
       title: "还没开始过 task。",
@@ -927,12 +943,109 @@ export const zh = {
     empty: {
       title: "还没有工作流",
       body:
-        "完成一个复杂任务后，Corivo 会建议把它保存为工作流，下次用同样的步骤直接复用。等这套能力上线，你创建过的工作流会出现在这里。",
+        "新建一条工作流，给它定个执行时间，Corivo 就会按时替你跑。也可以先建好不启用，临时点「立即运行」按需触发。",
     },
     capabilityFooter: {
       summary: (count: number) =>
         `已连接 ${count} 项外部能力（飞书、Claude 等）`,
       manageAction: "去设置",
+    },
+    list: {
+      newAction: "+ 新建工作流",
+      enabledOn: "已启用",
+      enabledOff: "未启用",
+      unscheduled: "未排程",
+      unscheduledHint: "需要先设置执行时间才能启用",
+      scheduleAction: "设置时间",
+      runNow: "立即运行",
+      cancel: "取消",
+      running: "正在运行…",
+      edit: "编辑",
+      history: "查看历史",
+      delete: "删除",
+      neverRun: "尚未运行",
+      lastSuccess: (when: string) => `上次成功 · ${when}`,
+      lastFailure: (when: string) => `上次失败 · ${when}`,
+      nextRun: (when: string) => `下次 ${when}`,
+      runNowToast: "已加入运行队列",
+      deleteConfirmTitle: "删除工作流？",
+      deleteConfirm: (name: string) => `确定要删除工作流「${name}」吗？运行历史会一并删除。`,
+      agentBadge: "Corivo 自动创建",
+      agentBadgeTitle: "由 Corivo 在对话中通过 schedule_task 自动创建",
+    },
+    drawer: {
+      titleCreate: "新建工作流",
+      titleEdit: "编辑工作流",
+      slug: "标识 (slug)",
+      slugHint: "小写字母、数字、连字符；保存后不可更改",
+      name: "名字",
+      description: "描述",
+      systemPrompt: "系统提示",
+      systemPromptHint: "支持 {{date}} / {{date_yesterday}} 占位符",
+      tools: "允许的工具",
+      toolsHint: "逗号或换行分隔工具名，留空则不调用任何工具",
+      maxTurns: "最大轮次",
+      trigger: {
+        title: "执行时间",
+        kind: "类型",
+        interval: "每隔 N 分钟",
+        daily: "每天",
+        weekly: "每周",
+        once: "一次性",
+        cron: "Cron 表达式",
+        minutes: "分钟数",
+        hour: "时",
+        minute: "分",
+        tz: "时区",
+        weekdays: "周几",
+        at: "时刻",
+        cronExpr: "Cron",
+        cronHint: "5 字段标准 cron：分 时 日 月 周",
+        preview: (when: string) => `下次将在 ${when}`,
+        previewNone: "暂无未来触发时间",
+        previewInvalid: "时间格式无效",
+      },
+      enabled: "立即启用",
+      saveAction: "保存",
+      cancelAction: "取消",
+    },
+    history: {
+      // `empty` survives the v3 unified-history refactor (used by the
+      // workflows page's "查看历史" toast when no run exists yet).
+      // The old title/status keys lived inside `WorkflowHistoryDialog`
+      // — now deleted; equivalents moved to
+      // `ask.threadList.workflow.statusSuccess` / `.statusFailure`.
+      empty: "还没有运行记录",
+    },
+    toast: {
+      openAction: "查看",
+      running: "正在运行…",
+      dismiss: "收起",
+    },
+    sidebarSection: {
+      title: "Corivo 提议",
+      empty: "暂无新提议",
+      unread: (count: number) => `${count} 条未读`,
+    },
+    drawer_notify: {
+      label: "通知策略",
+      always: "每次都通知",
+      onChange: "只在内容变化时通知",
+      silent: "只进侧栏，不弹通知",
+    },
+    picker: {
+      intro: "挑一个常用模板，或者自己写一个。",
+      backToPicker: "← 换一个模板",
+    },
+    simple: {
+      whenLabel: "什么时候",
+      reminderTextLabel: "提醒内容",
+      reminderTextHint: "Corivo 会在到点时把这句话发给你。",
+      intentLabel: "做什么",
+      intentHint: "用自然语言告诉 Corivo 你要它做的事。Corivo 会按这段执行。",
+      enabledLabel: "立即启用",
+      advancedToggle: "显示完整字段",
+      advancedHide: "收起完整字段",
     },
   },
 } as const;

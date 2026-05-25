@@ -18,8 +18,13 @@ import type {
   PrivacyModelStatus,
   PrivacySettings,
   RequestEmailCodeOutcome,
+  Trigger,
+  TriggerPreview,
   Usage,
   WebsiteExclusionEntry,
+  WorkflowRun,
+  WorkflowSaveSpec,
+  WorkflowView,
 } from "@corivo/shared-types";
 import type {
   AuthStatus,
@@ -44,6 +49,34 @@ export type {
   ModelDirectory,
   ModelMeta,
 } from "@corivo/shared-types";
+
+/**
+ * Pull a human-readable message out of whatever an `invoke()` Promise
+ * rejected with. Tauri 2 rejects with the serialized `TauriError`
+ * tagged union (`{ kind, message, … }`); naive callers that do
+ * `String(error)` get `"[object Object]"` and the user sees nothing
+ * useful. CLAUDE.md long promised a `fromInvokeError` helper but
+ * nobody actually wrote one — every existing call site has the same
+ * latent bug, masked only by prefixing the noise with a "登出失败:"
+ * style label. This is the canonical version.
+ *
+ * Accepts anything (mutations + Promises type their errors as
+ * `unknown`) and falls back to `String(error)` only when none of the
+ * common shapes apply.
+ */
+export function fromInvokeError(error: unknown): string {
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  if (
+    error !== null &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof (error as { message: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
+  }
+  return String(error);
+}
 
 // --------------------------------------------------------------------------
 // Cloud capabilities
@@ -458,6 +491,81 @@ export async function modelsRefresh(): Promise<ModelDirectory> {
 
 export async function skillsListAvailable(): Promise<AvailableSkill[]> {
   return invoke<AvailableSkill[]>("skills_list_available");
+}
+
+// --------------------------------------------------------------------------
+// Scheduled workflows (/workflows page, v1430).
+//
+// Definition + schedule + run history. The save/delete paths touch both
+// $APPDATA/corivo/workflows/<slug>/WORKFLOW.md (filesystem) and the
+// workflow_schedules / workflow_runs tables (SQLite). `runNow` enqueues
+// onto the same BackgroundAgentScheduler the cron Ticker uses.
+// --------------------------------------------------------------------------
+
+export async function workflowsList(): Promise<WorkflowView[]> {
+  return invoke<WorkflowView[]>("workflows_list");
+}
+
+export async function workflowsListRuns(
+  args: { slug?: string; limit?: number } = {},
+): Promise<WorkflowRun[]> {
+  return invoke<WorkflowRun[]>("workflows_list_runs", args);
+}
+
+export async function workflowsGetRun(id: string): Promise<WorkflowRun | null> {
+  return invoke<WorkflowRun | null>("workflows_get_run", { id });
+}
+
+/** Validate a trigger and return the next firing time, without writing
+ *  anything. Used by the create/edit drawer to render "下次将在 …". */
+export async function workflowsPreviewTrigger(
+  trigger: Trigger,
+): Promise<TriggerPreview> {
+  return invoke<TriggerPreview>("workflows_preview_trigger", { trigger });
+}
+
+export async function workflowsSave(
+  spec: WorkflowSaveSpec,
+): Promise<WorkflowView> {
+  return invoke<WorkflowView>("workflows_save", { spec });
+}
+
+export async function workflowsDelete(slug: string): Promise<void> {
+  return invoke<void>("workflows_delete", { slug });
+}
+
+export async function workflowsSetEnabled(
+  slug: string,
+  enabled: boolean,
+): Promise<WorkflowView> {
+  return invoke<WorkflowView>("workflows_set_enabled", { slug, enabled });
+}
+
+/** Enqueue an immediate run. Returns the new `workflow_runs.id` so the
+ *  caller can poll history for the resulting row. */
+export async function workflowsRunNow(slug: string): Promise<string> {
+  return invoke<string>("workflows_run_now", { slug });
+}
+
+/** Cancel a running or queued workflow by slug. Returns `true` when
+ *  something was actually stopped. Backend's `on_dispatch_aborted`
+ *  hook handles cleanup (records a failure run + emits
+ *  `workflow:completed`) — frontend just needs to invalidate. */
+export async function workflowsCancelRun(slug: string): Promise<boolean> {
+  return invoke<boolean>("workflows_cancel_run", { slug });
+}
+
+/** Flip `workflow_runs.acknowledged_at` from NULL → now for one run.
+ *  Used by the sidebar "Corivo 提议" section when the user opens a
+ *  card, and by the history dialog auto-ack-on-open path. */
+export async function workflowsAcknowledgeRun(runId: string): Promise<void> {
+  return invoke<void>("workflows_acknowledge_run", { runId });
+}
+
+/** Total unread (`acknowledged_at IS NULL`) run count across every
+ *  workflow. Feeds the sidebar "Corivo 提议" section's red dot. */
+export async function workflowsUnreadCount(): Promise<number> {
+  return invoke<number>("workflows_unread_count");
 }
 
 // --------------------------------------------------------------------------

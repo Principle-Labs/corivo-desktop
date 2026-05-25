@@ -5,6 +5,7 @@ import { BillingDialog } from "@/components/billing/billing-dialog"
 import { FrameDrawer } from "@/components/layout/frame-drawer"
 import { Sidebar } from "@/components/layout/sidebar"
 import { TitleBar } from "@/components/layout/title-bar"
+import { WorkflowCompletedListener } from "@/components/layout/workflow-completed-listener"
 import { SettingsDialog } from "@/components/settings/settings-dialog"
 import { useCapabilities } from "@/hooks/use-capabilities"
 import { useThemeSync } from "@/hooks/use-theme-sync"
@@ -35,7 +36,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <Sidebar />
         <main
           data-testid="app-content-shell"
-          className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-t-[20px] border-t border-r border-l border-border bg-card shadow-[0_-1px_0_rgba(255,255,255,0.6)_inset]"
+          className="relative mt-5 mr-5 min-h-0 min-w-0 flex-1 overflow-hidden rounded-t-[20px] border-t border-r border-l border-border bg-card shadow-[0_-1px_0_rgba(255,255,255,0.6)_inset]"
         >
           <div
             className={cn(
@@ -48,6 +49,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </main>
       </div>
       <Toaster />
+      <WorkflowCompletedListener />
       <SettingsDialog />
       <FrameDrawer />
       {capabilities?.billing ? <BillingDialog /> : null}

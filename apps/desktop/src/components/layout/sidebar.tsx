@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter, useRouterState } from "@tanstack/react-router"
-import { Plus, Search, X } from "lucide-react"
+import { Loader2, Plus, Search, Workflow, X } from "lucide-react"
 import { Mascot } from "@/components/brand/mascot"
 import { SidebarThreadList } from "@/components/layout/sidebar-thread-list"
 import { StatusIndicator } from "@/components/layout/status-indicator"
 import { UserCard } from "@/components/layout/user-card"
+import { useWorkflowInFlightStore } from "@/stores/workflow-in-flight-store"
 import { useTranslation } from "@/i18n"
 import { useActiveThreadStore } from "@/stores/active-thread-store"
 
@@ -14,9 +15,9 @@ import { useActiveThreadStore } from "@/stores/active-thread-store"
  * Top:
  *   - Brand lockup
  *   - "+ 新会话"
- *   - Transient search input that drops in below "+ 新会话" on ⌘K —
- *     search is genuinely low-frequency for the thread list, so it
- *     doesn't deserve a permanent row.
+ *   - Navigation row (我的工作流). The same slot becomes a transient
+ *     search input on ⌘K — search is genuinely low-frequency for the
+ *     thread list, so it doesn't deserve a permanent row.
  * Body:
  *   - Thread list (置顶 / 最近 / 归档)
  * Bottom:
@@ -48,6 +49,20 @@ export function Sidebar() {
     if (pathname !== "/ask") {
       void router.navigate({ to: "/ask" })
     }
+  }
+
+  // Two rAFs: first lets `openNew` flush React state, second lands
+  // after `MessageStream` mounts/swaps the textarea for the new
+  // `inputKey` so the focus call actually finds it.
+  const focusComposer = () => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.querySelector<HTMLTextAreaElement>(
+          "[data-composer-input]",
+        )
+        el?.focus()
+      })
+    })
   }
 
   // Global ⌘K — wherever focus is, drop the inline search input into
@@ -82,17 +97,7 @@ export function Sidebar() {
         void router.navigate({ to: "/ask" })
       }
       openNew()
-      // Two rAFs: first lets `openNew` flush React state, second
-      // lands after `MessageStream` mounts/swaps the textarea for
-      // the new `inputKey` so the focus call actually finds it.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const el = document.querySelector<HTMLTextAreaElement>(
-            "[data-composer-input]",
-          )
-          el?.focus()
-        })
-      })
+      focusComposer()
     }
     document.addEventListener("keydown", onKey)
     return () => document.removeEventListener("keydown", onKey)
@@ -118,6 +123,7 @@ export function Sidebar() {
           onClick={() => {
             ensureAskRoute()
             openNew()
+            focusComposer()
           }}
           disabled={hasDraft}
           className="flex items-center gap-2 rounded-sm border border-[color-mix(in_oklab,var(--foreground)_13%,transparent)] bg-card px-2.5 py-1.5 text-[12.5px] font-medium tracking-[-0.005em] text-foreground transition-colors hover:border-[color-mix(in_oklab,var(--foreground)_22%,transparent)] disabled:opacity-50"
@@ -126,12 +132,14 @@ export function Sidebar() {
           {t.ask.threadList.newThread}
         </button>
 
-        {searchOpen && (
+        {searchOpen ? (
           <SidebarSearchInput
             value={searchQuery}
             onChange={setSearchQuery}
             onClose={closeSearch}
           />
+        ) : (
+          <WorkflowsNav onSearch={() => setSearchOpen(true)} />
         )}
       </div>
 
@@ -147,10 +155,86 @@ export function Sidebar() {
 }
 
 /**
- * Inline search input that drops into the top section while the user
- * is searching. Auto-focuses on mount; closes on Esc or the ✕ button.
- * Blur is NOT a close trigger — the user routinely tabs into the
- * thread list to click a result.
+ * Sidebar navigation row for the "我的工作流" route. Lives in the top
+ * section, just below "+ 新会话", so route-level navigation reads as
+ * primary IA rather than visually colliding with the bottom status
+ * cluster (capture / account / hint).
+ *
+ * The right edge carries a small ⌘K affordance: clicking it (or the
+ * global ⌘K hotkey) swaps this row out for the inline search input.
+ */
+function WorkflowsNav({ onSearch }: { onSearch: () => void }) {
+  const { t } = useTranslation()
+  const router = useRouter()
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const active = pathname.startsWith("/workflows")
+  // Tiny in-flight indicator next to the nav label. Replaces the
+  // dedicated "CORIVO 提议" sidebar section — that block confused
+  // users ("what's this 提议 thing?") and duplicated information the
+  // /workflows page already surfaces. A pulsing spinner inline here
+  // keeps the "Corivo is busy" signal without the noise.
+  const inFlightCount = useWorkflowInFlightStore((s) => s.entries.size)
+  return (
+    <div
+      className={`group flex items-center gap-1 rounded-sm transition-colors ${
+        active ? "bg-muted" : "hover:bg-muted/60"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          if (!active) {
+            void router.navigate({ to: "/workflows" })
+          }
+        }}
+        aria-current={active ? "page" : undefined}
+        className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left"
+      >
+        <Workflow
+          aria-hidden="true"
+          className={`h-3.5 w-3.5 shrink-0 transition-colors ${
+            active ? "text-foreground" : "text-muted-foreground"
+          }`}
+        />
+        <span
+          className={`min-w-0 flex-1 truncate text-[12.5px] font-medium tracking-[-0.005em] ${
+            active ? "text-foreground" : "text-foreground/85"
+          }`}
+        >
+          {t.sidebar.workflows}
+        </span>
+        {inFlightCount > 0 ? (
+          <span
+            className="flex shrink-0 items-center gap-0.5 text-[10.5px] text-muted-foreground"
+            title={t.workflows.toast.running}
+          >
+            <Loader2 className="h-3 w-3 animate-spin" />
+            {inFlightCount}
+          </span>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        onClick={onSearch}
+        aria-label={t.ask.threadList.searchPlaceholder}
+        title={t.ask.threadList.searchPlaceholder}
+        className="mr-1 flex shrink-0 items-center gap-1 rounded-[4px] px-1.5 py-1 text-muted-foreground transition-colors hover:bg-[color-mix(in_oklab,var(--foreground)_8%,transparent)] hover:text-foreground"
+      >
+        <Search className="h-3 w-3" />
+        <span className="flex items-center gap-[2px]">
+          <KbdMicro>⌘</KbdMicro>
+          <KbdMicro>K</KbdMicro>
+        </span>
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Inline search input that takes over the workflows-nav slot while the
+ * user is searching. Auto-focuses on mount; closes on Esc or the ✕
+ * button. Blur is NOT a close trigger — the user routinely tabs into
+ * the thread list to click a result.
  */
 function SidebarSearchInput({
   value,

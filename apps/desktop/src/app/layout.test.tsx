@@ -17,6 +17,10 @@ vi.mock("@repo/ui/components/sonner", () => ({
   Toaster: () => null,
 }))
 
+vi.mock("@/components/layout/workflow-completed-listener", () => ({
+  WorkflowCompletedListener: () => null,
+}))
+
 vi.mock("@/components/layout/frame-drawer", () => ({
   FrameDrawer: () => null,
 }))
