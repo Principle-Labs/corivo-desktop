@@ -72,7 +72,7 @@ export const zh = {
   },
 
   sidebar: {
-    workflows: "我的工作流",
+    workflows: "工作流",
     quickAskHintPrefix: "双击",
     quickAskHintSuffix: "召唤 Corivo",
     quickAskHintTitle: "在任何应用里双击 ⌥ Option，召唤 Corivo",
@@ -936,8 +936,8 @@ export const zh = {
   },
 
   workflows: {
-    eyebrow: "MY WORKFLOWS",
-    title: "我的工作流",
+    eyebrow: "ROUTINES",
+    title: "工作流",
     description:
       "工作流是 Corivo 帮你固化下来的可重复使用过程 —— 来自你做过的复杂任务、或你亲自定义的步骤。",
     empty: {

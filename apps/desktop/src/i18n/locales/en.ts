@@ -53,7 +53,7 @@ export const en: LocaleDict = {
   },
 
   sidebar: {
-    workflows: "My Workflows",
+    workflows: "Routines",
     quickAskHintPrefix: "Double-tap",
     quickAskHintSuffix: "to summon Corivo",
     quickAskHintTitle: "Double-tap ⌥ Option inside any app to summon Corivo",
@@ -258,11 +258,11 @@ export const en: LocaleDict = {
         prefixIcon: "⏰",
         statusSuccess: "Success",
         statusFailure: "Failed",
-        bannerTitle: (name: string) => `Workflow: ${name}`,
+        bannerTitle: (name: string) => `Routine: ${name}`,
         bannerSubtitle: (when: string) => `Ran ${when} · read-only view`,
-        bannerManageAction: "Manage workflow",
+        bannerManageAction: "Manage routine",
         readOnlyHint:
-          "Workflow runs are read-only. Edit or re-run from the workflows page.",
+          "Routine runs are read-only. Edit or re-run from the routines page.",
       },
     },
     placeholderTitle: "New task",
@@ -926,14 +926,14 @@ export const en: LocaleDict = {
   },
 
   workflows: {
-    eyebrow: "MY WORKFLOWS",
-    title: "My Workflows",
+    eyebrow: "ROUTINES",
+    title: "Routines",
     description:
-      "Workflows are repeatable procedures Corivo has crystalized from your complex tasks — or that you've authored yourself.",
+      "Routines are repeatable procedures Corivo has crystalized from your complex tasks — or that you've authored yourself.",
     empty: {
-      title: "No workflows yet",
+      title: "No routines yet",
       body:
-        "Create a workflow, attach a schedule, and Corivo will run it for you. You can also leave it disabled and only fire it on demand.",
+        "Create a routine, attach a schedule, and Corivo will run it for you. You can also leave it disabled and only fire it on demand.",
     },
     capabilityFooter: {
       summary: (count: number) =>
@@ -941,7 +941,7 @@ export const en: LocaleDict = {
       manageAction: "Open Settings",
     },
     list: {
-      newAction: "+ New workflow",
+      newAction: "+ New routine",
       enabledOn: "On",
       enabledOff: "Off",
       unscheduled: "Not scheduled",
@@ -958,16 +958,16 @@ export const en: LocaleDict = {
       lastFailure: (when: string) => `Last failure · ${when}`,
       nextRun: (when: string) => `Next ${when}`,
       runNowToast: "Queued",
-      deleteConfirmTitle: "Delete workflow?",
+      deleteConfirmTitle: "Delete routine?",
       deleteConfirm: (name: string) =>
-        `Delete workflow “${name}”? Run history will be removed too.`,
+        `Delete routine “${name}”? Run history will be removed too.`,
       agentBadge: "Created by Corivo",
       agentBadgeTitle:
         "Auto-created by Corivo through the schedule_task tool during a chat turn",
     },
     drawer: {
-      titleCreate: "New workflow",
-      titleEdit: "Edit workflow",
+      titleCreate: "New routine",
+      titleEdit: "Edit routine",
       slug: "Slug",
       slugHint: "Lowercase letters, digits, hyphens; immutable after save",
       name: "Name",
