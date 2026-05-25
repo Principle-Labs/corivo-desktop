@@ -18,6 +18,7 @@ mod protocol;
 pub mod rpc_server;
 pub mod runner;
 mod save_note_handler;
+mod schedule_task_handler;
 
 pub use local_context::{load as load_local_context, LoadInputs};
 pub use mcp_bridge::{McpBridge, PermissionReply};

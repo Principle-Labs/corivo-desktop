@@ -94,6 +94,14 @@ pub const DEFAULT_NATIVE_TOOLS: &[&str] = &[
     "thread_search",
     "chat_thread_get",
     "note_list",
+    // v1431 — scheduled-workflows lifecycle. The agent can create /
+    // list / cancel / edit cron-style reminders mid-conversation.
+    // Storage is shared with the user-facing /workflows page, so
+    // agent-created tasks show up there with a "Corivo 自动创建" badge.
+    "schedule_task",
+    "list_scheduled_tasks",
+    "cancel_scheduled_task",
+    "update_scheduled_task",
     "read",
     "bash",
     "edit",

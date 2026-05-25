@@ -43,6 +43,7 @@ use crate::db::repos::chat::{ChatMessageRepo, ChatThreadRepo};
 use crate::db::repos::frames::FrameRepo;
 use crate::db::repos::notes::NotesRepo;
 use crate::error::{CorivoError, Result};
+use crate::services::scheduled_workflows::WorkflowStore;
 
 use super::mcp_bridge::PendingMap;
 #[cfg(any(unix, windows))]
@@ -54,6 +55,10 @@ use super::memory_tools::{
 };
 #[cfg(any(unix, windows))]
 use super::save_note_handler::save_note_handler;
+use super::schedule_task_handler::{
+    cancel_scheduled_task_handler, list_scheduled_tasks_handler, schedule_task_handler,
+    update_scheduled_task_handler,
+};
 
 /// JSON-RPC method-not-found code (the only standard one we use today).
 #[cfg(any(unix, windows))]
@@ -90,6 +95,11 @@ pub struct RpcDeps {
     /// memory-system-spec §4 — directory holding `auto-persona.md`,
     /// the soft-persona document the distill task writes.
     pub app_data_dir: std::path::PathBuf,
+    /// v1431 — scheduled-workflows store, used by the `schedule_task`
+    /// family of native tools. `None` if AppState wasn't fully wired
+    /// (e.g. mid-boot race or test harness without the workflows
+    /// service); handlers surface a clear error in that case.
+    pub workflow_store: Option<std::sync::Arc<WorkflowStore>>,
 }
 
 /// Handle to a running RPC server. Drop or call `shutdown()` to stop the
@@ -549,6 +559,91 @@ async fn dispatch(req: RpcRequest, deps: RpcDeps) -> RpcResponse {
                 },
             }
         }
+        "schedule_task" => match schedule_task_handler(
+            req.params,
+            deps.workflow_store.as_ref(),
+            &deps.thread_id,
+        )
+        .await
+        {
+            Ok(v) => RpcResponse {
+                id,
+                result: Some(v),
+                error: None,
+            },
+            Err(e) => RpcResponse {
+                id,
+                result: None,
+                error: Some(RpcError {
+                    code: JSONRPC_INTERNAL,
+                    message: e.to_string(),
+                    data: Some(json!({ "code": "schedule_task_failed" })),
+                }),
+            },
+        },
+        "list_scheduled_tasks" => match list_scheduled_tasks_handler(
+            req.params,
+            deps.workflow_store.as_ref(),
+        )
+        .await
+        {
+            Ok(v) => RpcResponse {
+                id,
+                result: Some(v),
+                error: None,
+            },
+            Err(e) => RpcResponse {
+                id,
+                result: None,
+                error: Some(RpcError {
+                    code: JSONRPC_INTERNAL,
+                    message: e.to_string(),
+                    data: Some(json!({ "code": "list_scheduled_tasks_failed" })),
+                }),
+            },
+        },
+        "cancel_scheduled_task" => match cancel_scheduled_task_handler(
+            req.params,
+            deps.workflow_store.as_ref(),
+        )
+        .await
+        {
+            Ok(v) => RpcResponse {
+                id,
+                result: Some(v),
+                error: None,
+            },
+            Err(e) => RpcResponse {
+                id,
+                result: None,
+                error: Some(RpcError {
+                    code: JSONRPC_INTERNAL,
+                    message: e.to_string(),
+                    data: Some(json!({ "code": "cancel_scheduled_task_failed" })),
+                }),
+            },
+        },
+        "update_scheduled_task" => match update_scheduled_task_handler(
+            req.params,
+            deps.workflow_store.as_ref(),
+        )
+        .await
+        {
+            Ok(v) => RpcResponse {
+                id,
+                result: Some(v),
+                error: None,
+            },
+            Err(e) => RpcResponse {
+                id,
+                result: None,
+                error: Some(RpcError {
+                    code: JSONRPC_INTERNAL,
+                    message: e.to_string(),
+                    data: Some(json!({ "code": "update_scheduled_task_failed" })),
+                }),
+            },
+        },
         "ask_permission" => {
             // The sidecar generates rpc-ids itself; we use those as the
             // pending-key so Phase B can reuse the existing
