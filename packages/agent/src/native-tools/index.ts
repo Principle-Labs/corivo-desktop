@@ -18,6 +18,12 @@ import { chatThreadGetTool } from "./chat-thread-get.js";
 import { noteListTool } from "./note-list.js";
 import { memorySearchTool } from "./memory-search.js";
 import { autoPersonaGetPreviousTool } from "./auto-persona-get-previous.js";
+import {
+  cancelScheduledTaskTool,
+  listScheduledTasksTool,
+  scheduleTaskTool,
+  updateScheduledTaskTool,
+} from "./schedule-task.js";
 
 /**
  * Working directory for pi-coding-agent's bash / read / write / edit /
@@ -128,6 +134,14 @@ const REGISTRY: Record<string, AgentTool<any>> = {
   chat_thread_get: chatThreadGetTool,
   note_list: noteListTool,
   auto_persona_get_previous: autoPersonaGetPreviousTool,
+  // v1431 — scheduled-workflow lifecycle (services::scheduled_workflows
+  // on the Rust side). Each tool round-trips through `rustRpc` →
+  // `schedule_task_handler` etc. Storage is shared with the /workflows
+  // page so the user can see + edit anything the agent creates.
+  schedule_task: scheduleTaskTool,
+  list_scheduled_tasks: listScheduledTasksTool,
+  cancel_scheduled_task: cancelScheduledTaskTool,
+  update_scheduled_task: updateScheduledTaskTool,
   ...buildCodingToolMap(),
 };
 
