@@ -910,9 +910,9 @@ fn with_platform_plugins<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri
 const QUICK_ASK_CORNER_RADIUS: f64 = 18.0;
 
 #[cfg(target_os = "windows")]
-const QUICK_ASK_WINDOWS_ACRYLIC_TINT: window_vibrancy::Color = (248, 241, 230, 170);
+const QUICK_ASK_WINDOWS_ACRYLIC_TINT: window_vibrancy::Color = (0, 0, 0, 170);
 #[cfg(target_os = "windows")]
-const QUICK_ASK_WINDOWS_BLUR_TINT: window_vibrancy::Color = (248, 241, 230, 145);
+const QUICK_ASK_WINDOWS_BLUR_TINT: window_vibrancy::Color = (0, 0, 0, 145);
 
 fn apply_quick_ask_vibrancy<R: Runtime>(app: &AppHandle<R>) {
     #[cfg(target_os = "macos")]
