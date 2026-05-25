@@ -9,12 +9,40 @@ import { create } from "zustand";
 export const DRAFT_THREAD_ID = "__draft__";
 
 /**
+ * Per-run context attached when the active thread is a workflow run
+ * (kind='system', system_task='scheduled_workflow') instead of a
+ * user-initiated chat. The chat viewer reads this to:
+ *
+ *   - Hide / disable the composer (workflow threads are read-only —
+ *     the user can't push new turns into them).
+ *   - Render a banner above the transcript with workflow name + the
+ *     run's final status + duration, so the user knows the context
+ *     ("this is the result of 每日回顾 from 11:31, succeeded in 24s")
+ *     rather than seeing a bare conversation.
+ */
+export interface ReadOnlyWorkflowRunContext {
+  kind: "workflow_run";
+  workflowName: string;
+  /** slug of the workflow definition; used by the banner's "go back
+   *  to manage" affordance to navigate to `/workflows`. */
+  slug: string;
+  runStatus: "success" | "failure";
+  startedAt: string;
+  finishedAt: string;
+}
+
+/**
  * Active-thread state lives at the layout level so the Sidebar (which
  * renders the thread list) and the AskPage (which renders the active
  * conversation) read from the same source.
  *
  * Behavior:
- *   - `setActive(id)` selects a real thread.
+ *   - `setActive(id)` selects a real thread (clears any prior
+ *     read-only context — picking a regular chat thread is always a
+ *     read/write surface).
+ *   - `selectWorkflowRun(thread_id, ctx)` atomically sets activeId
+ *     AND read-only context so the viewer switches into the
+ *     workflow-run shape in one render.
  *   - `openNew()` flips `hasDraft` on and clears `activeId`. The DB
  *     row materializes only on first send.
  *   - `replaceDraftWith(id)` flips draft → real once the create-on-send
@@ -25,6 +53,10 @@ export const DRAFT_THREAD_ID = "__draft__";
 interface ActiveThreadState {
   activeId: string | null;
   hasDraft: boolean;
+  /** Set when `activeId` points at a workflow run thread; `null`
+   *  when it points at a normal user chat. The chat viewer reads
+   *  this to swap into read-only mode. */
+  readOnlyContext: ReadOnlyWorkflowRunContext | null;
   /** Whether the initial post-mount selection has run. The first
    *  render picks the most-recent thread; afterwards we honor
    *  whatever the user does. */
@@ -59,6 +91,11 @@ interface ActiveThreadState {
   pendingAutoSend: string | null;
 
   setActive: (id: string | null) => void;
+  /** Like `setActive`, but stamps the workflow-run context so the
+   *  viewer switches into read-only mode atomically. Used by the
+   *  unified sidebar when the user clicks a "⏰ 工作流" row, and by
+   *  the workflows page's "查看历史" button. */
+  selectWorkflowRun: (id: string, ctx: ReadOnlyWorkflowRunContext) => void;
   openNew: () => void;
   replaceDraftWith: (id: string) => void;
   dismissDraft: () => void;
@@ -76,6 +113,7 @@ export const useActiveThreadStore = create<ActiveThreadState>((set) => ({
   activeId: null,
   hasDraft: false,
   initialized: false,
+  readOnlyContext: null,
   searchQuery: "",
   inputDrafts: {},
   pendingAutoSend: null,
@@ -85,12 +123,29 @@ export const useActiveThreadStore = create<ActiveThreadState>((set) => ({
     set((s) => ({
       activeId: id,
       hasDraft: false,
+      // Picking a regular chat thread always exits read-only mode.
+      // A subsequent `selectWorkflowRun` call re-enters it for a
+      // workflow row.
+      readOnlyContext: null,
       unreadThreadIds: id
         ? s.unreadThreadIds.filter((other) => other !== id)
         : s.unreadThreadIds,
     })),
+  selectWorkflowRun: (id, ctx) =>
+    set((s) => ({
+      activeId: id,
+      hasDraft: false,
+      readOnlyContext: ctx,
+      unreadThreadIds: s.unreadThreadIds.filter((other) => other !== id),
+    })),
   openNew: () =>
-    set({ activeId: null, hasDraft: true, initialized: true }),
+    set({
+      activeId: null,
+      hasDraft: true,
+      initialized: true,
+      // Fresh draft is read/write by definition.
+      readOnlyContext: null,
+    }),
   replaceDraftWith: (id) =>
     set((s) => {
       // Migrate the pre-send draft text from DRAFT_THREAD_ID onto the

@@ -1,45 +1,203 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Settings2, Workflow } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
+import { Workflow } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@repo/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@repo/ui/components/dialog";
 
+import { useWorkflowRuns } from "@/hooks/use-workflows";
 import { useTranslation } from "@/i18n";
-import { skillsListAvailable } from "@/lib/tauri";
-import { openSettingsDialog } from "@/stores/settings-dialog-store";
+import {
+  fromInvokeError,
+  workflowsCancelRun,
+  workflowsDelete,
+  workflowsList,
+  workflowsRunNow,
+  workflowsSetEnabled,
+} from "@/lib/tauri";
+import { useActiveThreadStore } from "@/stores/active-thread-store";
+import { useWorkflowInFlightStore } from "@/stores/workflow-in-flight-store";
+import { WorkflowDrawer } from "@/pages/workflows/workflow-drawer";
+import { WorkflowListItem } from "@/pages/workflows/workflow-list-item";
 
 /**
- * "我的工作流" route page.
+ * "我的工作流" route page (v1430).
  *
- * Surface intent: this page is for **user-facing workflows** —
- * agent-crystalized procedures and user-authored routines. External
- * primitives (lark / Claude / MCP capabilities) are intentionally
- * absent here; they live under Settings → 技能.
- *
- * Classification is purely by source directory on the Rust side
- * (`SkillSource → SkillKind`). We don't touch external SKILL.md files;
- * we just filter the scanner output by `kind === "workflow"`.
- *
- * v1: workflows list is empty because no writable source directory is
- * mounted yet. A footer chip surfaces the count of available
- * capabilities so the user knows the agent has tools available, and
- * links into Settings for the toggle UI.
+ * Lists scheduled workflows + handles the create/edit drawer + run-now
+ * mutation + history dialog. Definitions live as
+ * `$APPDATA/corivo/workflows/<slug>/WORKFLOW.md`; this page is the
+ * authoring + status surface over the backing `workflow_schedules` /
+ * `workflow_runs` SQLite tables.
  */
 export function WorkflowsPage() {
   const { t } = useTranslation();
-  const { data: skills } = useQuery({
-    queryKey: ["skills-available"],
-    queryFn: skillsListAvailable,
+  const qc = useQueryClient();
+  const router = useRouter();
+  const startInFlight = useWorkflowInFlightStore((s) => s.start);
+  const finishInFlight = useWorkflowInFlightStore((s) => s.finish);
+  const selectWorkflowRun = useActiveThreadStore((s) => s.selectWorkflowRun);
+
+  const { data: workflows } = useQuery({
+    queryKey: ["workflows-list"],
+    queryFn: workflowsList,
     refetchOnWindowFocus: false,
   });
+  // Reuse the sidebar's run query so "查看历史" → /ask doesn't pay a
+  // second roundtrip for data already in cache. Default limit (50)
+  // covers the practical "latest run for this slug" lookup; older
+  // runs still surface via the sidebar scroll.
+  const { data: workflowRuns } = useWorkflowRuns();
 
-  const { workflows, capabilityCount } = useMemo(() => {
-    const all = skills ?? [];
-    return {
-      workflows: all.filter((s) => s.kind === "workflow"),
-      capabilityCount: all.filter((s) => s.kind === "capability").length,
-    };
-  }, [skills]);
+  const [drawerSlug, setDrawerSlug] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Pending-delete confirmation dialog. We can't use window.confirm()
+  // — Tauri 2's webview silently drops synchronous modals (would
+  // block the JS thread + the embedded webview's UI thread), so the
+  // delete button looked broken. Render a real Radix Dialog instead.
+  const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
+
+  const setEnabled = useMutation({
+    mutationFn: ({ slug, enabled }: { slug: string; enabled: boolean }) =>
+      workflowsSetEnabled(slug, enabled),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["workflows-list"] }),
+    onError: (error) => toast.error(fromInvokeError(error)),
+  });
+
+  // "立即运行" — optimistic UI: mark in-flight + open a persistent
+  // loading toast the moment the user clicks, BEFORE the IPC call
+  // even returns. The backend usually takes 10–60s to dispatch
+  // (single-flight queue + sidecar spawn), and the old "已加入运行
+  // 队列" → silence experience left users staring at nothing wondering
+  // if anything happened. The workflow:started listener later sees
+  // this slug already in-flight and skips creating a second toast.
+  const runNow = useMutation({
+    mutationFn: workflowsRunNow,
+    onMutate: (slug: string) => {
+      const view = workflows?.find((w) => w.definition.slug === slug);
+      const name = view?.definition.name ?? slug;
+      // Two affordances on the toast, unequal in weight on purpose:
+      //   * action「取消」  — DESTRUCTIVE. Actually interrupts the
+      //     run (calls the cancel IPC). Styled with `text-destructive`
+      //     so the red color warns before the click — the previous
+      //     version rendered with the same neutral foreground as
+      //     「收起」 and users couldn't tell which one would kill the
+      //     task (Nielsen "error prevention").
+      //   * cancel「收起」  — Safe. Closes just the toast UI; the run
+      //     keeps going (in-flight indicator on the /workflows row +
+      //     the "我的工作流" sidebar nav still shows it).
+      // The transition to success/failure (when the run actually
+      // ends) reuses the same toast id from the in-flight store.
+      const toastId: string | number = toast.loading(name, {
+        description: t.workflows.toast.running,
+        duration: Infinity,
+        action: {
+          label: t.workflows.list.cancel,
+          onClick: () => {
+            cancelRun.mutate(slug);
+            toast.dismiss(toastId);
+          },
+        },
+        cancel: {
+          label: t.workflows.toast.dismiss,
+          onClick: () => toast.dismiss(toastId),
+        },
+        classNames: {
+          actionButton:
+            "!text-destructive hover:!bg-destructive/10 hover:!text-destructive",
+        },
+      });
+      startInFlight({
+        slug,
+        // Real run_id arrives via workflow:started; the optimistic
+        // claim only needs a placeholder.
+        runId: `optimistic-${slug}-${Date.now()}`,
+        name,
+        toastId,
+      });
+      return { slug, toastId };
+    },
+    onError: (error, _slug, context) => {
+      if (context) {
+        finishInFlight(context.slug);
+        toast.dismiss(context.toastId);
+      }
+      // Surface the backend's actual message ("已经在运行队列中"
+      // when dedup kicks in, network errors, etc.) instead of a
+      // generic "失败".
+      toast.error(fromInvokeError(error));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workflows-list"] });
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: workflowsDelete,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["workflows-list"] }),
+    onError: (error) => toast.error(fromInvokeError(error)),
+  });
+
+  // Cancel a running / queued workflow. Backend's on_dispatch_aborted
+  // hook handles cleanup (failure run row + workflow:completed event);
+  // the listener clears in-flight state + transitions the toast. Here
+  // we just invalidate so the row repaints quickly.
+  const cancelRun = useMutation({
+    mutationFn: workflowsCancelRun,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workflows-list"] });
+    },
+    onError: (error) => toast.error(fromInvokeError(error)),
+  });
+
+  const editing = useMemo(
+    () => workflows?.find((w) => w.definition.slug === drawerSlug) ?? null,
+    [workflows, drawerSlug],
+  );
+
+  const list = workflows ?? [];
+
+  /**
+   * "查看历史" — find the most-recent run for this slug, open it in
+   * the chat viewer (read-only mode), and navigate to `/ask`. The
+   * sidebar's unified thread list will also surface every other run
+   * for the same slug, so the user can browse historical runs from
+   * there. When the workflow has never run, we still navigate to
+   * `/ask` and pop a toast so the user understands why nothing
+   * loaded — beats silently opening an empty viewer.
+   *
+   * Replaces the prior `WorkflowHistoryDialog` modal which was a
+   * standalone surface duplicating concepts that already live in
+   * `/ask` (chat thread viewer + sidebar list).
+   */
+  const handleShowHistory = (slug: string, workflowName: string) => {
+    const runs = workflowRuns ?? [];
+    // workflowRuns is pre-sorted started_at DESC by the backend; the
+    // first match for this slug is the latest run.
+    const latest = runs.find((r) => r.slug === slug && r.thread_id !== null);
+    if (!latest || !latest.thread_id) {
+      toast.message(t.workflows.history.empty);
+      void router.navigate({ to: "/ask" });
+      return;
+    }
+    selectWorkflowRun(latest.thread_id, {
+      kind: "workflow_run",
+      workflowName,
+      slug,
+      runStatus: latest.status,
+      startedAt: latest.started_at,
+      finishedAt: latest.finished_at,
+    });
+    void router.navigate({ to: "/ask" });
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -50,39 +208,106 @@ export function WorkflowsPage() {
             {t.workflows.eyebrow}
           </span>
         </div>
-        <h1 className="font-display text-[24px] font-semibold tracking-[-0.015em] text-foreground">
-          {t.workflows.title}
-        </h1>
+        <div className="flex items-baseline justify-between gap-4">
+          <h1 className="font-display text-[24px] font-semibold tracking-[-0.015em] text-foreground">
+            {t.workflows.title}
+          </h1>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              setDrawerSlug(null);
+              setDrawerOpen(true);
+            }}
+          >
+            {t.workflows.list.newAction}
+          </Button>
+        </div>
         <p className="max-w-2xl text-[13.5px] leading-[1.6] text-muted-foreground">
           {t.workflows.description}
         </p>
       </header>
 
-      {workflows.length === 0 ? (
+      {list.length === 0 ? (
         <EmptyState />
       ) : (
-        <ul className="divide-y divide-border/40 rounded-lg border border-border/40">
-          {workflows.map((skill) => (
-            <li
-              key={skill.path}
-              className="flex flex-col gap-1 p-4 transition-colors hover:bg-muted/30"
-            >
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[13px] font-medium text-foreground">
-                  {skill.name}
-                </span>
-              </div>
-              {skill.description ? (
-                <p className="line-clamp-2 text-[12.5px] text-muted-foreground">
-                  {skill.description}
-                </p>
-              ) : null}
-            </li>
+        <ul className="flex flex-col gap-2">
+          {list.map((view) => (
+            <WorkflowListItem
+              key={view.definition.slug}
+              view={view}
+              onToggle={(enabled) =>
+                setEnabled.mutate({
+                  slug: view.definition.slug,
+                  enabled,
+                })
+              }
+              onRunNow={() => runNow.mutate(view.definition.slug)}
+              onCancel={() => cancelRun.mutate(view.definition.slug)}
+              onEdit={() => {
+                setDrawerSlug(view.definition.slug);
+                setDrawerOpen(true);
+              }}
+              onShowHistory={() => handleShowHistory(view.definition.slug, view.definition.name)}
+              onDelete={() => setDeletingSlug(view.definition.slug)}
+            />
           ))}
         </ul>
       )}
 
-      <CapabilityFooter count={capabilityCount} />
+      <WorkflowDrawer
+        open={drawerOpen}
+        onOpenChange={(open) => {
+          setDrawerOpen(open);
+          if (!open) setDrawerSlug(null);
+        }}
+        editing={editing}
+        existingSlugs={list.map((w) => w.definition.slug)}
+      />
+
+      <Dialog
+        open={deletingSlug !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingSlug(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t.workflows.list.deleteConfirmTitle}
+            </DialogTitle>
+            <DialogDescription>
+              {deletingSlug
+                ? t.workflows.list.deleteConfirm(
+                    list.find((w) => w.definition.slug === deletingSlug)
+                      ?.definition.name ?? deletingSlug,
+                  )
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDeletingSlug(null)}
+            >
+              {t.workflows.drawer.cancelAction}
+            </Button>
+            <Button
+              type="button"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deletingSlug) {
+                  remove.mutate(deletingSlug);
+                  setDeletingSlug(null);
+                }
+              }}
+            >
+              {t.workflows.list.delete}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -100,26 +325,6 @@ function EmptyState() {
           {t.workflows.empty.body}
         </p>
       </div>
-    </div>
-  );
-}
-
-function CapabilityFooter({ count }: { count: number }) {
-  const { t } = useTranslation();
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-card/50 px-4 py-3 text-[12.5px] text-muted-foreground">
-      <div className="flex items-center gap-2">
-        <Settings2 className="h-3.5 w-3.5 shrink-0" />
-        <span>{t.workflows.capabilityFooter.summary(count)}</span>
-      </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => openSettingsDialog()}
-      >
-        {t.workflows.capabilityFooter.manageAction}
-      </Button>
     </div>
   );
 }

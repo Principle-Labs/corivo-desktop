@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Square } from "lucide-react";
+import { useRouter } from "@tanstack/react-router";
+import { Check, Clock, Loader2, Square } from "lucide-react";
 
 import { cn } from "@repo/ui/lib/utils";
 import type { ModelDirectory } from "@corivo/shared-types";
@@ -9,7 +10,10 @@ import { MessageBubble } from "@/components/chat/message-bubble";
 import { useTranslation } from "@/i18n";
 import type { LiveChatMessage } from "@/hooks/use-chat";
 import { modelsGetAvailable, modelsSetActiveModel } from "@/lib/tauri";
-import { useActiveThreadStore } from "@/stores/active-thread-store";
+import {
+  type ReadOnlyWorkflowRunContext,
+  useActiveThreadStore,
+} from "@/stores/active-thread-store";
 
 interface MessageStreamProps {
   messages: LiveChatMessage[];
@@ -49,6 +53,12 @@ export function MessageStream({
   const input = useActiveThreadStore((s) => s.inputDrafts[inputKey] ?? "");
   const setInputDraft = useActiveThreadStore((s) => s.setInputDraft);
   const setInput = (value: string) => setInputDraft(inputKey, value);
+  // Read-only mode: when the active thread is a workflow run thread,
+  // the sidebar set this via `selectWorkflowRun`. We render a banner
+  // above the transcript and swap the composer for a static hint so
+  // the user can't (and isn't tempted to) push new turns into a
+  // system thread that the agent won't service anyway.
+  const readOnlyContext = useActiveThreadStore((s) => s.readOnlyContext);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -116,6 +126,7 @@ export function MessageStream({
     // we self-size to the layout shell directly. Inner body still
     // owns the scroll via `flex-1` + `min-h-0`.
     <div className="flex h-full min-h-0 flex-col bg-background">
+      {readOnlyContext ? <WorkflowRunBanner ctx={readOnlyContext} /> : null}
       <div
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-y-auto px-8 py-7"
@@ -136,6 +147,17 @@ export function MessageStream({
         )}
       </div>
 
+      {readOnlyContext ? (
+        // Read-only footer instead of composer. Single-line hint
+        // pointing the user back at the management surface — same
+        // place the run was launched from, which is where edits
+        // should happen.
+        <div className="border-t border-border bg-muted/30 px-8 py-3.5">
+          <p className="mx-auto max-w-3xl text-center text-[11.5px] text-muted-foreground">
+            {t.ask.threadList.workflow.readOnlyHint}
+          </p>
+        </div>
+      ) : (
       <div className="border-t border-border bg-background px-8 pb-5 pt-4">
         <form
           className="mx-auto max-w-3xl"
@@ -231,7 +253,6 @@ export function MessageStream({
           </div>
           <div className="mt-2 flex items-center justify-between font-mono text-[10.5px] tracking-[0.04em] text-muted-foreground">
             <span className="flex items-center gap-3">
-              <span>{t.ask.composer.contextHint}</span>
               <ModelPicker
                 directory={directory}
                 onSwitch={(alias) => switchModel.mutate(alias)}
@@ -255,8 +276,85 @@ export function MessageStream({
           </div>
         </form>
       </div>
+      )}
     </div>
   );
+}
+
+/**
+ * Sticky banner shown above the transcript when the active thread is
+ * a workflow run (kind='system', system_task='scheduled_workflow').
+ * Gives the user three pieces of context at a glance:
+ *   1. which workflow produced this transcript ("⏰ 每日回顾")
+ *   2. when it ran (localized timestamp)
+ *   3. final status (success / failure) with a colored pill
+ * Plus a button back to the workflow management page (the only place
+ * the user can re-run, edit, or disable the workflow).
+ */
+function WorkflowRunBanner({ ctx }: { ctx: ReadOnlyWorkflowRunContext }) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const wf = t.ask.threadList.workflow;
+  const isFailure = ctx.runStatus === "failure";
+  const when = formatBannerTimestamp(ctx.startedAt);
+  return (
+    <div
+      className={cn(
+        "flex shrink-0 items-center gap-3 border-b px-8 py-3",
+        // Color the band gently by outcome — green for success, red
+        // for failure. Subtle enough that the transcript below stays
+        // the focal point.
+        isFailure
+          ? "border-destructive/20 bg-destructive/5"
+          : "border-border bg-muted/30",
+      )}
+    >
+      <div
+        className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+          isFailure
+            ? "bg-destructive/10 text-destructive"
+            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+        )}
+      >
+        <Clock className="h-3.5 w-3.5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[13px] font-medium text-foreground">
+          {wf.bannerTitle(ctx.workflowName)}
+        </div>
+        <div className="truncate text-[11.5px] text-muted-foreground">
+          {wf.bannerSubtitle(when)} ·{" "}
+          <span
+            className={cn(
+              "font-medium",
+              isFailure ? "text-destructive" : "text-emerald-700 dark:text-emerald-300",
+            )}
+          >
+            {isFailure ? wf.statusFailure : wf.statusSuccess}
+          </span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          void router.navigate({ to: "/workflows" });
+        }}
+        className="shrink-0 rounded-md border border-border bg-background px-2.5 py-1 text-[11px] text-foreground transition-colors hover:bg-muted"
+      >
+        {wf.bannerManageAction}
+      </button>
+    </div>
+  );
+}
+
+function formatBannerTimestamp(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString();
+  } catch {
+    return iso;
+  }
 }
 
 /**
