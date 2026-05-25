@@ -54,8 +54,8 @@ impl BackgroundAgentTask for PersonaDistillTask {
         )
     }
 
-    fn tool_whitelist(&self) -> &'static [&'static str] {
-        TOOL_WHITELIST
+    fn tool_whitelist(&self) -> Vec<String> {
+        TOOL_WHITELIST.iter().map(|s| (*s).to_string()).collect()
     }
 
     fn max_turns(&self) -> u32 {

@@ -63,6 +63,12 @@ pub use scheduler::{BackgroundAgentScheduler, ScheduleEnqueue};
 /// Inputs every task needs to actually run a sidecar turn. Filled in
 /// by `BackgroundAgentScheduler` from `AppState` so individual tasks
 /// don't have to plumb State around.
+///
+/// `Clone` is required so the scheduler can `tauri::async_runtime::spawn`
+/// the runner with an owned copy (the spawned future needs `'static`).
+/// Every field is either `Copy`, `Arc`-backed, or a cheap `Clone`
+/// (`PathBuf` / `String`), so cloning is effectively pointer copies.
+#[derive(Clone)]
 pub struct TaskDeps {
     pub db_pool: crate::db::pool::DbPool,
     pub chat_threads: Arc<dyn ChatThreadRepo>,
@@ -86,6 +92,12 @@ pub struct TaskDeps {
     /// sidecar can trigger a cloud-session refresh just like the
     /// user-facing chat path.
     pub cloud_session: Arc<dyn CloudSessionService>,
+    /// v1511 — `WorkflowStore` handle exposed so background tasks that
+    /// invoke `schedule_task` (e.g. session learner proposing a
+    /// recurring review) can reach the same write path the user-facing
+    /// agent uses. `None` only when AppState was wired without the
+    /// workflows service.
+    pub workflow_store: Option<Arc<crate::services::scheduled_workflows::WorkflowStore>>,
 }
 
 impl TaskDeps {
@@ -117,6 +129,7 @@ impl TaskDeps {
             ApiShape::Anthropic => "claude-haiku-4-5".to_string(),
             ApiShape::Openai | ApiShape::OpenaiResponses => "gpt-4o-mini".to_string(),
         };
+        let workflow_store = state.workflow_store.as_ref().cloned();
         Some(TaskDeps {
             db_pool,
             chat_threads,
@@ -137,6 +150,7 @@ impl TaskDeps {
             bridge_pending,
             app,
             cloud_session: session,
+            workflow_store,
         })
     }
 }
@@ -151,9 +165,37 @@ pub trait BackgroundAgentTask: Send + Sync {
     fn kind(&self) -> SystemTaskKind;
     fn system_prompt(&self) -> String;
     fn initial_user_message(&self) -> String;
-    fn tool_whitelist(&self) -> &'static [&'static str];
+    /// Native tool names the task is allowed to call. Runtime-loaded
+    /// tasks (e.g. user-authored scheduled workflows) need an owned
+    /// `Vec<String>`; the runner intersects with the registry so
+    /// extras are silently dropped.
+    fn tool_whitelist(&self) -> Vec<String>;
     fn max_turns(&self) -> u32 {
         20
+    }
+    /// Called once at the start of `runner::run`, after the system
+    /// `chat_threads` row is created but before the sidecar spawns.
+    /// Default no-op. Scheduled-workflow tasks override to emit a
+    /// `workflow:started` Tauri event so the UI can show a spinner
+    /// during the (often slow) sidecar turn.
+    fn before_run(&self, _deps: &TaskDeps, _thread_id: &str) {}
+    /// Called when the scheduler abandons the task before `runner::run`
+    /// could complete — e.g. `deps_not_ready` retries exhausted, the
+    /// runner returned `Err` before `consume_output` could clean up,
+    /// or the user clicked Cancel and the spawned future was aborted.
+    /// Default no-op. Scheduled-workflow tasks override to release
+    /// the dedup slug + emit a `workflow:completed` failure event so
+    /// the user actually sees that the run died, instead of staring
+    /// at an indefinite spinner.
+    fn on_dispatch_aborted(&self, _reason: &str) {}
+    /// Identifier the scheduler's `cancel(key)` method matches against
+    /// to interrupt a running or queued task. Default `None` =
+    /// non-cancellable (session_learner / persona_distill etc.: the
+    /// user has no UI surface to cancel them anyway). Scheduled-
+    /// workflow tasks override to return their slug so the
+    /// `workflows_cancel_run` IPC can find them.
+    fn cancellation_key(&self) -> Option<String> {
+        None
     }
     /// Process the sidecar's final assistant message. The runner
     /// already stripped streaming framing; you get the plain text.
