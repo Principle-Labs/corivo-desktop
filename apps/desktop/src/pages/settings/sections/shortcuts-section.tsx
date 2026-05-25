@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cn } from "@repo/ui/lib/utils";
 
 import { useTranslation, type LocaleDict } from "@/i18n";
+import type { HotkeyBinding } from "@/lib/types";
 import { getHotkeyStatus } from "@/lib/tauri";
 
 import { FieldGroup, SectionHeader } from "./settings-shared";
@@ -102,9 +103,13 @@ export function ShortcutsSection() {
           <ul className="divide-y divide-border/60">
             {group.rows.map((row) => {
               const item = t.settings.shortcuts.items[row.key];
+              const combo =
+                row.key === "quickAsk"
+                  ? quickAskCombo(status.data?.binding)
+                  : row.combo;
               return (
                 <li
-                  key={`${group.scope}-${row.key}-${row.combo}`}
+                  key={`${group.scope}-${row.key}-${combo}`}
                   className="flex items-start justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
                 >
                   <div className="min-w-0 flex-1">
@@ -115,7 +120,7 @@ export function ShortcutsSection() {
                       {item.description}
                     </div>
                   </div>
-                  <KeyCombo label={t.settings.shortcuts.keys[row.combo]} />
+                  <KeyCombo label={t.settings.shortcuts.keys[combo]} />
                 </li>
               );
             })}
@@ -128,6 +133,15 @@ export function ShortcutsSection() {
       </p>
     </div>
   );
+}
+
+function quickAskCombo(
+  binding: HotkeyBinding | undefined,
+): keyof LocaleDict["settings"]["shortcuts"]["keys"] {
+  if (binding === "double_tap_alt") {
+    return "doubleTapAlt";
+  }
+  return "doubleTapOption";
 }
 
 function StatusPill({

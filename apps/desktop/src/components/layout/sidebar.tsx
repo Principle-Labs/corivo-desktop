@@ -297,16 +297,24 @@ function SidebarSearchInput({
  */
 function QuickAskHint() {
   const { t } = useTranslation()
+  const key = platformQuickAskKey()
   return (
     <div
       className="mx-1 flex items-center gap-1 px-2 pt-0.5 text-[10.5px] text-muted-foreground/70"
       title={t.sidebar.quickAskHintTitle}
     >
       <span className="shrink-0">{t.sidebar.quickAskHintPrefix}</span>
-      <KbdMicro>⌥</KbdMicro>
+      <KbdMicro>{key}</KbdMicro>
       <span className="truncate">{t.sidebar.quickAskHintSuffix}</span>
     </div>
   )
+}
+
+function platformQuickAskKey() {
+  if (typeof navigator !== "undefined" && /win/i.test(navigator.platform)) {
+    return "Alt"
+  }
+  return "⌥"
 }
 
 function KbdMicro({ children }: { children: React.ReactNode }) {

@@ -421,10 +421,10 @@ export type QuickAskOpenedPayload =
       focus: FocusContext;
     };
 
-/** Quick Ask hotkey shape. Today the only supported binding is
- * "double-tap ⌥ Option" — the enum lets the UI render the binding
- * without hardcoding the label and leaves room for future modes. */
-export type HotkeyBinding = "double_tap_option";
+/** Quick Ask hotkey shape. The backend reports the platform-specific
+ * bare-modifier gesture so the UI can render Option on macOS and Alt
+ * on Windows without guessing. */
+export type HotkeyBinding = "double_tap_option" | "double_tap_alt";
 
 export interface HotkeyStatus {
   binding: HotkeyBinding;

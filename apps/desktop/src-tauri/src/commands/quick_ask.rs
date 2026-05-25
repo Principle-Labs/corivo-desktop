@@ -4,10 +4,11 @@
 //! `exec_agent_send` running claude CLI + corivo MCP), so this module
 //! only owns the things that *are* Quick-Ask specific:
 //!
-//!   - `hotkey_status` — read-only view of the double-tap-⌥ binding
-//!     state for the Settings UI. The binding itself lives in
-//!     `services/double_tap_hotkey.rs`; rebinding is not supported in
-//!     v1 because `RegisterEventHotKey` won't bind a bare modifier.
+//!   - `hotkey_status` — read-only view of the platform double-tap
+//!     bare-modifier binding state for the Settings UI. The binding
+//!     itself lives in `services/double_tap_hotkey.rs`; rebinding is
+//!     not supported in v1 because system global-hotkey APIs won't bind
+//!     a bare modifier.
 //!   - `quick_ask_summon` / `quick_ask_hide` / `quick_ask_set_height`
 //!     — open / close / resize the floating window.
 //!   - `quick_ask_capture_focus` — run capture_pipeline.invoke_quick_ask

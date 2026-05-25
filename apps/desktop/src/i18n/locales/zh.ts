@@ -75,7 +75,7 @@ export const zh = {
     workflows: "工作流",
     quickAskHintPrefix: "双击",
     quickAskHintSuffix: "召唤 Corivo",
-    quickAskHintTitle: "在任何应用里双击 ⌥ Option，召唤 Corivo",
+    quickAskHintTitle: "在任何应用里双击快捷键，召唤 Corivo",
     balanceTitle: "查看额度并充值",
     balanceAction: "充值",
   },
@@ -464,10 +464,10 @@ export const zh = {
     },
     shortcut: {
       stepLabel: "03 · 快捷唤醒",
-      title: "连按两下 Option，快速唤醒 Corivo",
+      title: "连按两下快捷键，快速唤醒 Corivo",
       subtitle:
-        "正常使用电脑就行，任何时候都可以双击 Option 键唤起 Corivo。",
-      cue: "连按 2 下 ⌥",
+        "正常使用电脑就行，任何时候都可以双击系统快捷键唤起 Corivo。",
+      cue: "连按 2 下",
       cta: "进入 Corivo",
     },
   },
@@ -745,13 +745,14 @@ export const zh = {
         currentLabel: "当前快捷键",
         bindings: {
           doubleTapOption: "双击 ⌥ Option",
+          doubleTapAlt: "双击 Alt",
         },
         explanation:
-          "连按两次 ⌥ Option 键（间隔 400 ms 内）即可唤起 Quick Ask 面板；再按一次会收起。无论你在哪个应用里都能触发，包括 Corivo 自己。",
+          "macOS 连按两次 ⌥ Option，Windows 连按两次 Alt（间隔 400 ms 内）即可唤起 Quick Ask 面板；再按一次会收起。无论你在哪个应用里都能触发，包括 Corivo 自己。",
         notInstalled:
           "未能注册全局监听。重启 Corivo 通常可恢复；持续失败请提交反馈。",
         v1Note:
-          "v1 暂不支持自定义快捷键：macOS 的 RegisterEventHotKey 不允许把单个修饰键注册为热键，所以我们改用 NSEvent flagsChanged 监听双击 ⌥。后续会引入可选的 Cmd/Ctrl + 字母 快捷键模式。",
+          "v1 暂不支持自定义快捷键：系统全局热键 API 不允许把单个修饰键注册为热键，所以 Corivo 会用平台监听器识别双击 Option / Alt。后续会引入可选的 Cmd/Ctrl + 字母快捷键模式。",
       },
     },
     shortcuts: {
@@ -770,7 +771,7 @@ export const zh = {
         quickAsk: {
           label: "唤起 Quick Ask",
           description:
-            "在任何应用里 400 ms 内双击 ⌥ Option 召唤 Quick Ask；再按一次收起。",
+            "在任何应用里 400 ms 内双击平台快捷键（macOS 为 Option，Windows 为 Alt）召唤 Quick Ask；再按一次收起。",
         },
         summonMain: {
           label: "唤起主窗口",
@@ -804,6 +805,7 @@ export const zh = {
       },
       keys: {
         doubleTapOption: "双击 ⌥",
+        doubleTapAlt: "双击 Alt",
         cmdShiftO: "⌘ ⇧ O",
         cmdK: "⌘ K",
         esc: "Esc",

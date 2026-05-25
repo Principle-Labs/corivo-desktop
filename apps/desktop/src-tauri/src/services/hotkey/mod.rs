@@ -1,20 +1,21 @@
 //! Quick Ask hotkey bookkeeping.
 //!
-//! The actual hotkey is **double-tap ⌥ Option** — implemented in
-//! `services/double_tap_hotkey.rs` on top of `NSEvent`'s global
-//! `flagsChanged` monitor. We can't use `RegisterEventHotKey` (the API
+//! The actual hotkey is a platform-native double-tap bare modifier:
+//! **double-tap ⌥ Option** on macOS, **double-tap Alt** on Windows.
+//! It is implemented in `services/double_tap_hotkey.rs` on top of
+//! `NSEvent` on macOS and a low-level keyboard hook on Windows. We
+//! can't use `RegisterEventHotKey` (the API
 //! `tauri-plugin-global-shortcut` wraps) because it refuses to bind a
 //! bare modifier.
 //!
 //! Since the binding is fixed in code, this service only carries:
 //!
-//!  - **what** the binding is (today: a `DoubleTapOption` singleton —
-//!    typed so the settings UI doesn't have to hardcode the string), and
+//!  - **what** the binding is (typed so the settings UI doesn't have to
+//!    guess platform labels), and
 //!  - whether `DoubleTapHotkey::install` succeeded at boot.
 //!
-//! The Settings UI (`capture-privacy-section.tsx`) consults
-//! `hotkey_status` to render the binding label and a registration error
-//! if the NSEvent monitor failed to install.
+//! The Settings UI consults `hotkey_status` to render the binding label
+//! and a registration error if the platform listener failed to install.
 
 use std::sync::Arc;
 
@@ -29,6 +30,10 @@ pub enum HotkeyBinding {
     /// binding; the enum exists so the settings UI is forward-compatible
     /// with picking other modifiers later without another schema break.
     DoubleTapOption,
+    /// Tap Alt twice within ~400 ms on Windows. This is separate from
+    /// `DoubleTapOption` so the frontend can render the right key name
+    /// without sniffing the operating system.
+    DoubleTapAlt,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -47,10 +52,18 @@ pub struct HotkeyStatus {
 impl Default for HotkeyStatus {
     fn default() -> Self {
         Self {
-            binding: HotkeyBinding::DoubleTapOption,
+            binding: default_binding(),
             installed: false,
             error: None,
         }
+    }
+}
+
+fn default_binding() -> HotkeyBinding {
+    if cfg!(target_os = "windows") {
+        HotkeyBinding::DoubleTapAlt
+    } else {
+        HotkeyBinding::DoubleTapOption
     }
 }
 
@@ -91,7 +104,7 @@ mod tests {
     async fn fresh_service_reports_default_binding_and_not_installed() {
         let svc = HotkeyService::new();
         let status = svc.current().await;
-        assert_eq!(status.binding, HotkeyBinding::DoubleTapOption);
+        assert_eq!(status.binding, default_binding());
         assert!(!status.installed);
         assert!(status.error.is_none());
     }

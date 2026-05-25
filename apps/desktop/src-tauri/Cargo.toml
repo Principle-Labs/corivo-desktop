@@ -163,7 +163,7 @@ window-vibrancy = "0.6"
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 # Cmd+Shift+O 召回主窗口靠这套 RegisterEventHotKey 包装。Quick Ask 的
-# 双击 ⌥ 不走这里 (单修饰键这个 API 不支持，见
+# 双击裸修饰键不走这里 (单修饰键这个 API 不支持，见
 # `services/double_tap_hotkey.rs`)，所以两条路并存。
 tauri-plugin-global-shortcut = "2"
 # 用于 updater 安装完成后自动重启 (`relaunch()`)。注册插件 + 在
@@ -177,3 +177,11 @@ tauri-plugin-process = "2"
 # 而不是启第二个；这个插件一定要 first 注册才生效。
 tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }

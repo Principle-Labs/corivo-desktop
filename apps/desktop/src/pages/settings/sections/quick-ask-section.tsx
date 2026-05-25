@@ -24,6 +24,8 @@ const HOTKEY_KEY = ["hotkey-status"] as const;
  */
 export function QuickAskSection() {
   const { t } = useTranslation();
+  const status = useHotkeyStatus();
+  const binding = status.data?.binding ?? fallbackBinding();
   return (
     <div className="max-w-xl space-y-8">
       <SectionHeader
@@ -31,19 +33,28 @@ export function QuickAskSection() {
         description={t.settings.quickAsk.description}
       />
 
-      <PitchCard />
-      <HotkeyCard />
+      <PitchCard binding={binding} />
+      <HotkeyCard status={status} />
     </div>
   );
 }
 
-function PitchCard() {
+function useHotkeyStatus() {
+  return useQuery({
+    queryKey: HOTKEY_KEY,
+    queryFn: getHotkeyStatus,
+  });
+}
+
+function PitchCard({ binding }: { binding: HotkeyBinding }) {
   const { t } = useTranslation();
+  const keys = bindingKeys(binding);
   return (
     <div className="rounded-[10px] border border-border bg-[color-mix(in_oklab,var(--accent)_55%,var(--card))] px-5 py-4">
       <div className="flex items-center gap-2">
-        <KbdKey>⌥</KbdKey>
-        <KbdKey>⌥</KbdKey>
+        {keys.map((key, index) => (
+          <KbdKey key={`${key}-${index}`}>{key}</KbdKey>
+        ))}
         <span className="ml-1 text-[13px] font-semibold tracking-[-0.005em] text-foreground">
           {t.settings.quickAsk.pitchTitle}
         </span>
@@ -55,12 +66,8 @@ function PitchCard() {
   );
 }
 
-function HotkeyCard() {
+function HotkeyCard({ status }: { status: ReturnType<typeof useHotkeyStatus> }) {
   const { t } = useTranslation();
-  const status = useQuery({
-    queryKey: HOTKEY_KEY,
-    queryFn: getHotkeyStatus,
-  });
   const data = status.data;
 
   return (
@@ -98,11 +105,33 @@ function bindingLabel(binding: HotkeyBinding, t: LocaleDict): string {
   switch (binding) {
     case "double_tap_option":
       return t.settings.quickAsk.hotkey.bindings.doubleTapOption;
+    case "double_tap_alt":
+      return t.settings.quickAsk.hotkey.bindings.doubleTapAlt;
     default: {
       const exhaustive: never = binding;
       return exhaustive;
     }
   }
+}
+
+function bindingKeys(binding: HotkeyBinding): string[] {
+  switch (binding) {
+    case "double_tap_alt":
+      return ["Alt", "Alt"];
+    case "double_tap_option":
+      return ["⌥", "⌥"];
+    default: {
+      const exhaustive: never = binding;
+      return exhaustive;
+    }
+  }
+}
+
+function fallbackBinding(): HotkeyBinding {
+  if (typeof navigator !== "undefined" && /win/i.test(navigator.platform)) {
+    return "double_tap_alt";
+  }
+  return "double_tap_option";
 }
 
 function KbdKey({ children }: { children: React.ReactNode }) {

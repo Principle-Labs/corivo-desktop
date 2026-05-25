@@ -56,7 +56,7 @@ export const en: LocaleDict = {
     workflows: "Routines",
     quickAskHintPrefix: "Double-tap",
     quickAskHintSuffix: "to summon Corivo",
-    quickAskHintTitle: "Double-tap ⌥ Option inside any app to summon Corivo",
+    quickAskHintTitle: "Double-tap the hotkey inside any app to summon Corivo",
     balanceTitle: "View balance & top up",
     balanceAction: "TOP UP",
   },
@@ -451,10 +451,10 @@ export const en: LocaleDict = {
     },
     shortcut: {
       stepLabel: "03 · Shortcut",
-      title: "Double-tap Option to summon Corivo",
+      title: "Double-tap the hotkey to summon Corivo",
       subtitle:
-        "Use your Mac as you normally would — double-tap Option to bring up Corivo whenever you need it.",
-      cue: "Tap ⌥ twice",
+        "Use your computer as you normally would — double-tap the system hotkey to bring up Corivo whenever you need it.",
+      cue: "Tap twice",
       cta: "Enter Corivo",
     },
   },
@@ -730,13 +730,14 @@ export const en: LocaleDict = {
         currentLabel: "Current binding",
         bindings: {
           doubleTapOption: "Double-tap ⌥ Option",
+          doubleTapAlt: "Double-tap Alt",
         },
         explanation:
-          "Tap ⌥ Option twice within 400 ms to summon Quick Ask; tap again to dismiss. Works inside any app — including Corivo itself.",
+          "On macOS, tap ⌥ Option twice; on Windows, tap Alt twice within 400 ms to summon Quick Ask. Tap again to dismiss. Works inside any app — including Corivo itself.",
         notInstalled:
           "Couldn't register the global listener. Restarting Corivo usually fixes it; if it persists, please file a report.",
         v1Note:
-          "v1 doesn't allow custom hotkeys: macOS' RegisterEventHotKey can't bind a single modifier, so we listen on NSEvent flagsChanged for double-tap ⌥. Optional Cmd/Ctrl-letter shortcuts will land later.",
+          "v1 doesn't allow custom hotkeys: system global-hotkey APIs can't bind a single modifier, so Corivo uses platform listeners for double-tap Option / Alt. Optional Cmd/Ctrl-letter shortcuts will land later.",
       },
     },
     shortcuts: {
@@ -756,7 +757,7 @@ export const en: LocaleDict = {
         quickAsk: {
           label: "Summon Quick Ask",
           description:
-            "Double-tap ⌥ Option within 400 ms inside any app to summon Quick Ask; tap again to dismiss.",
+            "Double-tap the platform hotkey within 400 ms inside any app to summon Quick Ask: Option on macOS, Alt on Windows. Tap again to dismiss.",
         },
         summonMain: {
           label: "Summon main window",
@@ -793,6 +794,7 @@ export const en: LocaleDict = {
       },
       keys: {
         doubleTapOption: "Double-tap ⌥",
+        doubleTapAlt: "Double-tap Alt",
         cmdShiftO: "⌘ ⇧ O",
         cmdK: "⌘ K",
         esc: "Esc",

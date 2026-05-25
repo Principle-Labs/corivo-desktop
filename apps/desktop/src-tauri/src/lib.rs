@@ -925,6 +925,7 @@ fn apply_quick_ask_vibrancy<R: Runtime>(app: &AppHandle<R>) {
             tracing::warn!(?error, "quick_ask.vibrancy.apply_failed");
         }
     }
+
     #[cfg(not(target_os = "macos"))]
     {
         let _ = app;
@@ -1459,16 +1460,17 @@ pub fn run() {
                 apply_quick_ask_overlay_window_mode(&window);
             }
 
-            // Quick Ask is summoned by double-tapping ⌥ (Option). We
-            // install the NSEvent global monitor *after* AppState is
-            // mounted because the on-fire callback hops through
-            // `on_quick_ask_hotkey`, which reads `capture_pipeline` /
-            // window state from `AppState` — installing earlier would
-            // race against an empty state on the first press.
+            // Quick Ask is summoned by double-tapping a bare modifier:
+            // ⌥ Option on macOS, Alt on Windows. Install the platform
+            // listener *after* AppState is mounted because the on-fire
+            // callback hops through `on_quick_ask_hotkey`, which reads
+            // `capture_pipeline` / window state from `AppState` —
+            // installing earlier would race against an empty state on
+            // the first press.
             //
-            // `RegisterEventHotKey` (the Carbon API behind
-            // `tauri-plugin-global-shortcut`) can't bind bare modifiers,
-            // so we don't go through that plugin at all anymore.
+            // System global-hotkey APIs can't bind bare modifiers, so
+            // this goes through the custom platform listener instead of
+            // `tauri-plugin-global-shortcut`.
             let app_for_hotkey = app.handle().clone();
             match DoubleTapHotkey::install(move || {
                 on_quick_ask_hotkey(&app_for_hotkey);

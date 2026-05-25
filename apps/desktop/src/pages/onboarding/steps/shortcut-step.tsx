@@ -28,6 +28,8 @@ import { fromInvokeError, markOnboardingCompleted } from "@/lib/tauri";
 export function ShortcutStep() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const shortcutKey = platformQuickAskKey();
+  const isWindows = shortcutKey === "Alt";
 
   const completeMutation = useMutation({
     mutationFn: markOnboardingCompleted,
@@ -83,10 +85,10 @@ export function ShortcutStep() {
             boxShadow: "var(--shadow-sm)",
           }}
         >
-          {t.onboarding.shortcut.cue}
+          {t.onboarding.shortcut.cue} {shortcutKey}
         </div>
 
-        {/* Simplified keyboard bottom row: fn ⌃ ⌥ ⌘ space ⌘ ⌥ */}
+        {/* Simplified keyboard bottom row. */}
         <div
           className="rounded-[18px] border p-6"
           style={{
@@ -100,13 +102,27 @@ export function ShortcutStep() {
               is "double-tap one Option". One amber key, one focal
               point. */}
           <div className="flex gap-[5px]">
-            <Key>fn</Key>
-            <Key>⌃</Key>
-            <Key opt>⌥</Key>
-            <Key wide={1.25}>⌘</Key>
-            <Key wide={5}>&nbsp;</Key>
-            <Key wide={1.25}>⌘</Key>
-            <Key>⌥</Key>
+            {isWindows ? (
+              <>
+                <Key>Ctrl</Key>
+                <Key>Win</Key>
+                <Key opt>Alt</Key>
+                <Key wide={5}>&nbsp;</Key>
+                <Key>Alt</Key>
+                <Key>Win</Key>
+                <Key>Ctrl</Key>
+              </>
+            ) : (
+              <>
+                <Key>fn</Key>
+                <Key>⌃</Key>
+                <Key opt>⌥</Key>
+                <Key wide={1.25}>⌘</Key>
+                <Key wide={5}>&nbsp;</Key>
+                <Key wide={1.25}>⌘</Key>
+                <Key>⌥</Key>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -137,6 +153,13 @@ export function ShortcutStep() {
       </div>
     </div>
   );
+}
+
+function platformQuickAskKey() {
+  if (typeof navigator !== "undefined" && /win/i.test(navigator.platform)) {
+    return "Alt";
+  }
+  return "⌥";
 }
 
 const KEY_UNIT = 38; // px
