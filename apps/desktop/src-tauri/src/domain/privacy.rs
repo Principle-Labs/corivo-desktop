@@ -14,9 +14,10 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 /// `services::privacy_filter::download::MODEL_MANIFEST` 加载后大约的
-/// RSS 占用。q4f16 实测约 1.5GB —— spec §4.3 / §10。Settings UI 用这
-/// 个告诉用户开启后的内存成本。当前是常量;后续支持多 variant 时再
-/// 改成 per-manifest 计算。
+/// RSS 占用。q4f16 变体磁盘 ~830MB,加载到内存后 ORT 维持权重 + 中间
+/// buffer 大约 1.5GB RSS(spec §4.3 / §10 估算)。Settings UI 用这个
+/// 告诉用户开启后的内存成本;后续支持多 variant 时再改成 per-manifest
+/// 计算。
 pub const PRIVACY_MODEL_RAM_ESTIMATE_BYTES: u64 = 1_500_000_000;
 
 /// Hugging Face 仓库 URL —— Settings UI 显示模型来源,可作为外链
@@ -109,8 +110,11 @@ impl PiiLabel {
     }
 }
 
-/// 一条 PII span。落盘形态：JSON 数组中的一项，存在
-/// `frames.ax_text_pii_spans` 列里。
+/// 一条 PII span。**v1600 起仅在内存中存在**：classify 输出 →
+/// `services::privacy_filter::cache` LRU 缓存 → `redact::redact`
+/// 消费。不再落盘到任何表(v1500 曾持久化到 `frames.ax_text_pii_spans`,
+/// v1600 撤销)。结构仍然 derive Serialize/Deserialize/TS,前端如果
+/// 将来需要在 UI 里高亮 redact 区段还会用到。
 ///
 /// **`start` / `end` 是 char offset** —— 不是 byte offset。这样前端
 /// highlight 不会把中文字符切成半个，Rust 端用 `text.chars().nth(...)`

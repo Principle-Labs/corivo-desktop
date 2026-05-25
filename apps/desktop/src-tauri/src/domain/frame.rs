@@ -25,13 +25,6 @@ pub struct Frame {
 
     pub ax_text: Option<String>,
     pub ocr_text: Option<String>,
-    /// v1500 (docs/privacy-filter-spec.md §5): PII spans 元数据。
-    /// `Some(json)` = 已经 classify 完，JSON 数组形态见
-    /// [`crate::domain::privacy::PiiSpan`]。空数组 `"[]"` 与 `None`
-    /// 语义不同 —— `None` 是"还没跑过"，空数组是"跑过了无 PII"。
-    /// 当数组里有 `label="secret"` 且 `redacted_in_storage=true` 的
-    /// span 时，`ax_text` 对应区间已被物理替换。
-    pub ax_text_pii_spans: Option<String>,
     /// Phase 5: per-app adapter that produced this row, e.g. `chrome`,
     /// `vscode`, `lark`, `generic_ax`. `None` for Phase 1-4 rows
     /// (legacy AX / OCR / skipped paths).
@@ -74,10 +67,6 @@ pub struct NewFrame {
     pub screenshot_size_bytes: Option<i64>,
     pub ax_text: Option<String>,
     pub ocr_text: Option<String>,
-    /// v1500: privacy-filter spans. Capture pipeline 默认填 `None`；
-    /// snapshot_consumer 在 insert 之前调 PrivacyFilter::classify_*
-    /// 拿到 spans 后再回写。详见 docs/privacy-filter-spec.md §7.1。
-    pub ax_text_pii_spans: Option<String>,
     pub adapter_name: Option<String>,
     pub adapter_payload: Option<String>,
     pub extraction_strategy: String,

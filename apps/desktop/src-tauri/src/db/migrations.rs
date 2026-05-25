@@ -135,7 +135,16 @@ const SCHEMA_SQL: &str = include_str!("schema.sql");
 ///   是合法路径,每次 record_run 都被 FK 拒掉,UI 永远卡在"正在运行"。
 ///   去掉 FK,改由 `delete_schedule` 显式清理 `workflow_runs` 行。
 ///   purge-and-apply,旧 runs 历史丢弃(本来就只有 0 行)。
-pub const TARGET_SCHEMA_VERSION: i64 = 1513;
+/// v1600 — privacy-filter 架构调整:撤掉 classify-at-capture (Hook A),
+///   改成 classify-at-egress (Hook B 自己做 classify + redact)。
+///   * `frames` 删 `ax_text_pii_spans` 列 —— spans 不再落盘,每次
+///     egress 现算现用,blake3(text) → spans 走内存 LRU 缓存。
+///   * 不再有"capture 时跑模型预热"环节,IO/CPU 只在用户实际把内容
+///     送进 cloud LLM 时才发生。
+///   * purge-and-apply,frames 历史照常被丢弃(pre-release 期可弃)。
+///   * 模型 manifest 同 commit 锁到具体 HF revision +
+///     填实 sha256,download.rs MODEL_MANIFEST 见同 PR。
+pub const TARGET_SCHEMA_VERSION: i64 = 1600;
 
 /// Every table name that any ancestor of this schema introduced. Drop
 /// order matters: children before parents (FKs) when foreign_keys are

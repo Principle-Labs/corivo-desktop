@@ -48,15 +48,14 @@ CREATE TABLE frames (
 
     ax_text                  TEXT,
     ocr_text                 TEXT,
-    -- v1500 (docs/privacy-filter-spec.md §5): PII spans 元数据。
-    -- JSON 数组 `[{start, end, label, score, redacted_in_storage}]`，
-    -- `start`/`end` 是 **char offset** 而非 byte offset。
-    -- NULL = 该 frame 还没经过 privacy filter（未启用 / 模型未就绪 /
-    -- 历史数据 / classify 超时降级）。
-    -- '[]' = 已 classify，未检出任何 PII（与 NULL 语义不同）。
-    -- 注意：当某个 span 的 label='secret' 且 redacted_in_storage=true 时，
-    -- `ax_text` 对应区间已被物理替换为 `[REDACTED:secret]`，原文不可恢复。
-    ax_text_pii_spans        TEXT,
+    -- v1600: `ax_text_pii_spans` 列已撤销。隐私过滤从 classify-at-capture
+    -- 改成 classify-at-egress —— PII spans 不再落盘,exec_agent 出口处
+    -- 现算现用(blake3(text) → spans 走内存 LRU)。原始 ax_text 不做
+    -- 物理替换,redact 仅作用在送进 cloud LLM 的副本上。
+    -- 历史:v1500 曾在此处加 `ax_text_pii_spans TEXT` 存模型识别出的
+    -- PII span JSON,classify-once / enforce-at-egress 架构的中间产物;
+    -- 实际从未在 capture 路径接通过(Hook A 一直是 NULL),撤掉省一刀
+    -- IO/CPU + 避免 PII span 元数据二次落盘。
     -- Phase 5 per-app adapter output. `adapter_name` is an open enum
     -- ('chrome' / 'vscode' / 'lark' / ... / 'generic_ax'); `adapter_payload`
     -- is JSON with adapter-specific structured fields (URL / file path /
@@ -727,6 +726,12 @@ CREATE INDEX idx_workflow_runs_slug
 --               * 新增 background_agent_task_checkpoints 表 —— session
 --                 learner 记录已学到哪一条 message,避免重复学习。
 --               purge-and-apply,旧聊天历史丢弃。
+--   1600      → privacy-filter 架构调整:撤掉 v1500 加的
+--               `frames.ax_text_pii_spans` 列。隐私过滤从
+--               classify-at-capture 改成 classify-at-egress ——
+--               PII spans 不落盘,每次出口现算现用,exec_agent.rs
+--               的 Hook B 自己负责 classify + redact。purge-and-apply
+--               让历史 frames 丢弃,新表无 ax_text_pii_spans 列。
 ------------------------------------------------------------------------
 
 CREATE TABLE schema_version (
@@ -736,4 +741,4 @@ CREATE TABLE schema_version (
         CHECK (applied_at GLOB '????-??-??T??:??:??.???Z')
 );
 
-INSERT INTO schema_version (version) VALUES (1513);
+INSERT INTO schema_version (version) VALUES (1600);

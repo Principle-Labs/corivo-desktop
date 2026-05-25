@@ -215,11 +215,8 @@ fn envelope_to_new_frame(env: &SnapshotEnvelope) -> NewFrame {
 
         ax_text: ax_text.clone(),
         ocr_text: ocr_text.clone(),
-        // v1500: privacy-filter spans。这里默认 None；snapshot_consumer 的
-        // `ingest` 会在 insert 之前调 PrivacyFilter::classify_and_redact_secrets
-        // 改写 ax_text + 填充 spans（下一阶段接入）。本函数是 pure
-        // function，不能在这里跑模型。
-        ax_text_pii_spans: None,
+        // v1600: classify-at-capture (Hook A) 已撤销 —— PII spans 不再
+        // 落盘。隐私过滤改在 exec_agent.rs 出口处 (Hook B) 现算现用。
         adapter_name: env.extraction.adapter_name.clone(),
         adapter_payload: adapter_payload_str.clone(),
         extraction_strategy: strategy.as_str().to_string(),

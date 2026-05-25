@@ -76,7 +76,6 @@ mod tests {
             screenshot_size_bytes: None,
             ax_text: None,
             ocr_text: None,
-            ax_text_pii_spans: None,
             adapter_name: None,
             adapter_payload: None,
             extraction_strategy: "ax".into(),

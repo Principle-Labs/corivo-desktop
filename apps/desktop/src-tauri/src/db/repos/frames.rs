@@ -101,12 +101,11 @@ impl SqliteFrameRepo {
     }
 }
 
-// v1500: 在 ocr_text 之后插入 ax_text_pii_spans。所有列号都向后位移 1，
-// 与下面 row_to_frame 中的 row.get(N) 必须保持同步。
+// 列序与下面 row_to_frame 中的 row.get(N) 必须保持同步。
 const FRAME_COLUMNS: &str = "id, captured_at, device_id, capture_session_id,
         app_bundle_id, app_name, window_title, url,
         screenshot_path, screenshot_hash, screenshot_size_bytes,
-        ax_text, ocr_text, ax_text_pii_spans, adapter_name, adapter_payload,
+        ax_text, ocr_text, adapter_name, adapter_payload,
         extraction_strategy, extraction_duration_ms, fallback_reason,
         trigger,
         content_hash, derived_from_frame_id, still_present_until,
@@ -138,13 +137,13 @@ impl FrameRepo for SqliteFrameRepo {
                     id, captured_at, device_id, capture_session_id,
                     app_bundle_id, app_name, window_title, url,
                     screenshot_path, screenshot_hash, screenshot_size_bytes,
-                    ax_text, ocr_text, ax_text_pii_spans, adapter_name, adapter_payload,
+                    ax_text, ocr_text, adapter_name, adapter_payload,
                     extraction_strategy, extraction_duration_ms, fallback_reason,
                     trigger,
                     content_hash, exclusion_match, search_tokens, created_at
                  ) VALUES (
                     ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13,
-                    ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24
+                    ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23
                  )",
                 params![
                     id,
@@ -160,7 +159,6 @@ impl FrameRepo for SqliteFrameRepo {
                     new.screenshot_size_bytes,
                     new.ax_text,
                     new.ocr_text,
-                    new.ax_text_pii_spans,
                     new.adapter_name,
                     new.adapter_payload,
                     new.extraction_strategy,
@@ -572,8 +570,7 @@ fn derive_search_tokens(
 }
 
 fn row_to_frame(row: &rusqlite::Row<'_>) -> rusqlite::Result<Frame> {
-    // 列序参见上方 FRAME_COLUMNS；v1500 在 ocr_text 之后插入
-    // ax_text_pii_spans，13 之后全部 +1。
+    // 列序参见上方 FRAME_COLUMNS。
     Ok(Frame {
         id: row.get(0)?,
         captured_at: row.get::<_, DbInstant>(1)?.into_inner(),
@@ -588,19 +585,18 @@ fn row_to_frame(row: &rusqlite::Row<'_>) -> rusqlite::Result<Frame> {
         screenshot_size_bytes: row.get(10)?,
         ax_text: row.get(11)?,
         ocr_text: row.get(12)?,
-        ax_text_pii_spans: row.get(13)?,
-        adapter_name: row.get(14)?,
-        adapter_payload: row.get(15)?,
-        extraction_strategy: row.get(16)?,
-        extraction_duration_ms: row.get(17)?,
-        fallback_reason: row.get(18)?,
-        trigger: row.get(19)?,
-        content_hash: row.get(20)?,
-        derived_from_frame_id: row.get(21)?,
-        still_present_until: row.get::<_, Option<DbInstant>>(22)?.map(|d| d.into_inner()),
-        exclusion_match: row.get(23)?,
-        search_tokens: row.get(24)?,
-        created_at: row.get::<_, DbInstant>(25)?.into_inner(),
+        adapter_name: row.get(13)?,
+        adapter_payload: row.get(14)?,
+        extraction_strategy: row.get(15)?,
+        extraction_duration_ms: row.get(16)?,
+        fallback_reason: row.get(17)?,
+        trigger: row.get(18)?,
+        content_hash: row.get(19)?,
+        derived_from_frame_id: row.get(20)?,
+        still_present_until: row.get::<_, Option<DbInstant>>(21)?.map(|d| d.into_inner()),
+        exclusion_match: row.get(22)?,
+        search_tokens: row.get(23)?,
+        created_at: row.get::<_, DbInstant>(24)?.into_inner(),
     })
 }
 
@@ -632,7 +628,6 @@ mod tests {
             screenshot_size_bytes: Some(1234),
             ax_text: None,
             ocr_text: Some("hello world".into()),
-            ax_text_pii_spans: None,
             adapter_name: None,
             adapter_payload: None,
             extraction_strategy: "ocr".into(),

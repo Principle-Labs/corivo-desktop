@@ -475,33 +475,42 @@ pub async fn exec_agent_send(
         "exec_agent.send.runner_input_ready"
     );
 
-    // Hook B —— egress enforce(docs/privacy-filter-spec.md §7.2)。
+    // Hook B —— egress classify + enforce(v1600 调整后)。
     //
     // 在把 `focus_context.primary_text` / `selection` 送进 corivo_agent
-    // sidecar 之前过一遍 PII redact。spans 从 frames.ax_text_pii_spans
-    // 拉取 —— 当前 capture 还没接 classify hook(下一刀的事),所以多数
-    // frame 的 spans 列是 NULL,enforce 会拿到空 spans 数组 + 用户偏好,
-    // 走纯字符串路径直通返回。等 capture-time classify 上线后,这条
-    // hook 不用再改就自动开始工作。
+    // sidecar 之前过一遍 PII classify + redact。spans 不再从 DB 拉
+    // (v1500 → v1600 撤掉了 frames.ax_text_pii_spans 列),改成每次出口
+    // 现算现用:classify_and_enforce 内部走 blake3(text) → spans LRU,
+    // miss 时跑模型,命中时直接复用。
     //
-    // settings.enabled=false 时 enforce 内部 fast-path 短路,不会取 cache
-    // 锁、也不会去查 frames_repo —— 但为了避免每次都查 DB,先在外面也
-    // 检查一遍开关,空设置直接跳过整段 lookup。
+    // settings.enabled=false 时 classify_and_enforce 内部 fast-path 短路,
+    // 不会取 cache 锁、也不会跑模型,直接返回原文 —— 但为了避免每次都
+    // 走一遍函数调用,先在外面也检查一遍开关。
     let focus_redacted: Option<(String, Option<String>)> =
         if let Some(focus) = focus_context.as_ref() {
             let snap = state.privacy_filter.settings_snapshot().await;
             if !snap.enabled {
+                tracing::debug!(
+                    target: "privacy_filter",
+                    frame_id = %focus.frame_id,
+                    "enforce.skipped: settings.enabled=false"
+                );
                 None
             } else {
-                let spans = fetch_pii_spans_for_frame(&state, &focus.frame_id).await;
                 let primary = state
                     .privacy_filter
-                    .enforce(&focus.primary_text, &spans)
+                    .classify_and_enforce(&focus.primary_text)
                     .await;
                 let selection = match focus.selection.as_deref() {
-                    Some(s) => Some(state.privacy_filter.enforce(s, &spans).await),
+                    Some(s) => Some(state.privacy_filter.classify_and_enforce(s).await),
                     None => None,
                 };
+                tracing::debug!(
+                    target: "privacy_filter",
+                    frame_id = %focus.frame_id,
+                    primary_changed = primary != focus.primary_text,
+                    "enforce.ran"
+                );
                 Some((primary, selection))
             }
         } else {
@@ -686,39 +695,6 @@ fn resolve_bundled_skills_dir(app: &AppHandle) -> Option<PathBuf> {
         return Some(dev);
     }
     None
-}
-
-/// Pull PII spans for a frame from `frames.ax_text_pii_spans`(JSON
-/// 列)。所有失败路径都退化成空 vec —— privacy filter 的 enforce 拿到
-/// 空 spans 就走直通,呼叫方的 UX 不受影响。
-///
-/// 调用时机:`exec_agent_send` Hook B(spec §7.2),在把 focus_context
-/// 的 primary_text 喂给 sidecar 之前。
-async fn fetch_pii_spans_for_frame(
-    state: &State<'_, AppState>,
-    frame_id: &str,
-) -> Vec<crate::domain::privacy::PiiSpan> {
-    let Some(repo) = state.frames_repo.as_ref() else {
-        return Vec::new();
-    };
-    let frame = match repo.by_id(frame_id).await {
-        Ok(Some(f)) => f,
-        Ok(None) => return Vec::new(),
-        Err(error) => {
-            tracing::warn!(?error, frame_id, "privacy_filter.spans_lookup_failed");
-            return Vec::new();
-        }
-    };
-    let Some(json) = frame.ax_text_pii_spans.as_deref() else {
-        return Vec::new();
-    };
-    match serde_json::from_str::<Vec<crate::domain::privacy::PiiSpan>>(json) {
-        Ok(spans) => spans,
-        Err(error) => {
-            tracing::warn!(?error, frame_id, "privacy_filter.spans_parse_failed");
-            Vec::new()
-        }
-    }
 }
 
 /// Render a brief response-language directive that the orchestrator

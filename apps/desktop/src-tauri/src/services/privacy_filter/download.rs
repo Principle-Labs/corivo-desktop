@@ -15,11 +15,13 @@
 //! - `ensure_downloaded()` 顶层入口：缺啥下啥
 //!
 //! 暂未实装:
-//! - sha256 常量目前为 `None`。需要在首次手动 dry-run 下载后把
-//!   sha256 灌进 [`MODEL_MANIFEST`]。在那之前 `is_ready()` 退化为
-//!   "文件存在 + 大小匹配"——足以让 Phase 1 跑起来。
 //! - Tauri command 暴露 + Settings UI 联动 —— 下一轮 commands 接入
 //!   时统一加。
+//!
+//! 已实装的 sha256 + commit pin:每个 ModelFile 都填实了
+//! [`MODEL_MANIFEST`] 里的 `sha256` + 精确 `size_bytes`,URL 锁到
+//! HF commit `7ffa9a0...385b`。HF 那边以后改 main 分支不会影响我们,
+//! 模型升级要走显式 manifest bump。
 
 use std::path::{Path, PathBuf};
 
@@ -28,18 +30,18 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::error::{CorivoError, Result};
 
-/// 单个模型文件的描述。`sha256` 暂时 `None` —— 见模块级 TODO。
+/// 单个模型文件的描述。
 #[derive(Debug, Clone, Copy)]
 pub struct ModelFile {
     /// 在 model_dir 里的文件名（同时也是 HF repo 内的相对路径片段）
     pub name: &'static str,
-    /// HF resolve URL（main 分支固定 commit 在 Phase 2 再切到具体
-    /// SHA 锁版本）
+    /// HF resolve URL,锁到具体 commit revision(不是 `main` 分支),
+    /// 防 HF 那边后续改动让校验和漂移。
     pub url: &'static str,
     /// 期望字节数。HF 文件元信息已知,硬编码省一次 HEAD 请求。
     pub size_bytes: u64,
-    /// 期望 sha256。`None` 时跳过校验并 emit warning(spec §11.2 要求
-    /// 实质性校验,这里是 Phase 1 占位)。
+    /// 期望 sha256(小写 hex)。`None` 时跳过校验并 emit warning
+    /// (spec §11.2 要求实质性校验)。当前所有文件都已填实。
     pub sha256: Option<&'static str>,
 }
 
@@ -51,43 +53,55 @@ pub struct ModelManifest {
     pub files: &'static [ModelFile],
 }
 
-/// **当前活动的 manifest**:OpenAI privacy-filter q4f16(spec §4.1)。
+/// **当前活动的 manifest**:OpenAI privacy-filter q4f16(block-quantized
+/// + fp16 scale)变体 —— HF 上最小的 OnNX 变体,~830MB 磁盘。
 ///
-/// 文件清单基于 https://huggingface.co/openai/privacy-filter/tree/main/onnx
-/// 实际拉取结果(2026-05 调研时的状态):
-/// - `onnx/model_q4f16.onnx`     : 166 KB(graph)
-/// - `onnx/model_q4f16.onnx_data`: 809 MB(weights blob)
-/// - `tokenizer.json`            : tokenizer (HF 标准位置在 repo 根)
-/// - `config.json`               : 含 id2label,decode.rs::LabelMap 用
+/// 文件清单来自 https://huggingface.co/openai/privacy-filter ,锁到
+/// commit `7ffa9a043d54d1be65afb281eddf0ffbe629385b` —— HF 那边以后
+/// 改 main 分支不会让我们的 sha256 漂移。模型升级走 manifest bump,
+/// 同时 `PrivacyFilter::clear_cache()` 要被调一次(避免旧 spans 跟新
+/// 模型解码不一致)。
 ///
-/// TODO(Phase 0 ship gate 通过后): 灌入 sha256;锁到具体 commit revision
-/// 而不是 main 分支(防 HF 后续改动)。
+/// 文件构成:
+/// - `onnx/model_q4f16.onnx`     : 162 KB(graph)
+/// - `onnx/model_q4f16.onnx_data`: 772 MB(权重 blob)
+/// - `tokenizer.json`            : 27 MB tokenizer (HF 标准位置在 repo 根)
+/// - `config.json`               : 3 KB,含 id2label,decode.rs::LabelMap 用
+///
+/// **ort 版本锁定**:Cargo.toml 里 `ort = "=2.0.0-rc.12"`。q4f16 用的
+/// `GatherBlockQuantized` (com.microsoft `bits` attribute) op 在
+/// rc.10 bundled 的 onnxruntime 里**不支持**(报 "Unrecognized
+/// attribute: bits"),rc.12 才修复。降级 ort 前要换 manifest 到
+/// `model_quantized` (INT8,1.5GB,标准 contrib op) 作为兜底。
+///
+/// HF 同一仓库还有更大变体:`model_fp16` (2.8GB)、`model` (5.6GB fp32)。
+/// 真要换变体时,size_bytes / sha256 都要重新算。
 pub const MODEL_MANIFEST: ModelManifest = ModelManifest {
     variant_dir: "privacy-filter-q4f16",
     files: &[
         ModelFile {
             name: "model_q4f16.onnx",
-            url: "https://huggingface.co/openai/privacy-filter/resolve/main/onnx/model_q4f16.onnx",
-            size_bytes: 166_000, // ~166KB,精确值 TODO
-            sha256: None,
+            url: "https://huggingface.co/openai/privacy-filter/resolve/7ffa9a043d54d1be65afb281eddf0ffbe629385b/onnx/model_q4f16.onnx",
+            size_bytes: 165_744,
+            sha256: Some("eaae4e83cf1345a60abe333ed882b55fe5775d1dfbf34b9b269e5e5416f45e5b"),
         },
         ModelFile {
             name: "model_q4f16.onnx_data",
-            url: "https://huggingface.co/openai/privacy-filter/resolve/main/onnx/model_q4f16.onnx_data",
-            size_bytes: 809_000_000, // ~809MB,精确值 TODO
-            sha256: None,
+            url: "https://huggingface.co/openai/privacy-filter/resolve/7ffa9a043d54d1be65afb281eddf0ffbe629385b/onnx/model_q4f16.onnx_data",
+            size_bytes: 809_061_992,
+            sha256: Some("6d4dde787e03ace283c45d4e32a94eec32b6cfcc242e7219bea96f5b4c13569d"),
         },
         ModelFile {
             name: "tokenizer.json",
-            url: "https://huggingface.co/openai/privacy-filter/resolve/main/tokenizer.json",
-            size_bytes: 0, // TODO 实际下载后填
-            sha256: None,
+            url: "https://huggingface.co/openai/privacy-filter/resolve/7ffa9a043d54d1be65afb281eddf0ffbe629385b/tokenizer.json",
+            size_bytes: 27_868_174,
+            sha256: Some("0614fe83cadab421296e664e1f48f4261fa8fef6e03e63bb75c20f38e37d07d3"),
         },
         ModelFile {
             name: "config.json",
-            url: "https://huggingface.co/openai/privacy-filter/resolve/main/config.json",
-            size_bytes: 0,
-            sha256: None,
+            url: "https://huggingface.co/openai/privacy-filter/resolve/7ffa9a043d54d1be65afb281eddf0ffbe629385b/config.json",
+            size_bytes: 3_039,
+            sha256: Some("b2b26a4a4a000639ad30b0c264adbefe365bdb567fbd7bb27303b8c438375bd1"),
         },
     ],
 };

@@ -69,9 +69,20 @@ ulid = "1"
 sha2 = "0.10"
 # Privacy filter (docs/privacy-filter-spec.md): blake3 是 classify cache 的
 # 哈希算法（比 sha2 快一个量级，碰撞强度足够缓存键用），lru 是 spans 缓存
-# 的容器。`ort` / `tokenizers` 在下一阶段（推理实装）才会引入。
+# 的容器。
 blake3 = "1.5"
 lru = "0.12"
+# Privacy filter ONNX 推理 + 分词:
+#  - `ort` 是 ONNX Runtime 的 Rust binding。默认 features 走
+#    download-binaries —— 构建时按目标平台拉预编译 onnxruntime,本机
+#    cargo check 直接能编。打包到 .dmg 时需要把 native lib 拷进
+#    Tauri resources(后续 packaging 调整)。
+#  - `tokenizers` 是 HF 标准 tokenizer 实现,吃 `tokenizer.json`,提供
+#    char-offset 映射(privacy filter 需要把 token spans 转回字符位置)。
+#    禁用 http feature —— 我们的 tokenizer 走 download.rs 拉,不让
+#    tokenizers crate 自己访问 HF。
+ort = "=2.0.0-rc.12"
+tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
 # Privacy filter 下载器用 `StreamExt::next` 消费 reqwest::Response::bytes_stream()
 # 的 chunk 流。`reqwest` 自己的 stream feature 已经把 futures-core 拉了进来,
 # 但 StreamExt 这个 trait 还是要显式从 futures-util 引。

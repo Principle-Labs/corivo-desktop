@@ -76,13 +76,12 @@ impl SqliteFrameEmbeddingRepo {
     }
 }
 
-// v1500: 镜像 repos::frames::FRAME_COLUMNS 的列序（在 ocr_text 之后
-// 插入 ax_text_pii_spans）。两份常量要保持同步 —— 后续抽到 db/repos/mod.rs
-// 的共享 helper 里是 TODO。
+// 镜像 repos::frames::FRAME_COLUMNS 的列序。两份常量要保持同步 ——
+// 后续抽到 db/repos/mod.rs 的共享 helper 里是 TODO。
 const FRAME_COLUMNS: &str = "id, captured_at, device_id, capture_session_id,
         app_bundle_id, app_name, window_title, url,
         screenshot_path, screenshot_hash, screenshot_size_bytes,
-        ax_text, ocr_text, ax_text_pii_spans, adapter_name, adapter_payload,
+        ax_text, ocr_text, adapter_name, adapter_payload,
         extraction_strategy, extraction_duration_ms, fallback_reason,
         trigger,
         content_hash, derived_from_frame_id, still_present_until,
@@ -271,8 +270,7 @@ fn row_to_embedding(row: &rusqlite::Row<'_>) -> rusqlite::Result<FrameEmbedding>
 }
 
 fn row_to_scan_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<EmbeddingScanRow> {
-    // 与 repos::frames::row_to_frame 列序一致 —— v1500 在 ocr_text 之后
-    // 插入 ax_text_pii_spans，13 之后全部 +1，e.vector 从 25 移到 26。
+    // 与 repos::frames::row_to_frame 列序一致。
     let frame = crate::domain::frame::Frame {
         id: row.get(0)?,
         captured_at: row.get::<_, DbInstant>(1)?.into_inner(),
@@ -287,24 +285,23 @@ fn row_to_scan_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<EmbeddingScanRow
         screenshot_size_bytes: row.get(10)?,
         ax_text: row.get(11)?,
         ocr_text: row.get(12)?,
-        ax_text_pii_spans: row.get(13)?,
-        adapter_name: row.get(14)?,
-        adapter_payload: row.get(15)?,
-        extraction_strategy: row.get(16)?,
-        extraction_duration_ms: row.get(17)?,
-        fallback_reason: row.get(18)?,
-        trigger: row.get(19)?,
-        content_hash: row.get(20)?,
-        derived_from_frame_id: row.get(21)?,
-        still_present_until: row.get::<_, Option<DbInstant>>(22)?.map(|d| d.into_inner()),
-        exclusion_match: row.get(23)?,
-        search_tokens: row.get(24)?,
-        created_at: row.get::<_, DbInstant>(25)?.into_inner(),
+        adapter_name: row.get(13)?,
+        adapter_payload: row.get(14)?,
+        extraction_strategy: row.get(15)?,
+        extraction_duration_ms: row.get(16)?,
+        fallback_reason: row.get(17)?,
+        trigger: row.get(18)?,
+        content_hash: row.get(19)?,
+        derived_from_frame_id: row.get(20)?,
+        still_present_until: row.get::<_, Option<DbInstant>>(21)?.map(|d| d.into_inner()),
+        exclusion_match: row.get(22)?,
+        search_tokens: row.get(23)?,
+        created_at: row.get::<_, DbInstant>(24)?.into_inner(),
     };
-    let vector_bytes: Vec<u8> = row.get(26)?;
+    let vector_bytes: Vec<u8> = row.get(25)?;
     let vector = decode_vector(&vector_bytes).ok_or_else(|| {
         rusqlite::Error::FromSqlConversionFailure(
-            26,
+            25,
             rusqlite::types::Type::Blob,
             Box::new(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
@@ -346,7 +343,6 @@ mod tests {
             screenshot_size_bytes: None,
             ax_text: None,
             ocr_text: Some(text.into()),
-            ax_text_pii_spans: None,
             adapter_name: None,
             adapter_payload: None,
             extraction_strategy: "ocr".into(),

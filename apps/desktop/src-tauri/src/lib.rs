@@ -1368,10 +1368,17 @@ pub fn run() {
             // Privacy filter (docs/privacy-filter-spec.md): bootstrap from
             // persisted Config. 默认 enabled=false —— 用户必须在 Settings
             // 同意下载模型后才打开。secret 类目永远强制 on(spec §12.1)。
-            // 模型 session/decode/redact 走 services::privacy_filter,这
-            // 里只挂句柄,不加载任何文件。
+            // model_dir 是 `$APP_DATA/models/privacy-filter-q4f16/`,通过
+            // download::model_dir 计算 —— PrivacySession 在首次 classify
+            // 时按这个路径懒加载 q4f16.onnx + tokenizer.json + config.json。
+            // 模型文件不在(用户没下过)时 classify 优雅降级到空 spans。
+            let privacy_model_dir = services::privacy_filter::download::model_dir(
+                &app_data_dir,
+                &services::privacy_filter::download::MODEL_MANIFEST,
+            );
             let privacy_filter = std::sync::Arc::new(services::privacy_filter::PrivacyFilter::new(
                 config_service.get().privacy_filter.clone(),
+                privacy_model_dir,
             ));
 
             app.manage(AppState {
