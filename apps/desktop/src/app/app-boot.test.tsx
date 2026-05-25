@@ -20,6 +20,7 @@ const {
   getUpdatePolicyMock,
   getVersionMock,
   getCapabilitiesMock,
+  listenMock,
   updaterSnapshot,
 } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
@@ -31,6 +32,7 @@ const {
   getUpdatePolicyMock: vi.fn(),
   getVersionMock: vi.fn(),
   getCapabilitiesMock: vi.fn(),
+  listenMock: vi.fn(),
   updaterSnapshot: {
     status: "idle",
     availableVersion: null as string | null,
@@ -72,7 +74,7 @@ vi.mock("@/lib/updater", async () => {
 // `ask:open-thread`. Without this mock the real Tauri shim crashes
 // in jsdom (`transformCallback` reads window.__TAURI_INTERNALS__).
 vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn().mockResolvedValue(() => undefined),
+  listen: listenMock,
 }));
 
 // usePermissionListener (mounted at the AppBoot root) calls
@@ -144,6 +146,7 @@ beforeEach(() => {
   updaterSnapshot.progress.downloadedBytes = 0;
   updaterSnapshot.progress.totalBytes = 0;
   vi.clearAllMocks();
+  listenMock.mockResolvedValue(() => undefined);
   // Default to a logged-in beta user so the auth gate stays out of the
   // way for tests that aren't explicitly about it. Individual tests can
   // override these mocks before rendering.
@@ -264,5 +267,54 @@ describe("AppBoot", () => {
 
     expect(checkForUpdatesMock).not.toHaveBeenCalled();
     expect(container.querySelector("[data-testid='router-ready']")).not.toBeNull();
+  });
+
+  it("ignores auth_required events when auth capability is unavailable", async () => {
+    let authRequiredHandler: (() => void) | null = null;
+    listenMock.mockImplementation((event: string, handler: () => void) => {
+      if (event === "corivo:auth_required") {
+        authRequiredHandler = handler;
+      }
+      return Promise.resolve(() => undefined);
+    });
+    getCapabilitiesMock.mockResolvedValue({
+      auth: false,
+      billing: false,
+      modelsDirectory: false,
+      connectors: false,
+      telemetry: false,
+      managedUpdater: false,
+    });
+    getOnboardingStateMock.mockResolvedValue({
+      completed: true,
+      version: 1,
+      current_version: 1,
+      needs_onboarding: false,
+    });
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(renderApp());
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(authRequiredHandler).not.toBeNull();
+    await act(async () => {
+      authRequiredHandler?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(navigateMock).not.toHaveBeenCalledWith({
+      to: "/login",
+      replace: true,
+    });
   });
 });

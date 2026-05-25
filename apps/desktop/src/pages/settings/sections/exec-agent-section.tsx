@@ -8,6 +8,7 @@ import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 
+import { useCapabilities } from "@/hooks/use-capabilities";
 import { useConfig } from "@/hooks/use-config";
 import { useTranslation } from "@/i18n";
 import {
@@ -58,16 +59,21 @@ export function ExecAgentSection() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { config, isLoading, update, isSaving } = useConfig();
+  const { data: capabilities } = useCapabilities();
+  const cloudAuthAvailable = capabilities?.auth ?? false;
+  const cloudModelsAvailable = capabilities?.modelsDirectory ?? false;
   const queryClient = useQueryClient();
   const { data: auth } = useQuery({
     queryKey: ["auth-status"],
     queryFn: authStatus,
+    enabled: cloudAuthAvailable,
     refetchOnWindowFocus: false,
   });
   const { data: directory, isFetching: modelsLoading } =
     useQuery<ModelDirectory>({
       queryKey: ["models-available"],
       queryFn: modelsGetAvailable,
+      enabled: cloudModelsAvailable,
       refetchOnWindowFocus: false,
     });
 
@@ -90,7 +96,9 @@ export function ExecAgentSection() {
       applyAuthStatus(null);
       toast.success(t.settings.execAgent.logoutSuccess);
       void queryClient.invalidateQueries({ queryKey: ["auth-status"] });
-      void navigate({ to: "/login", replace: true });
+      if (cloudAuthAvailable) {
+        void navigate({ to: "/login", replace: true });
+      }
     },
     onError: (error) =>
       toast.error(t.common.logoutFailed(fromInvokeError(error))),
@@ -188,8 +196,8 @@ export function ExecAgentSection() {
     }));
   };
 
-  const showCorivoProxy = authMode === "corivo_proxy";
-  const showByok = authMode === "byok" || byokOpen;
+  const showCorivoProxy = cloudAuthAvailable && authMode === "corivo_proxy";
+  const showByok = authMode === "byok" || byokOpen || !cloudAuthAvailable;
 
   return (
     <div className="max-w-xl space-y-8">
@@ -206,7 +214,7 @@ export function ExecAgentSection() {
             description={t.settings.execAgent.modes.corivo.description}
             value="corivo_proxy"
             current={authMode}
-            disabled={isSaving}
+            disabled={isSaving || !cloudAuthAvailable}
             onChange={setAuthMode}
           />
           <ModeRadio

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RouterProvider } from "@tanstack/react-router";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
@@ -21,6 +21,7 @@ type BootMode = "loading" | "force-update" | "ready";
 
 export function AppBoot() {
   const [mode, setMode] = useState<BootMode>("loading");
+  const authCapabilityRef = useRef<boolean | null>(null);
   const updater = useUpdaterStore(
     useShallow((state) => ({
       status: state.status,
@@ -53,6 +54,7 @@ export function AppBoot() {
         // 这样接下来的更新检查 / 登录跳转一并跳过——比起阻断启动，把无云
         // 服务的用户挡在主界面外更糟。
         const capabilities = await getCapabilities().catch(() => CAPABILITIES_FALLBACK);
+        authCapabilityRef.current = capabilities.auth;
 
         if (cancelled) {
           return;
@@ -186,12 +188,22 @@ export function AppBoot() {
 
     void init();
 
-    // Backend-emitted: any unrecoverable cloud auth 401 kicks the user
-    // back to /login. Mounted at the root so it works regardless of which page
-    // first triggered the failure (chat / settings / quick-ask).
+    // Backend-emitted: any unrecoverable cloud auth 401 kicks cloud-build
+    // users back to /login. OSS builds must ignore this event entirely:
+    // there is no account concept, and `/login` is an invalid route for
+    // the open-source binary.
     const unlistenAuth = listen("corivo:auth_required", () => {
-      applyAuthStatus(null);
-      void router.navigate({ to: "/login", replace: true });
+      void (async () => {
+        let authEnabled = authCapabilityRef.current;
+        if (authEnabled === null) {
+          const caps = await getCapabilities().catch(() => CAPABILITIES_FALLBACK);
+          authEnabled = caps.auth;
+          authCapabilityRef.current = authEnabled;
+        }
+        if (!authEnabled) return;
+        applyAuthStatus(null);
+        await router.navigate({ to: "/login", replace: true });
+      })();
     });
 
     // Quick Ask "在 App 中查看" deep-link. The Quick Ask window calls

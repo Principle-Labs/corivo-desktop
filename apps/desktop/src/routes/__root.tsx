@@ -1,14 +1,10 @@
 import { Outlet, createRootRoute, redirect, useRouterState } from "@tanstack/react-router"
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools"
 import { AppLayout } from "@/app/layout"
-import { authStatus, getCapabilities } from "@/lib/tauri"
+import { authStatus, getCapabilities, type Capabilities } from "@/lib/tauri"
 
-// Routes that work without a session: the login page itself, and the
-// onboarding funnel (we don't gate onboarding because it predates the
-// auth step and can be exited via `/login` from inside). Every other
-// route requires `loggedIn`.
-function isPublicPath(path: string): boolean {
-  return path === "/login" || path.startsWith("/onboarding")
+function isOnboardingPath(path: string): boolean {
+  return path.startsWith("/onboarding")
 }
 
 export const Route = createRootRoute({
@@ -21,18 +17,25 @@ export const Route = createRootRoute({
   // mounting; React components never get a chance to fire requests
   // with a stale or missing token.
   beforeLoad: async ({ location }) => {
-    if (isPublicPath(location.pathname)) return
+    const path = location.pathname
 
     // OSS / no-cloud builds have `capabilities.auth = false` (every cloud
     // trait is a noop) — there is no notion of "logged in" to gate on, so
-    // the guard must let every non-public route through. Check capability
-    // before status; if the capability probe itself fails we fall through
-    // to the auth check below and preserve the original fail-closed
-    // behaviour for cloud builds with a broken IPC.
+    // the guard must let every route through except `/login` itself. In
+    // an OSS binary the login page is not just unnecessary; it is an
+    // invalid state, because every login command is a noop/unavailable.
+    let caps: Capabilities | null = null
     try {
-      const caps = await getCapabilities()
-      if (!caps.auth) return
+      caps = await getCapabilities()
     } catch {}
+    if (caps?.auth === false) {
+      if (path === "/login") {
+        throw redirect({ to: "/", replace: true })
+      }
+      return
+    }
+
+    if (path === "/login" || isOnboardingPath(path)) return
 
     let loggedIn = false
     try {
