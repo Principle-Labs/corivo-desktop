@@ -1,7 +1,7 @@
 import { Outlet, createRootRoute, redirect, useRouterState } from "@tanstack/react-router"
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools"
 import { AppLayout } from "@/app/layout"
-import { authStatus } from "@/lib/tauri"
+import { authStatus, getCapabilities } from "@/lib/tauri"
 
 // Routes that work without a session: the login page itself, and the
 // onboarding funnel (we don't gate onboarding because it predates the
@@ -22,6 +22,17 @@ export const Route = createRootRoute({
   // with a stale or missing token.
   beforeLoad: async ({ location }) => {
     if (isPublicPath(location.pathname)) return
+
+    // OSS / no-cloud builds have `capabilities.auth = false` (every cloud
+    // trait is a noop) — there is no notion of "logged in" to gate on, so
+    // the guard must let every non-public route through. Check capability
+    // before status; if the capability probe itself fails we fall through
+    // to the auth check below and preserve the original fail-closed
+    // behaviour for cloud builds with a broken IPC.
+    try {
+      const caps = await getCapabilities()
+      if (!caps.auth) return
+    } catch {}
 
     let loggedIn = false
     try {
