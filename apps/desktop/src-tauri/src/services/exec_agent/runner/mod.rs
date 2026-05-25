@@ -80,6 +80,7 @@ pub struct CorivoRunInput {
 /// * `Byok` — the user supplied their own provider key. `base_url`
 ///   is `Some` when overriding the SDK default (e.g. for local
 ///   Ollama).
+#[derive(Clone)]
 pub enum CorivoAuth {
     /// Closed-beta path. The cloud auth flow returns a per-user
     /// `(apiHost, apiKey)` pair in addition to the local session

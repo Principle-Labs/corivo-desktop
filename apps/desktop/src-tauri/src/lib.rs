@@ -187,6 +187,7 @@ use services::{
         MacOSSystemSurfaceMode, DEFAULT_MAIN_WINDOW_LABEL,
     },
     retention::RetentionTask,
+    scheduled_workflows::{ScheduledWorkflowTicker, WorkflowStore},
     skill_share::SkillShareService,
     snapshot_consumer::LocalConsumer,
 };
@@ -984,6 +985,10 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // v1432 — macOS banner for scheduled-workflow runs. The user
+        // gets a system prompt the first time we call `.show()`; later
+        // calls are silent until the user explicitly revokes.
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             // Register the deep-link handler before anything else in
             // setup runs — `on_open_url` is callback-based and the
@@ -1310,6 +1315,25 @@ pub fn run() {
             let bg_scheduler = Arc::new(BackgroundAgentScheduler::new(app.handle().clone()));
             bg_scheduler.start();
 
+            // Scheduled-workflows store + ticker (v1430). Lives on
+            // top of the BackgroundAgentScheduler — the Ticker resolves
+            // due `workflow_schedules` rows, advances `next_run_at`,
+            // and enqueues a `ScheduledWorkflowTask` per dispatch.
+            let workflow_store =
+                WorkflowStore::with_app(db.pool(), &app_data_dir, app.handle().clone());
+            if let Err(error) = workflow_store.ensure_root() {
+                tracing::warn!(?error, "scheduled_workflow.root_create_failed");
+            }
+            // First-boot preset seed. Idempotent + best-effort: a
+            // failure here just means daily-review is missing from
+            // the empty state; the user can create it by hand.
+            services::scheduled_workflows::presets::seed_defaults(&workflow_store);
+            let workflow_ticker = ScheduledWorkflowTicker::new(
+                workflow_store.clone(),
+                (*bg_scheduler).clone(),
+            );
+            workflow_ticker.clone().start();
+
             let idle_hook = services::session_learner::IdleHook::new(
                 app.handle().clone(),
                 (*bg_scheduler).clone(),
@@ -1367,6 +1391,8 @@ pub fn run() {
                 model_catalog,
                 connector_registry: Some(connector_registry),
                 bg_scheduler: Some(bg_scheduler),
+                workflow_store: Some(workflow_store),
+                workflow_ticker: Some(workflow_ticker),
                 pending_turns: std::sync::Arc::new(tokio::sync::Mutex::new(
                     std::collections::HashMap::new(),
                 )),
@@ -1675,6 +1701,18 @@ pub fn run() {
             commands::memory::get_auto_persona,
             commands::memory::regenerate_auto_persona,
             commands::memory::open_background_task_logs_dir,
+            // Scheduled workflows (v1430) — /workflows page IPC surface.
+            commands::workflows::workflows_list,
+            commands::workflows::workflows_list_runs,
+            commands::workflows::workflows_get_run,
+            commands::workflows::workflows_preview_trigger,
+            commands::workflows::workflows_save,
+            commands::workflows::workflows_delete,
+            commands::workflows::workflows_set_enabled,
+            commands::workflows::workflows_run_now,
+            commands::workflows::workflows_cancel_run,
+            commands::workflows::workflows_acknowledge_run,
+            commands::workflows::workflows_unread_count,
             // Hidden developer-mode tools (unlocked by triple-clicking
             // the Settings dialog title; surfaced in the "Developer" tab).
             commands::dev::dev_open_devtools,

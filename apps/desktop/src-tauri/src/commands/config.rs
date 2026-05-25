@@ -26,6 +26,7 @@ use crate::{
         hotkey::HotkeyService,
         model_catalog::ModelCatalog,
         privacy_filter::PrivacyFilter,
+        scheduled_workflows::{ScheduledWorkflowTicker, WorkflowStore},
         skill_share::SkillShareService,
     },
 };
@@ -100,6 +101,16 @@ pub struct AppState {
     /// degraded boot). Commands queueing tasks bail with a clear error
     /// in that case.
     pub bg_scheduler: Option<Arc<BackgroundAgentScheduler>>,
+
+    /// Scheduled-workflows store (v1430). Owns the filesystem dir under
+    /// `$APPDATA/corivo/workflows/` and the `workflow_schedules` /
+    /// `workflow_runs` repo. `commands::workflows::*` reads/writes
+    /// through this handle; the [`ScheduledWorkflowTicker`] runs a
+    /// 60 s loop against it.
+    pub workflow_store: Option<Arc<WorkflowStore>>,
+    /// Workflow ticker handle — exposed on AppState so the "立即运行"
+    /// IPC reuses the same enqueue path as the cron fire.
+    pub workflow_ticker: Option<ScheduledWorkflowTicker>,
 
     /// In-flight `exec_agent_send` turns keyed by `thread_id`. The
     /// command layer inserts an `Arc<Notify>` here on entry and removes

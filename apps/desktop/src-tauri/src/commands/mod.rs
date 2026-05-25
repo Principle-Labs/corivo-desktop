@@ -24,3 +24,4 @@ pub mod privacy;
 pub mod quick_ask;
 pub mod settings;
 pub mod skills;
+pub mod workflows;
