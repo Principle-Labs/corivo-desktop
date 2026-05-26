@@ -2,6 +2,18 @@
 use tauri::Manager;
 use tauri::{Runtime, WebviewWindow};
 
+#[cfg(target_os = "windows")]
+use std::sync::Mutex;
+#[cfg(target_os = "windows")]
+use windows_sys::Win32::Foundation::HWND;
+#[cfg(target_os = "windows")]
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+    GetForegroundWindow, GetWindowLongPtrW, IsIconic, IsWindow, SetForegroundWindow,
+    SetWindowLongPtrW, SetWindowPos, ShowWindow, GWL_EXSTYLE, HWND_TOPMOST, SWP_FRAMECHANGED,
+    SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_RESTORE, WS_EX_APPWINDOW,
+    WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+};
+
 #[cfg(target_os = "macos")]
 use tauri_nspanel::{
     tauri_panel, CollectionBehavior, ManagerExt, PanelLevel, StyleMask, WebviewWindowExt,
@@ -20,6 +32,9 @@ tauri_panel! {
         }
     })
 }
+
+#[cfg(target_os = "windows")]
+static PREVIOUS_FOREGROUND_HWND: Mutex<Option<isize>> = Mutex::new(None);
 
 /// Convert the quick-ask window into a Spotlight-style NSPanel and
 /// install the level / style / collection-behavior that lets it float
@@ -89,7 +104,30 @@ pub fn apply_quick_ask_overlay_window_mode<R: Runtime>(window: &WebviewWindow<R>
         panel.set_hides_on_deactivate(false);
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        let Some(hwnd) = hwnd_for(window) else {
+            return;
+        };
+        unsafe {
+            let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+            let next_style = (ex_style | WS_EX_TOOLWINDOW | WS_EX_TOPMOST) & !WS_EX_APPWINDOW;
+            if next_style != ex_style {
+                let _ = SetWindowLongPtrW(hwnd, GWL_EXSTYLE, next_style as isize);
+            }
+            let _ = SetWindowPos(
+                hwnd,
+                HWND_TOPMOST,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+            );
+        }
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         let _ = window;
     }
@@ -119,6 +157,28 @@ pub fn show_quick_ask<R: Runtime>(window: &WebviewWindow<R>) {
             }
         }
     }
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(hwnd) = hwnd_for(window) {
+            remember_previous_foreground(hwnd);
+            apply_quick_ask_overlay_window_mode(window);
+            let _ = window.show();
+            unsafe {
+                let _ = SetWindowPos(
+                    hwnd,
+                    HWND_TOPMOST,
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
+                );
+                let _ = SetForegroundWindow(hwnd);
+            }
+            let _ = window.set_focus();
+            return;
+        }
+    }
     let _ = window.show();
     let _ = window.set_focus();
 }
@@ -137,7 +197,19 @@ pub fn hide_quick_ask<R: Runtime>(window: &WebviewWindow<R>) {
             return;
         }
     }
-    let _ = window.hide();
+    #[cfg(target_os = "windows")]
+    {
+        let hwnd = hwnd_for(window);
+        let _ = window.hide();
+        if let Some(hwnd) = hwnd {
+            restore_previous_foreground(hwnd);
+        }
+        return;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = window.hide();
+    }
 }
 
 /// Cheap visibility probe used by the toggle path in
@@ -155,4 +227,48 @@ pub fn is_quick_ask_visible<R: Runtime>(window: &WebviewWindow<R>) -> bool {
         }
     }
     window.is_visible().unwrap_or(false)
+}
+
+#[cfg(target_os = "windows")]
+fn hwnd_for<R: Runtime>(window: &WebviewWindow<R>) -> Option<HWND> {
+    match window.hwnd() {
+        Ok(hwnd) => Some(hwnd.0 as HWND),
+        Err(error) => {
+            tracing::warn!(?error, "quick_ask.window.hwnd_failed");
+            None
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn remember_previous_foreground(quick_ask_hwnd: HWND) {
+    let current = unsafe { GetForegroundWindow() };
+    if current.is_null() || current == quick_ask_hwnd {
+        return;
+    }
+    match PREVIOUS_FOREGROUND_HWND.lock() {
+        Ok(mut guard) => *guard = Some(current as isize),
+        Err(poisoned) => *poisoned.into_inner() = Some(current as isize),
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn restore_previous_foreground(quick_ask_hwnd: HWND) {
+    let previous = match PREVIOUS_FOREGROUND_HWND.lock() {
+        Ok(mut guard) => guard.take(),
+        Err(poisoned) => poisoned.into_inner().take(),
+    };
+    let Some(previous) = previous else {
+        return;
+    };
+    let previous = previous as HWND;
+    if previous.is_null() || previous == quick_ask_hwnd || unsafe { IsWindow(previous) } == 0 {
+        return;
+    }
+    unsafe {
+        if IsIconic(previous) != 0 {
+            let _ = ShowWindow(previous, SW_RESTORE);
+        }
+        let _ = SetForegroundWindow(previous);
+    }
 }

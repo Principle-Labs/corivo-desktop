@@ -28,8 +28,10 @@ import {
   framesList,
   fromInvokeError,
   getCaptureStatus,
+  getSystemInfo,
   openAxSettings,
   openSystemSettingsPrivacy,
+  restartAsAdministrator,
   startCapture,
   stopCapture,
 } from "@/lib/tauri";
@@ -494,6 +496,10 @@ function WebsiteExclusionList() {
 
 function PermissionsCard() {
   const { t } = useTranslation();
+  const systemInfo = useQuery({
+    queryKey: ["system-info"],
+    queryFn: getSystemInfo,
+  });
   const screenRecording = useQuery({
     queryKey: ["screen-permission"],
     queryFn: checkScreenRecordingPermission,
@@ -504,6 +510,12 @@ function PermissionsCard() {
     queryFn: checkAxPermission,
     refetchInterval: 3000,
   });
+  const restartMutation = useMutation({
+    mutationFn: restartAsAdministrator,
+    onMutate: () => toast.message(t.settings.permissions.adminRestart.starting),
+    onError: (error) => toast.error(t.common.setupFailed(fromInvokeError(error))),
+  });
+  const isWindows = systemInfo.data?.os === "windows";
 
   return (
     <FieldGroup title={t.settings.permissions.title}>
@@ -527,8 +539,48 @@ function PermissionsCard() {
           onOpenSettings={() => void openSystemSettingsPrivacy()}
           required={false}
         />
+        {isWindows && (
+          <AdminRestartRow
+            pending={restartMutation.isPending}
+            onRestart={() => restartMutation.mutate()}
+          />
+        )}
       </div>
     </FieldGroup>
+  );
+}
+
+function AdminRestartRow({
+  pending,
+  onRestart,
+}: {
+  pending: boolean;
+  onRestart: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-start gap-3 rounded-md border border-border bg-card px-4 py-3">
+      <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-amber-text)]" />
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium">
+          {t.settings.permissions.adminRestart.title}
+        </div>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          {t.settings.permissions.adminRestart.description}
+        </p>
+      </div>
+      <Button
+        size="sm"
+        variant="secondary"
+        className="shrink-0"
+        disabled={pending}
+        onClick={onRestart}
+      >
+        {pending
+          ? t.status.pending
+          : t.settings.permissions.adminRestart.button}
+      </Button>
+    </div>
   );
 }
 

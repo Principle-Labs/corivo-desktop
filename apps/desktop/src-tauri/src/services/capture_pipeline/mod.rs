@@ -369,7 +369,7 @@ impl CapturePipeline {
         // monitor may not fire until the user actually switches apps,
         // and we want AX coverage on the app that was front when
         // capture started).
-        if let Some(pid) = foreground::probe().pid {
+        if let Some(pid) = foreground::probe_current().await.pid {
             ax_observer.set_target_pid(pid);
         }
 
@@ -601,7 +601,7 @@ impl CapturePipeline {
             ));
         }
         let phase_a_start = std::time::Instant::now();
-        let probe = foreground::probe();
+        let probe = foreground::probe_current().await;
         tracing::debug!(
             app = ?probe.name,
             bundle = ?probe.bundle_id,
@@ -848,7 +848,7 @@ pub(crate) async fn tick(
     }
 
     // 2. Probe foreground -------------------------------------------------
-    let probe = foreground::probe();
+    let probe = foreground::probe_current().await;
 
     // 3. Exclusion check --------------------------------------------------
     let verdict = exclusion.check(probe.bundle_id.as_deref());
@@ -879,9 +879,8 @@ pub(crate) async fn tick(
         ExclusionVerdict::Allow => {}
     }
 
-    // TODO(website-exclusion): once `foreground::probe()` populates
-    // `probe.url` via the AX path (currently always `None` in Phase 1
-    // per the comment there), insert a check against
+    // TODO(website-exclusion): once `foreground::probe_current()` populates
+    // `probe.url`, insert a check against
     // `services::website_exclusion::WebsiteExclusionEngine` here and
     // emit a `'website:<host>'`-reasoned skipped frame on a hit. The
     // engine + Tauri CRUD already live in tree

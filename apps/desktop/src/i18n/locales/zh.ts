@@ -837,6 +837,13 @@ export const zh = {
         description:
           "推荐开启。让 Corivo 直接通过 AX 接口读前台窗口正文，不需要截图。",
       },
+      adminRestart: {
+        title: "管理员模式",
+        description:
+          "Windows 不允许普通进程通过 UIA 读取更高权限的窗口。需要读取管理员应用时，可以把 Corivo 以管理员身份重启。",
+        button: "以管理员身份重启 Corivo",
+        starting: "正在请求管理员权限重启…",
+      },
     },
     execAgent: {
       title: "执行引擎",

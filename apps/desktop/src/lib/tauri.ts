@@ -764,6 +764,10 @@ export async function getSystemInfo(): Promise<SystemInfo> {
   return invoke<SystemInfo>("get_system_info");
 }
 
+export async function restartAsAdministrator(): Promise<void> {
+  return invoke<void>("restart_as_administrator");
+}
+
 export async function clearAllScreenshots(): Promise<number> {
   return invoke<number>("clear_all_screenshots");
 }

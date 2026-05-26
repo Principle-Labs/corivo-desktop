@@ -1647,6 +1647,7 @@ pub fn run() {
             commands::settings::set_autostart_enabled,
             commands::settings::get_autostart_enabled,
             commands::settings::get_system_info,
+            commands::settings::restart_as_administrator,
             commands::settings::clear_all_screenshots,
             commands::settings::data_hard_delete,
             commands::settings::data_delete_range,

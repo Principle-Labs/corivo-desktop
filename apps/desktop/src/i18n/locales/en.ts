@@ -826,6 +826,13 @@ export const en: LocaleDict = {
         description:
           "Recommended. Lets Corivo read foreground-window text directly through the AX API — no screenshot required.",
       },
+      adminRestart: {
+        title: "Administrator mode",
+        description:
+          "Windows blocks UIA reads from elevated target windows unless Corivo is elevated too. Restart as administrator when you need to read admin apps.",
+        button: "Restart as administrator",
+        starting: "Requesting administrator restart…",
+      },
     },
     execAgent: {
       title: "Execution engine",

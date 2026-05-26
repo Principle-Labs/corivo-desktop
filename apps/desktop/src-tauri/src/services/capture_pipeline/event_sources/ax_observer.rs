@@ -125,8 +125,8 @@ impl AXObserverThread {
     }
 
     /// Cloneable closure that re-targets the AX subscription. Used by
-    /// the foreground monitor's NSWorkspace block to drive AX retargeting
-    /// on app activation without holding `&AXObserverThread`.
+    /// the foreground monitor to drive AX retargeting on app activation
+    /// without holding `&AXObserverThread`.
     pub fn pid_setter(&self) -> impl Fn(i32) + Send + Sync + 'static {
         let state = self.state.clone();
         move |pid: i32| {

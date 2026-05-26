@@ -4,9 +4,8 @@
 //! name / pid. `window_title` and `url` stay `None` until Phase 2 lights up
 //! the AX path (those need accessibility access; the v3 spec defers them).
 //!
-//! Non-macOS hosts return an empty probe. The pipeline still works there
-//! (frames written, OCR/AX both skipped via dispatcher's `Skipped` strategy),
-//! it just has less metadata.
+//! Windows resolves the same shape through the capture helper's
+//! `foreground.current` RPC so Quick Ask can hand a real pid to UIA.
 
 #[derive(Debug, Clone, Default)]
 pub struct ForegroundProbe {
@@ -57,6 +56,11 @@ pub fn probe() -> ForegroundProbe {
 }
 
 #[cfg(target_os = "macos")]
+pub async fn probe_current() -> ForegroundProbe {
+    probe()
+}
+
+#[cfg(target_os = "macos")]
 fn window_title_for_pid(target_pid: i32) -> Option<String> {
     // xcap returns windows roughly in z-order on macOS (CGWindowList
     // with `kCGWindowListOptionOnScreenOnly`), so the first match for
@@ -95,4 +99,36 @@ fn screen_recording_permission_granted() -> bool {
 #[cfg(not(target_os = "macos"))]
 pub fn probe() -> ForegroundProbe {
     ForegroundProbe::default()
+}
+
+#[cfg(not(target_os = "macos"))]
+pub async fn probe_current() -> ForegroundProbe {
+    let Some(client) = crate::services::capture_client::global::try_get() else {
+        return ForegroundProbe::default();
+    };
+    match client.current_foreground().await {
+        Ok(app) => ForegroundProbe {
+            bundle_id: non_empty(app.bundle_id),
+            name: non_empty(app.app_name),
+            pid: app.pid,
+            window_title: non_empty(app.window_title),
+            url: None,
+        },
+        Err(error) => {
+            tracing::debug!(?error, "foreground.probe_current_failed");
+            ForegroundProbe::default()
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn non_empty(value: Option<String>) -> Option<String> {
+    value.and_then(|s| {
+        let trimmed = s.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
 }

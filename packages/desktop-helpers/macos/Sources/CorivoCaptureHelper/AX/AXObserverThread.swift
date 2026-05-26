@@ -12,6 +12,7 @@
 //
 
 import ApplicationServices
+import AppKit
 import CoreFoundation
 import Foundation
 
@@ -250,9 +251,17 @@ private func axCallback(
     }
 
     let pid = subscription.pid
-    let payload: [String: Any] = [
+    var payload: [String: Any] = [
         "pid": pid,
     ]
+    if let app = NSRunningApplication(processIdentifier: pid) {
+        if let bundleID = app.bundleIdentifier, !bundleID.isEmpty {
+            payload["bundle_id"] = bundleID
+        }
+    }
+    if let title = windowTitle(for: element, pid: pid), !title.isEmpty {
+        payload["window_title"] = title
+    }
     Task.detached {
         let evt = EventMessage(
             type: "event",
@@ -262,4 +271,30 @@ private func axCallback(
         )
         try? await EventEmitter.shared.send(evt)
     }
+}
+
+private func windowTitle(for element: AXUIElement, pid: pid_t) -> String? {
+    if let title = stringAttribute(element, kAXTitleAttribute as CFString),
+       !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        return title
+    }
+
+    let app = AXUIElementCreateApplication(pid)
+    AXUIElementSetMessagingTimeout(app, 0.2)
+    guard let focused = copyAttribute(app, kAXFocusedWindowAttribute as CFString),
+          CFGetTypeID(focused as CFTypeRef) == AXUIElementGetTypeID()
+    else {
+        return nil
+    }
+    return stringAttribute(focused as! AXUIElement, kAXTitleAttribute as CFString)
+}
+
+private func stringAttribute(_ element: AXUIElement, _ attribute: CFString) -> String? {
+    copyAttribute(element, attribute) as? String
+}
+
+private func copyAttribute(_ element: AXUIElement, _ attribute: CFString) -> AnyObject? {
+    var value: AnyObject?
+    let err = AXUIElementCopyAttributeValue(element, attribute, &value)
+    return err == .success ? value : nil
 }

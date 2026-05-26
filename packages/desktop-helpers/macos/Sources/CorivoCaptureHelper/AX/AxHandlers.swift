@@ -70,11 +70,14 @@ enum AxHandlers {
             try AccessibilityQuery.query(req)
         }.value
 
-        let json: [String: Any] = [
+        var json: [String: Any] = [
             "text": result.text,
             "elapsed_ms": result.elapsedMs,
             "truncated": result.truncated,
         ]
+        if let reason = result.reason {
+            json["reason"] = reason
+        }
         try await EventEmitter.shared.send(
             ResponseMessage(id: request.id, result: AnyCodable(json))
         )

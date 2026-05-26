@@ -1,17 +1,15 @@
-//! macOS implementation of [`ForegroundAppMonitor`].
+//! Helper-backed implementation of [`ForegroundAppMonitor`].
 //!
-//! **Phase 7 migration**: this used to register an `NSWorkspace`
-//! observer block directly via `objc2-app-kit`. The block was the
-//! authoritative source of "frontmost app changed" for both the Quick
-//! Ask overlay and the capture pipeline. The observer now lives in the
-//! capture helper sidecar (`Foreground/ForegroundHandlers.swift`); the
-//! Rust side just subscribes to the helper's broadcast event bus and
-//! fans the events out to:
+//! **Phase 7 migration**: macOS used to register an `NSWorkspace`
+//! observer block directly via `objc2-app-kit`; Windows now uses the
+//! helper's `SetWinEventHook` foreground observer. In both cases the
+//! Rust side subscribes to the helper's broadcast event bus and fans
+//! foreground events out to:
 //!
 //!   1. **Quick Ask overlay** — always on. Emits `capture:focus-activated`
-//!      to the `quick-ask` webview the moment NSWorkspace tells the
-//!      helper a new app is frontmost, so the FocusCard re-aims with
-//!      no user prompt latency.
+//!      to the `quick-ask` webview the moment the helper reports a new
+//!      frontmost app, so the FocusCard re-aims with no user prompt
+//!      latency.
 //!
 //!   2. **Capture pipeline (optional)** — pushes `Event::AppActivated`
 //!      onto the capture event bus and retargets the AX subscription to
@@ -20,8 +18,8 @@
 //!      stops.
 //!
 //! Same-app re-activation dedup (Electron tooltip dismissals etc.)
-//! happens on the Rust side using `last_bundle`, exactly as the old
-//! NSWorkspace impl did.
+//! happens on the Rust side using `last_bundle`, matching the legacy
+//! macOS behavior.
 
 use std::sync::{Arc, Mutex};
 
@@ -232,7 +230,7 @@ impl ForegroundAppMonitor {
     /// Push a synthetic `AppActivated` for the current frontmost app,
     /// asking the helper for the live state. Used by the capture
     /// pipeline's `start` to seed the first frame without waiting for
-    /// the next NSWorkspace activation.
+    /// the next helper activation event.
     pub fn emit_initial_focus(bus: &mpsc::Sender<Event>) -> Result<()> {
         let bus = bus.clone();
         let client = capture_client::global::try_get();

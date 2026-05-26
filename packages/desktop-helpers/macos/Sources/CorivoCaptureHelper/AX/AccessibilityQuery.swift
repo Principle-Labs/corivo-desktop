@@ -39,6 +39,7 @@ enum AccessibilityQuery {
         var text: String
         var elapsedMs: UInt64
         var truncated: Bool
+        var reason: String?
     }
 
     enum RoleTag: String {
@@ -48,10 +49,13 @@ enum AccessibilityQuery {
     }
 
     static func query(_ request: Request) throws -> Response {
+        let started = Date()
         guard AXIsProcessTrusted() else {
-            throw HelperError.permissionDenied(
-                "Accessibility permission missing for the helper bundle",
-                kind: "accessibility"
+            return Response(
+                text: "",
+                elapsedMs: UInt64(Date().timeIntervalSince(started) * 1000),
+                truncated: false,
+                reason: "permission_denied"
             )
         }
 
@@ -63,11 +67,15 @@ enum AccessibilityQuery {
         guard let focused = copyAttribute(app, kAXFocusedWindowAttribute as CFString),
               CFGetTypeID(focused as CFTypeRef) == AXUIElementGetTypeID()
         else {
-            throw HelperError.notFound("focused window unavailable for pid \(request.pid)")
+            return Response(
+                text: "",
+                elapsedMs: UInt64(Date().timeIntervalSince(started) * 1000),
+                truncated: false,
+                reason: "no_focused_window"
+            )
         }
         let window = focused as! AXUIElement
 
-        let started = Date()
         let deadline = started.addingTimeInterval(request.deadlineSeconds)
         var buffer = ""
         walk(
@@ -79,10 +87,12 @@ enum AccessibilityQuery {
         )
 
         let elapsedMs = UInt64(Date().timeIntervalSince(started) * 1000)
+        let reason = buffer.isEmpty ? "empty_tree" : nil
         return Response(
             text: buffer,
             elapsedMs: elapsedMs,
-            truncated: buffer.count >= request.maxChars
+            truncated: buffer.count >= request.maxChars,
+            reason: reason
         )
     }
 

@@ -344,7 +344,7 @@ async fn rebuild_pipeline_exclusion(
 //
 // Today these commands only persist patterns to Config — the live
 // capture pipeline doesn't consume the engine yet because
-// `foreground::probe().url` is still `None` in Phase 1. Once URL
+// `foreground::probe_current().url` is still `None`. Once URL
 // extraction lights up, the pipeline picks up the engine without any
 // Tauri-facing changes (see the TODO marker in
 // `services/capture_pipeline/mod.rs`).

@@ -57,6 +57,32 @@ pub async fn get_system_info() -> Result<SystemInfo, String> {
 }
 
 #[tauri::command]
+pub async fn restart_as_administrator(app: AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        let exe = std::env::current_exe()
+            .map_err(|error| format!("Could not resolve current executable: {error}"))?;
+        Command::new("powershell")
+            .arg("-NoProfile")
+            .arg("-ExecutionPolicy")
+            .arg("Bypass")
+            .arg("-Command")
+            .arg("Start-Process -FilePath $env:CORIVO_ELEVATE_EXE -Verb RunAs")
+            .env("CORIVO_ELEVATE_EXE", exe)
+            .spawn()
+            .map_err(|error| format!("Could not request administrator restart: {error}"))?;
+        app.exit(0);
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = app;
+        Err("Administrator restart is only available on Windows".to_string())
+    }
+}
+
+#[tauri::command]
 pub async fn clear_all_screenshots(state: State<'_, AppState>) -> Result<i64, String> {
     if let Some(pipeline) = &state.capture_pipeline {
         if pipeline.is_running() {
