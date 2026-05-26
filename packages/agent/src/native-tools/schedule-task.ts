@@ -108,7 +108,7 @@ const ScheduleParameters = Type.Object({
   tools: Type.Optional(
     Type.Array(Type.String(), {
       description:
-        "Native tool names the scheduled run is allowed to call. Defaults to ['memory_search', 'save_note']. Common additions: 'chat_thread_get', 'note_list', 'thread_search'. Avoid adding write/edit/bash unless the user clearly asked the agent to act on its own.",
+        "Native tool names the scheduled run is allowed to call. Defaults to a broad read-oriented set: 'memory_search', 'save_note', 'recall_screen_history', 'thread_search', 'chat_thread_get', 'note_list'. Trim if you have a clear reason; add 'read'/'grep'/'find'/'ls' for filesystem-aware workflows. Avoid 'write'/'edit'/'bash' unless the user clearly asked the agent to act on its own.",
     }),
   ),
   max_turns: Type.Optional(
