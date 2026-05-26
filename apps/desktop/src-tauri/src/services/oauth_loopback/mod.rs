@@ -77,6 +77,18 @@ pub struct LoopbackFlow {
     /// sees a clear error. We don't try to fall back to ephemeral —
     /// that would silently break the redirect URI match.
     pub fixed_port: Option<u16>,
+    /// Path the loopback server accepts the callback on. `None` ↔
+    /// `/callback` (Google / Slack / generic). Set to a custom path
+    /// when the IdP registration mandates a different one — e.g.
+    /// ChatGPT's `app_EMoamEEZ73f0CkXaXp7hrann` client expects
+    /// `/auth/callback`.
+    pub callback_path: Option<String>,
+    /// Host portion of the loopback `redirect_uri` sent to the IdP.
+    /// `None` ↔ `127.0.0.1`. ChatGPT's registration is keyed on
+    /// `localhost`; the actual TCP bind always lives on `127.0.0.1`
+    /// regardless, since `localhost` resolves there and we don't want
+    /// IPv6 surprises on Windows.
+    pub loopback_host: Option<String>,
 }
 
 impl LoopbackFlow {
@@ -110,7 +122,9 @@ impl LoopbackFlow {
             .local_addr()
             .map_err(|e| CorivoError::Internal(format!("Could not read local port: {e}")))?
             .port();
-        let redirect_uri = format!("http://127.0.0.1:{port}/callback");
+        let callback_path = self.callback_path.as_deref().unwrap_or("/callback");
+        let host = self.loopback_host.as_deref().unwrap_or("127.0.0.1");
+        let redirect_uri = format!("http://{host}:{port}{callback_path}");
 
         let auth_url = AuthUrl::new(self.auth_url.clone())
             .map_err(|e| CorivoError::Internal(format!("auth url: {e}")))?;
@@ -142,8 +156,13 @@ impl LoopbackFlow {
 
         open_browser(authorize_url.to_string())?;
 
-        let (auth_code, returned_state) =
-            server::wait_for_callback(&listener, &self.success_url, &self.error_url_prefix).await?;
+        let (auth_code, returned_state) = server::wait_for_callback(
+            &listener,
+            callback_path,
+            &self.success_url,
+            &self.error_url_prefix,
+        )
+        .await?;
 
         if returned_state != *csrf_state.secret() {
             return Err(CorivoError::Internal(

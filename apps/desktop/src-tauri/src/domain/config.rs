@@ -106,6 +106,14 @@ pub struct ExecAgentConfig {
     /// Bridge selected host-side skills (~/.agents/skills/, ~/.claude/skills/)
     /// into the per-app skills dir via symlinks.
     pub skill_share: SkillShareConfig,
+    /// "Sign in with ChatGPT" — ChatGPT Plus/Pro/Team/Enterprise/Edu
+    /// subscribers authorize the sidecar to call OpenAI Codex models
+    /// against their ChatGPT subscription quota via OAuth 2.0 PKCE
+    /// (mirrors Codex CLI). Active when `auth_mode == Chatgpt`. `None`
+    /// here means "user picked the mode but never finished login";
+    /// `Some` with expired tokens triggers an auto-refresh before the
+    /// sidecar spawns. Stored plaintext alongside `byok_key`.
+    pub chatgpt: ChatgptAuthConfig,
 }
 
 impl Default for ExecAgentConfig {
@@ -119,7 +127,61 @@ impl Default for ExecAgentConfig {
             byok_model: None,
             thinking_level: ThinkingLevel::default(),
             skill_share: SkillShareConfig::default(),
+            chatgpt: ChatgptAuthConfig::default(),
         }
+    }
+}
+
+/// Persisted ChatGPT-subscription auth state. All fields land in
+/// `config.json` plaintext (same trust model as `byok_key`). Empty /
+/// `None` everywhere ↔ "not signed in with ChatGPT yet".
+///
+/// Field semantics:
+/// * `access_token` — short-lived JWT, sent as `Authorization: Bearer`
+///   on every chatgpt.com/backend-api/codex call. Refreshed
+///   transparently in `runtime.rs` ~5 minutes before expiry.
+/// * `refresh_token` — long-lived rotating JWT. Lost ↔ user must re-login.
+/// * `id_token` — OIDC id_token, kept around so a follow-up release
+///   can re-derive `email` / `plan_type` if we ever change the
+///   surfaced status shape.
+/// * `account_id` — extracted from id_token's
+///   `https://api.openai.com/auth.chatgpt_account_id` claim. Sent on
+///   every request as the `ChatGPT-Account-Id` header. Without it
+///   chatgpt.com rejects the call with 401.
+/// * `plan_type` — `plus` / `pro` / `business` / `enterprise` / `edu`.
+///   Surfaced to the user in Settings so they know which plan funds
+///   this session. Free-tier accounts can't actually complete the
+///   OAuth (OpenAI rejects), so this is always populated when a
+///   session is live.
+/// * `email` — convenience for the Settings status pane.
+/// * `expires_at` — RFC3339 absolute wall-clock; cheaper than
+///   re-parsing `access_token` for an exp check.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default)]
+pub struct ChatgptAuthConfig {
+    pub access_token: Option<String>,
+    pub refresh_token: Option<String>,
+    pub id_token: Option<String>,
+    pub account_id: Option<String>,
+    pub plan_type: Option<String>,
+    pub email: Option<String>,
+    pub expires_at: Option<String>,
+}
+
+impl ChatgptAuthConfig {
+    /// True when every field needed to dispatch a sidecar turn is set.
+    /// Refresh logic in `runtime.rs` consults this before deciding to
+    /// surface "需要登录" vs. attempting a token refresh.
+    pub fn is_signed_in(&self) -> bool {
+        self.access_token
+            .as_deref()
+            .map(|s| !s.trim().is_empty())
+            .unwrap_or(false)
+            && self
+                .account_id
+                .as_deref()
+                .map(|s| !s.trim().is_empty())
+                .unwrap_or(false)
     }
 }
 
@@ -365,6 +427,10 @@ pub enum ExecAgentAuthMode {
     CorivoProxy,
     #[serde(alias = "api_key")]
     Byok,
+    /// "Sign in with ChatGPT" — ChatGPT subscription powers the sidecar.
+    /// Model + api_shape are hardcoded by `runtime.rs` (gpt-5-codex on
+    /// Responses API); credentials come from `ExecAgentConfig.chatgpt`.
+    Chatgpt,
 }
 
 impl Default for ExecAgentAuthMode {
@@ -390,6 +456,7 @@ impl ExecAgentAuthMode {
         match self {
             Self::CorivoProxy => "corivo_proxy",
             Self::Byok => "byok",
+            Self::Chatgpt => "chatgpt",
         }
     }
 }

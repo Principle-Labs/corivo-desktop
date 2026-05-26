@@ -850,7 +850,25 @@ export const en: LocaleDict = {
           description:
             "Use your own Anthropic / OpenAI key, or a local OpenAI-compatible endpoint such as Ollama or vLLM.",
         },
+        chatgpt: {
+          label: "Sign in with ChatGPT (experimental)",
+          description:
+            "Authorize Codex models with your ChatGPT Plus / Pro / Business / Enterprise / Edu subscription — no extra API spend.",
+        },
       },
+      chatgptGroup: "ChatGPT sign-in",
+      chatgptSignedIn: "Signed in",
+      chatgptSignedOut: "Not signed in",
+      chatgptLoginCta: "Sign in with ChatGPT",
+      chatgptLogoutCta: "Sign out of ChatGPT",
+      chatgptLoginInProgress: "Waiting for the browser to finish authorization…",
+      chatgptLoginFailed: (detail: string) => `ChatGPT sign-in failed: ${detail}`,
+      chatgptLoginSuccess: "Signed in with ChatGPT",
+      chatgptLogoutSuccess: "Signed out of ChatGPT",
+      chatgptPlanLabel: (plan: string) => `Plan: ${plan}`,
+      chatgptEmailLabel: (email: string) => `Account: ${email}`,
+      chatgptExperimentalHint:
+        "Experimental: OpenAI publishes no third-party OAuth program, so this path may break without notice — keep BYOK ready as a fallback.",
       modelGroup: "Model selection",
       mainModelLabel: "Primary model",
       refresh: "Refresh",

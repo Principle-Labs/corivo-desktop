@@ -14,7 +14,7 @@ export type ThinkingLevel =
   | "high"
   | "xhigh";
 
-export type AuthMode = "corivo_proxy" | "byok";
+export type AuthMode = "corivo_proxy" | "byok" | "chatgpt";
 
 export interface InputImage {
   /** Either base64-encoded data or a file path. Phase A only carries it through. */
@@ -46,6 +46,15 @@ export interface AuthSpec {
   mode: AuthMode;
   base_url?: string;
   token: string;
+  /**
+   * Only present when `mode === "chatgpt"`. Stamped on every
+   * `chatgpt.com/backend-api/codex/*` request as the
+   * `ChatGPT-Account-Id` header by the global fetch interceptor
+   * (`chatgpt-fetch-interceptor.ts`). Required by the OpenAI endpoint —
+   * Rust runtime resolution refuses to assemble a CorivoAuth::Chatgpt
+   * without it.
+   */
+  account_id?: string;
 }
 
 /**

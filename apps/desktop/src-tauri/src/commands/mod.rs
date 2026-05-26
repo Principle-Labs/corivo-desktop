@@ -4,6 +4,7 @@ pub mod auth;
 pub mod billing;
 pub mod capture;
 pub mod chat;
+pub mod chatgpt_auth;
 pub mod cloud;
 // Composio gateway commands talk to `${API_BASE}/composio/...` directly
 // and have no offline counterpart. Closed Corivo build only; OSS hides

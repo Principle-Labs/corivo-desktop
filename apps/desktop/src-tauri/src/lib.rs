@@ -1693,6 +1693,14 @@ pub fn run() {
             commands::auth::auth_logout,
             commands::auth::auth_status,
             commands::auth::auth_refresh,
+            // "Sign in with ChatGPT" — PKCE loopback OAuth against
+            // auth.openai.com (mirrors Codex CLI). Available in both
+            // open-source and closed builds; persists tokens to
+            // Config.exec_agent.chatgpt and is activated by selecting
+            // the "Chatgpt" ExecAgentAuthMode in Settings.
+            commands::chatgpt_auth::chatgpt_auth_login,
+            commands::chatgpt_auth::chatgpt_auth_logout,
+            commands::chatgpt_auth::chatgpt_auth_status,
             // Connector framework (Settings → Integrations)
             commands::connectors::connectors_list,
             commands::connectors::connector_enable,

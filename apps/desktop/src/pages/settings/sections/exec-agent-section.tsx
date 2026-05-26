@@ -14,6 +14,9 @@ import { useTranslation } from "@/i18n";
 import {
   authLogout,
   authStatus,
+  chatgptAuthLogin,
+  chatgptAuthLogout,
+  chatgptAuthStatus,
   fromInvokeError,
   modelsGetAvailable,
   modelsRefresh,
@@ -68,6 +71,32 @@ export function ExecAgentSection() {
     queryFn: authStatus,
     enabled: cloudAuthAvailable,
     refetchOnWindowFocus: false,
+  });
+  const { data: chatgptAuth, refetch: refetchChatgpt } = useQuery({
+    queryKey: ["chatgpt-auth-status"],
+    queryFn: chatgptAuthStatus,
+    refetchOnWindowFocus: false,
+  });
+
+  const chatgptLogin = useMutation({
+    mutationFn: chatgptAuthLogin,
+    onSuccess: () => {
+      toast.success(t.settings.execAgent.chatgptLoginSuccess);
+      void refetchChatgpt();
+    },
+    onError: (error) =>
+      toast.error(
+        t.settings.execAgent.chatgptLoginFailed(fromInvokeError(error)),
+      ),
+  });
+
+  const chatgptLogout = useMutation({
+    mutationFn: chatgptAuthLogout,
+    onSuccess: () => {
+      toast.success(t.settings.execAgent.chatgptLogoutSuccess);
+      void refetchChatgpt();
+    },
+    onError: (error) => toast.error(t.common.logoutFailed(fromInvokeError(error))),
   });
   const { data: directory, isFetching: modelsLoading } =
     useQuery<ModelDirectory>({
@@ -226,8 +255,65 @@ export function ExecAgentSection() {
             disabled={isSaving}
             onChange={setAuthMode}
           />
+          <ModeRadio
+            id="mode-chatgpt"
+            label={t.settings.execAgent.modes.chatgpt.label}
+            description={t.settings.execAgent.modes.chatgpt.description}
+            value="chatgpt"
+            current={authMode}
+            disabled={isSaving}
+            onChange={setAuthMode}
+          />
         </div>
       </FieldGroup>
+
+      {authMode === "chatgpt" ? (
+        <FieldGroup title={t.settings.execAgent.chatgptGroup}>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between rounded-md border border-border/40 p-3">
+              <div className="space-y-1">
+                <div className="font-medium">
+                  {chatgptAuth?.signedIn
+                    ? t.settings.execAgent.chatgptSignedIn
+                    : t.settings.execAgent.chatgptSignedOut}
+                </div>
+                {chatgptAuth?.email ? (
+                  <div className="text-xs text-muted-foreground">
+                    {t.settings.execAgent.chatgptEmailLabel(chatgptAuth.email)}
+                  </div>
+                ) : null}
+                {chatgptAuth?.planType ? (
+                  <div className="text-xs text-muted-foreground">
+                    {t.settings.execAgent.chatgptPlanLabel(chatgptAuth.planType)}
+                  </div>
+                ) : null}
+              </div>
+              {chatgptAuth?.signedIn ? (
+                <Button
+                  variant="outline"
+                  onClick={() => chatgptLogout.mutate()}
+                  disabled={chatgptLogout.isPending}
+                >
+                  {t.settings.execAgent.chatgptLogoutCta}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => chatgptLogin.mutate()}
+                  disabled={chatgptLogin.isPending}
+                >
+                  {chatgptLogin.isPending
+                    ? t.settings.execAgent.chatgptLoginInProgress
+                    : t.settings.execAgent.chatgptLoginCta}
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t.settings.execAgent.chatgptExperimentalHint}
+            </p>
+          </div>
+        </FieldGroup>
+      ) : null}
 
       {showCorivoProxy ? (
         <FieldGroup title={t.settings.execAgent.modelGroup}>

@@ -71,7 +71,7 @@ pub struct CorivoRunInput {
     pub deps: RpcDeps,
 }
 
-/// Two authentication paths the corivo-agent sidecar supports
+/// Three authentication paths the corivo-agent sidecar supports
 /// (spec §7.3 / §7.4):
 ///
 /// * `CorivoProxy` — the user logged into Corivo; we forward the
@@ -80,6 +80,9 @@ pub struct CorivoRunInput {
 /// * `Byok` — the user supplied their own provider key. `base_url`
 ///   is `Some` when overriding the SDK default (e.g. for local
 ///   Ollama).
+/// * `Chatgpt` — "Sign in with ChatGPT" subscription auth (mirrors
+///   Codex CLI). The sidecar hits `chatgpt.com/backend-api/codex/responses`
+///   with a Bearer access_token plus the `ChatGPT-Account-Id` header.
 #[derive(Clone)]
 pub enum CorivoAuth {
     /// Closed-beta path. The cloud auth flow returns a per-user
@@ -104,6 +107,16 @@ pub enum CorivoAuth {
         base_url: Option<String>,
         api_key: String,
     },
+    /// ChatGPT subscription path. The sidecar uses `access_token` as a
+    /// Bearer credential and `account_id` as the `ChatGPT-Account-Id`
+    /// header on every Responses API call. Refreshed by
+    /// `services::chatgpt_auth` ~5 min before expiry; runtime
+    /// resolution short-circuits with `not_signed_in` if either field
+    /// is empty.
+    Chatgpt {
+        access_token: String,
+        account_id: String,
+    },
 }
 
 impl CorivoAuth {
@@ -114,6 +127,10 @@ impl CorivoAuth {
         match self {
             Self::CorivoProxy { api_key, .. } => !api_key.trim().is_empty(),
             Self::Byok { api_key, .. } => !api_key.trim().is_empty(),
+            Self::Chatgpt {
+                access_token,
+                account_id,
+            } => !access_token.trim().is_empty() && !account_id.trim().is_empty(),
         }
     }
 
@@ -123,6 +140,7 @@ impl CorivoAuth {
         match self {
             Self::CorivoProxy { .. } => "corivo_proxy",
             Self::Byok { .. } => "byok",
+            Self::Chatgpt { .. } => "chatgpt",
         }
     }
 
@@ -141,6 +159,15 @@ impl CorivoAuth {
                 "mode": "byok",
                 "base_url": base_url.clone().map(Value::String).unwrap_or(Value::Null),
                 "token": api_key,
+            }),
+            Self::Chatgpt {
+                access_token,
+                account_id,
+            } => json!({
+                "mode": "chatgpt",
+                "base_url": "https://chatgpt.com/backend-api/codex",
+                "token": access_token,
+                "account_id": account_id,
             }),
         }
     }

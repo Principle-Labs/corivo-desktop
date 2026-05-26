@@ -861,7 +861,25 @@ export const zh = {
           description:
             "使用自己的 Anthropic / OpenAI key，或本地 Ollama / vLLM 等 OpenAI 兼容服务。",
         },
+        chatgpt: {
+          label: "使用 ChatGPT 订阅 (实验性)",
+          description:
+            "用 ChatGPT Plus / Pro / Business / Enterprise / Edu 订阅授权 Codex 模型；无需另付 API 费。",
+        },
       },
+      chatgptGroup: "ChatGPT 登录",
+      chatgptSignedIn: "已登录",
+      chatgptSignedOut: "未登录",
+      chatgptLoginCta: "使用 ChatGPT 登录",
+      chatgptLogoutCta: "退出 ChatGPT 登录",
+      chatgptLoginInProgress: "等待浏览器中完成授权…",
+      chatgptLoginFailed: (detail: string) => `ChatGPT 登录失败: ${detail}`,
+      chatgptLoginSuccess: "ChatGPT 登录成功",
+      chatgptLogoutSuccess: "已退出 ChatGPT 登录",
+      chatgptPlanLabel: (plan: string) => `订阅类型: ${plan}`,
+      chatgptEmailLabel: (email: string) => `账号: ${email}`,
+      chatgptExperimentalHint:
+        "实验性: OpenAI 没有第三方 OAuth 注册流程，连接随时可能失效，请保留 BYOK 作为后备。",
       modelGroup: "模型选择",
       mainModelLabel: "主模型",
       refresh: "刷新",

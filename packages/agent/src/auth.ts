@@ -33,6 +33,22 @@ export interface BuiltModel {
 }
 
 export function buildModelAndStreamConfig(input: SidecarInput): BuiltModel {
+  // ChatGPT subscription mode: hardcoded to openai-responses against
+  // `chatgpt.com/backend-api/codex` (the only endpoint the ChatGPT
+  // OAuth token can actually call). The api_shape on input is
+  // already "openai_responses" — Rust runtime resolution forces it —
+  // but we override base_url defensively so a misconfigured stale
+  // input can't accidentally hit api.openai.com with a ChatGPT
+  // token (which would 401).
+  if (input.auth.mode === "chatgpt") {
+    return buildModel(
+      input.model.id,
+      "openai_responses",
+      "https://chatgpt.com/backend-api/codex",
+      input.auth.token,
+      input.model.thinking_level !== "off" && input.model.thinking_level !== undefined,
+    );
+  }
   return buildModel(
     input.model.id,
     input.model.api_shape,

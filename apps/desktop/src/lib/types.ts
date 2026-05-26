@@ -181,7 +181,34 @@ export interface CorivoSessionConfig {
 // Exec-agent auth (spec §7.4).
 // --------------------------------------------------------------------------
 
-export type ExecAgentAuthMode = "corivo_proxy" | "byok";
+export type ExecAgentAuthMode = "corivo_proxy" | "byok" | "chatgpt";
+
+/** Mirror of Rust `ChatgptAuthConfig` — persisted ChatGPT subscription
+ *  creds. The UI only reads `account_id` to decide "signed-in" + the
+ *  email / plan for the status pane; tokens themselves never leave the
+ *  Rust side. */
+export interface ChatgptAuthConfig {
+  access_token: string | null;
+  refresh_token: string | null;
+  id_token: string | null;
+  account_id: string | null;
+  plan_type: string | null;
+  email: string | null;
+  /** RFC3339 absolute expiry. The Rust runtime refreshes the token
+   *  ~5 min before this hits. */
+  expires_at: string | null;
+}
+
+/** Mirror of Rust `ChatgptAuthStatus` — the stripped-down view the
+ *  Settings status pane consumes. Token material never crosses this
+ *  boundary. */
+export interface ChatgptAuthStatusView {
+  signedIn: boolean;
+  email: string | null;
+  planType: string | null;
+  expiresAt: string | null;
+  accountId: string | null;
+}
 
 // Closed-beta auth surface + skill listing — ts-rs generated, single
 // source of truth.
@@ -221,6 +248,11 @@ export interface ExecAgentConfig {
   /** Reasoning budget the sidecar forwards to pi-ai on the main turn. */
   thinking_level: ThinkingLevel;
   skill_share: SkillShareConfig;
+  /** ChatGPT subscription tokens. Empty/null when the user is not
+   *  signed in with ChatGPT. The Settings UI calls
+   *  `chatgpt_auth_login` / `_logout` to mutate this — never edited
+   *  by direct `setConfig`. */
+  chatgpt: ChatgptAuthConfig;
 }
 
 // --------------------------------------------------------------------------

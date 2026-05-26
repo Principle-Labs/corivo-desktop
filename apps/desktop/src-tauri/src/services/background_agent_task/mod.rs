@@ -53,9 +53,7 @@ use crate::domain::chat::SystemTaskKind;
 use crate::domain::config::{ApiShape, ThinkingLevel};
 use crate::error::Result;
 use crate::services::cloud::CloudSessionService;
-use crate::services::exec_agent::runtime::{
-    resolve_background_runtime, resolve_compaction_partner,
-};
+use crate::services::exec_agent::runtime::resolve_background_runtime;
 use crate::services::exec_agent::CorivoAuth;
 use std::path::PathBuf;
 
@@ -150,10 +148,11 @@ impl TaskDeps {
             &cfg,
             Some(state.cloud.session.clone()),
             state.model_catalog.as_ref().cloned(),
+            Some(state.config_service.clone()),
         )
         .await
         .map_err(|e| format!("runtime_not_ready: {e}"))?;
-        let compaction_model_id = resolve_compaction_partner(runtime.api_shape);
+        let compaction_model_id = runtime.compaction_model_id.clone();
         let workflow_store = state.workflow_store.as_ref().cloned();
         Ok(TaskDeps {
             db_pool,

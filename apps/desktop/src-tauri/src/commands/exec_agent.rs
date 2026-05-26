@@ -13,7 +13,7 @@ use crate::commands::config::AppState;
 use crate::domain::config::Language;
 use crate::services::exec_agent::rpc_server::RpcDeps;
 use crate::services::exec_agent::runner::FocusContextInput;
-use crate::services::exec_agent::runtime::{resolve_compaction_partner, resolve_user_turn_runtime};
+use crate::services::exec_agent::runtime::resolve_user_turn_runtime;
 use crate::services::exec_agent::{
     load_local_context, run_turn, CorivoRunInput, LoadInputs, PermissionReply,
 };
@@ -233,6 +233,7 @@ pub async fn exec_agent_send(
         &cfg_snapshot,
         Some(state.cloud.session.clone()),
         state.model_catalog.as_ref().cloned(),
+        Some(state.config_service.clone()),
         &bound_upstream,
         thread.bound_api_shape,
     )
@@ -240,7 +241,7 @@ pub async fn exec_agent_send(
     let thread_model_id = runtime.model_id;
     let effective_api_shape = runtime.api_shape;
     let auth = runtime.auth;
-    let compaction_model_id = strip_corivo_prefix(resolve_compaction_partner(effective_api_shape));
+    let compaction_model_id = strip_corivo_prefix(runtime.compaction_model_id);
     tracing::info!(
         target: "exec_agent",
         thread_id = %thread_id,

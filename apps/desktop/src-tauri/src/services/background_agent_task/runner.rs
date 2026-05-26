@@ -538,5 +538,12 @@ fn clone_auth(auth: &CorivoAuth) -> CorivoAuth {
             base_url: base_url.clone(),
             api_key: api_key.clone(),
         },
+        CorivoAuth::Chatgpt {
+            access_token,
+            account_id,
+        } => CorivoAuth::Chatgpt {
+            access_token: access_token.clone(),
+            account_id: account_id.clone(),
+        },
     }
 }

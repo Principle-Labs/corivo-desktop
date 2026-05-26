@@ -19,6 +19,7 @@ use crate::error::{CorivoError, Result};
 /// would turn the loopback into a tiny open redirector.
 pub(super) async fn wait_for_callback(
     listener: &TcpListener,
+    callback_path: &str,
     success_url: &str,
     error_url_prefix: &str,
 ) -> Result<(String, String)> {
@@ -45,7 +46,7 @@ pub(super) async fn wait_for_callback(
                 continue;
             }
         };
-        if !path.starts_with("/callback") {
+        if !path.starts_with(callback_path) {
             let _ = write_status(&mut socket, "404 Not Found").await;
             continue;
         }

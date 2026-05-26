@@ -375,6 +375,35 @@ export async function authStatus(): Promise<AuthStatus> {
   return invoke<AuthStatus>("auth_status");
 }
 
+// --------------------------------------------------------------------------
+// "Sign in with ChatGPT" (PKCE loopback against auth.openai.com).
+// Activated by selecting the "Chatgpt" exec agent auth mode in Settings;
+// the desktop persists tokens in Config.exec_agent.chatgpt and forwards
+// them to the sidecar (which talks to chatgpt.com/backend-api/codex).
+// --------------------------------------------------------------------------
+
+import type { ChatgptAuthStatusView } from "@/lib/types";
+
+export type { ChatgptAuthStatusView } from "@/lib/types";
+
+/** Run the PKCE loopback flow against auth.openai.com. Long-running
+ *  (~30s typical, capped at 5min) — UI should show a spinner.
+ *  Resolves with the new status; rejects on user cancel, timeout, or
+ *  ineligible ChatGPT plan. */
+export async function chatgptAuthLogin(): Promise<ChatgptAuthStatusView> {
+  return invoke<ChatgptAuthStatusView>("chatgpt_auth_login");
+}
+
+/** Wipe persisted ChatGPT credentials. Does NOT flip exec_agent.auth_mode —
+ *  that's a separate user action via the Settings radio group. */
+export async function chatgptAuthLogout(): Promise<ChatgptAuthStatusView> {
+  return invoke<ChatgptAuthStatusView>("chatgpt_auth_logout");
+}
+
+export async function chatgptAuthStatus(): Promise<ChatgptAuthStatusView> {
+  return invoke<ChatgptAuthStatusView>("chatgpt_auth_status");
+}
+
 /// Run the Google OAuth loopback flow and exchange the resulting ID
 /// token for a Corivo session. The Rust side spawns a one-shot
 /// 127.0.0.1 listener and opens the system browser to Google's

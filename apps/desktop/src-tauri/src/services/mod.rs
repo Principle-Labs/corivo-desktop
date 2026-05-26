@@ -2,6 +2,7 @@ pub mod background_agent_task;
 pub mod capture_client;
 pub mod capture_pipeline;
 pub mod capture_store;
+pub mod chatgpt_auth;
 // Cloud capability trait layer. Trait objects + noop defaults live here;
 // real Corivo implementations are materialized from private-src once the
 // `corivo-cloud` cargo feature is enabled. See `cloud::mod` for the

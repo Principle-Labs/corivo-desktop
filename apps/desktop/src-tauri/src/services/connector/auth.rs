@@ -347,6 +347,8 @@ impl ConnectorAuthCore {
             success_url: format!("{}/oauth/success", env::web_base()),
             error_url_prefix: format!("{}/oauth/error", env::web_base()),
             fixed_port,
+            callback_path: None,
+            loopback_host: None,
         };
 
         let app_for_browser = self.app.clone();
@@ -585,6 +587,8 @@ impl ConnectorAuthCore {
             // Refresh never binds the loopback (`refresh()` only POSTs
             // to the token endpoint), so `fixed_port` is irrelevant here.
             fixed_port: None,
+            callback_path: None,
+            loopback_host: None,
         };
 
         match flow.refresh(&refresh_token).await {

@@ -24,6 +24,17 @@ import "@mariozechner/pi-ai"; // side-effect: register built-in providers
 import { installUpstreamErrorCapture } from "./upstream-error-capture.js";
 installUpstreamErrorCapture();
 
+// "Sign in with ChatGPT" header + body injector (chatgpt-fetch-
+// interceptor.ts module-doc has the full why). Installed second so
+// it gets to mutate request headers + body BEFORE
+// upstream-error-capture observes the eventual response. Activated
+// per-turn via setChatgptAccountId once we know we're in chatgpt mode.
+import {
+  installChatgptFetchInterceptor,
+  setChatgptAccountId,
+} from "./chatgpt-fetch-interceptor.js";
+installChatgptFetchInterceptor();
+
 import {
   registerFauxProvider,
   fauxText,
@@ -194,6 +205,34 @@ async function main(): Promise<number> {
       ),
     ]);
     mockedModel = reg.getModel(input.model.id);
+  }
+
+  // Activate the ChatGPT subscription fetch interceptor for this turn.
+  // The interceptor stays installed across turns but is a pass-through
+  // until we hand it an account_id. Refuse to start the turn if the
+  // account_id field is missing — without it chatgpt.com/backend-api/codex
+  // would just 401 every request.
+  if (input.auth.mode === "chatgpt") {
+    if (!input.auth.account_id || input.auth.account_id.trim().length === 0) {
+      log.error("sidecar.chatgpt.missing_account_id", {});
+      emit({
+        type: "error",
+        data: {
+          code: "chatgpt_missing_account_id",
+          message:
+            "ChatGPT mode is selected but `auth.account_id` is empty — re-run sign-in to fix the cached credentials.",
+          recoverable: false,
+        },
+      });
+      emit({ type: "agent_end", data: { finish_reason: "Error" } });
+      return 1;
+    }
+    setChatgptAccountId(input.auth.account_id);
+    log.info("sidecar.chatgpt.activated", {
+      account_id_len: input.auth.account_id.length,
+    });
+  } else {
+    setChatgptAccountId(null);
   }
 
   // Phase C §7.7: BYOK model id validation. Done up front so a typo
