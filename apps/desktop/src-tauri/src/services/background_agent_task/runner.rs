@@ -153,6 +153,7 @@ pub async fn run<T: BackgroundAgentTask + ?Sized>(
         // "session learner notices a recurring pattern and proposes a
         // reminder" path) — wire through whatever AppState had.
         workflow_store: deps.workflow_store.clone(),
+        privacy_filter: deps.privacy_filter.clone(),
     };
 
     let tools_owned: Vec<String> = task.tool_whitelist();

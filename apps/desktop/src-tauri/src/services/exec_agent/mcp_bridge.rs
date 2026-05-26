@@ -42,6 +42,7 @@ use tokio::sync::{oneshot, Mutex};
 use crate::commands::config::AppState;
 use crate::db::repos::frames::{FrameRepo, ListFramesOptions};
 use crate::error::{CorivoError, Result};
+use crate::services::privacy_filter::PrivacyFilter;
 
 use corivo_mcp::proto::BRIDGE_SOCKET_ENV;
 #[cfg(unix)]
@@ -311,8 +312,13 @@ async fn handle_recall<R: Runtime>(params: Value, app: AppHandle<R>) -> Result<V
         .as_ref()
         .ok_or_else(|| CorivoError::Internal("frames repo not initialized".to_string()))?
         .clone();
+    // External corivo-mcp clients (Claude Desktop / Cursor pulling frames
+    // via MCP) get the same egress redact as the in-app agent path — the
+    // user's privacy toggles are the source of truth regardless of which
+    // surface issued the recall.
+    let privacy_filter = state.privacy_filter.clone();
     drop(state);
-    recall_screen_history_handler(params, frames_repo.as_ref()).await
+    recall_screen_history_handler(params, frames_repo.as_ref(), privacy_filter.as_ref()).await
 }
 
 /// Normalized prompt that both upstream callers (external MCP clients
@@ -389,6 +395,7 @@ pub async fn ask_permission_handler<R: Runtime>(
 pub async fn recall_screen_history_handler(
     params: Value,
     frames_repo: &dyn FrameRepo,
+    privacy_filter: &PrivacyFilter,
 ) -> Result<Value> {
     let query = params
         .get("query")
@@ -409,18 +416,25 @@ pub async fn recall_screen_history_handler(
         .await
         .map_err(|e| CorivoError::Internal(format!("recall search failed: {e}")))?;
 
-    let frames: Vec<Value> = results
-        .into_iter()
-        .map(|f| {
-            json!({
-                "id": f.id,
-                "captured_at": f.captured_at,
-                "app_bundle_id": f.app_bundle_id,
-                "window_title": f.window_title,
-                "snippet": preview(f.ax_text.as_deref(), f.ocr_text.as_deref(), 240),
-            })
-        })
-        .collect();
+    // Egress redact each frame's snippet before handing it to the LLM /
+    // MCP client. Only the `snippet` field is filtered — `window_title`
+    // and `app_bundle_id` pass through unchanged (per user's scope choice).
+    // `classify_and_enforce` is a fast no-op when settings.enabled=false,
+    // and a cache lookup when the same snippet was redacted earlier this
+    // session; the worst case is `limit` (<=50) serial ONNX runs for an
+    // entirely cold cache, which the LRU then absorbs on subsequent calls.
+    let mut frames: Vec<Value> = Vec::with_capacity(results.len());
+    for f in results {
+        let raw_snippet = preview(f.ax_text.as_deref(), f.ocr_text.as_deref(), 240);
+        let snippet = privacy_filter.classify_and_enforce(&raw_snippet).await;
+        frames.push(json!({
+            "id": f.id,
+            "captured_at": f.captured_at,
+            "app_bundle_id": f.app_bundle_id,
+            "window_title": f.window_title,
+            "snippet": snippet,
+        }));
+    }
 
     Ok(json!({ "frames": frames }))
 }

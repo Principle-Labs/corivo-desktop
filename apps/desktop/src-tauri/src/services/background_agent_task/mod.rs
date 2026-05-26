@@ -55,6 +55,7 @@ use crate::error::Result;
 use crate::services::cloud::CloudSessionService;
 use crate::services::exec_agent::runtime::resolve_background_runtime;
 use crate::services::exec_agent::CorivoAuth;
+use crate::services::privacy_filter::PrivacyFilter;
 use std::path::PathBuf;
 
 pub use runner::TaskOutcome;
@@ -96,6 +97,10 @@ pub struct TaskDeps {
     /// agent uses. `None` only when AppState was wired without the
     /// workflows service.
     pub workflow_store: Option<Arc<crate::services::scheduled_workflows::WorkflowStore>>,
+    /// Egress PII redactor — plumbed through into the per-turn `RpcDeps`
+    /// so the `recall_screen_history` handler can run frame snippets
+    /// through `classify_and_enforce` before they reach the model.
+    pub privacy_filter: Arc<PrivacyFilter>,
 }
 
 impl TaskDeps {
@@ -154,6 +159,7 @@ impl TaskDeps {
         .map_err(|e| format!("runtime_not_ready: {e}"))?;
         let compaction_model_id = runtime.compaction_model_id.clone();
         let workflow_store = state.workflow_store.as_ref().cloned();
+        let privacy_filter = state.privacy_filter.clone();
         Ok(TaskDeps {
             db_pool,
             chat_threads,
@@ -172,6 +178,7 @@ impl TaskDeps {
             app,
             cloud_session: runtime.cloud_session,
             workflow_store,
+            privacy_filter,
         })
     }
 }

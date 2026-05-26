@@ -43,6 +43,7 @@ use crate::db::repos::chat::{ChatMessageRepo, ChatThreadRepo};
 use crate::db::repos::frames::FrameRepo;
 use crate::db::repos::notes::NotesRepo;
 use crate::error::{CorivoError, Result};
+use crate::services::privacy_filter::PrivacyFilter;
 use crate::services::scheduled_workflows::WorkflowStore;
 
 use super::mcp_bridge::PendingMap;
@@ -100,6 +101,12 @@ pub struct RpcDeps {
     /// (e.g. mid-boot race or test harness without the workflows
     /// service); handlers surface a clear error in that case.
     pub workflow_store: Option<std::sync::Arc<WorkflowStore>>,
+    /// Egress PII redactor — applied to every frame `snippet` returned
+    /// by `recall_screen_history` before it's handed to the LLM. Always
+    /// `Some` because `PrivacyFilter` is a pure-memory object with no
+    /// IPC/DB dependency (constructed at boot in `lib.rs`). When the
+    /// user has settings.enabled=false this is a fast no-op.
+    pub privacy_filter: Arc<PrivacyFilter>,
 }
 
 /// Handle to a running RPC server. Drop or call `shutdown()` to stop the
@@ -366,7 +373,13 @@ async fn dispatch(req: RpcRequest, deps: RpcDeps) -> RpcResponse {
     let id = req.id.clone();
     match req.method.as_str() {
         "recall_screen_history" => {
-            match recall_screen_history_handler(req.params, deps.frames_repo.as_ref()).await {
+            match recall_screen_history_handler(
+                req.params,
+                deps.frames_repo.as_ref(),
+                deps.privacy_filter.as_ref(),
+            )
+            .await
+            {
                 Ok(v) => RpcResponse {
                     id,
                     result: Some(v),

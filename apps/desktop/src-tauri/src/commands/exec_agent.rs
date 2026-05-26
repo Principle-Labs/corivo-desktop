@@ -183,6 +183,7 @@ pub async fn exec_agent_send(
         permission_target,
         app_data_dir: app.path().app_data_dir().unwrap_or_default(),
         workflow_store: state.workflow_store.as_ref().cloned(),
+        privacy_filter: state.privacy_filter.clone(),
     };
 
     // Spec §8.2: read the thread row for `bound_model_id` /
