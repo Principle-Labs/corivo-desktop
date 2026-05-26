@@ -4,8 +4,10 @@
 //! polluting the wider isolation contract.
 //!
 //! Sources scanned (in priority order; first wins on name collision):
-//!   1. `~/.agents/skills/`   — single-source-of-truth in airbo's setup
-//!   2. `~/.claude/skills/`   — Claude Code's built-in skill dir
+//!   1. `~/.agents/skills/`         — single-source-of-truth in airbo's setup
+//!   2. `~/.claude/skills/`         — Claude Code's built-in skill dir
+//!   3. `~/.corivo/skills/market/`  — installed from the Corivo skill market
+//!                                    (commands::market writes here)
 //!
 //! De-duplication is by skill **name** (= top-level directory name).
 //! When the same name resolves to the same canonical path through both
@@ -38,6 +40,11 @@ const SKILL_MANIFEST: &str = "SKILL.md";
 pub enum SkillSource {
     Agents,
     Claude,
+    /// Installed by user from the Corivo skill market (see
+    /// `commands::market::skill_market_install`). Directory layout under
+    /// `~/.corivo/skills/market/<slug>/`; each install has a
+    /// `.market-meta.json` sidecar recording the source commit SHA.
+    Market,
 }
 
 impl SkillSource {
@@ -45,17 +52,18 @@ impl SkillSource {
         match self {
             Self::Agents => "agents",
             Self::Claude => "claude",
+            Self::Market => "market",
         }
     }
 
     /// Classification by source directory — the "我的工作流" route
-    /// filters on this. All current sources are external tool
-    /// collections (lark cli, Claude Code), i.e. `Capability`. Once
-    /// Corivo owns a writable skills dir (e.g. `$APPDATA/corivo/skills/`)
-    /// for agent-crystalized routines, those entries will be `Workflow`.
+    /// filters on this. All current sources surface as `Capability` —
+    /// market skills are typically external-tool style today; if/when
+    /// users start publishing workflow-kind skills, this will fan out
+    /// based on SKILL.md frontmatter rather than source alone.
     fn kind(self) -> SkillKind {
         match self {
-            Self::Agents | Self::Claude => SkillKind::Capability,
+            Self::Agents | Self::Claude | Self::Market => SkillKind::Capability,
         }
     }
 }
@@ -111,6 +119,7 @@ impl SkillShareService {
         for (subdir, source) in [
             (".agents/skills", SkillSource::Agents),
             (".claude/skills", SkillSource::Claude),
+            (".corivo/skills/market", SkillSource::Market),
         ] {
             let root = home.join(subdir);
             for skill in scan_dir(&root, source) {

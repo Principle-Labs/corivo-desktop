@@ -42,6 +42,9 @@ pub struct AvailableSkill {
 pub enum AvailableSkillSource {
     Agents,
     Claude,
+    /// Installed by user via `skill_market_install` from the Corivo skill
+    /// market. Lives under `~/.corivo/skills/market/`.
+    Market,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, TS)]
@@ -57,6 +60,7 @@ impl From<SkillSource> for AvailableSkillSource {
         match s {
             SkillSource::Agents => Self::Agents,
             SkillSource::Claude => Self::Claude,
+            SkillSource::Market => Self::Market,
         }
     }
 }

@@ -1715,6 +1715,11 @@ pub fn run() {
             // Skill-share Settings UI (read-only listing — mutation goes
             // through set_config + skill_share.sync hook)
             commands::skills::skills_list_available,
+            // Skill 市场：拉远端目录、安装 / 卸载 / 已安装列表 (用于更新检测)
+            commands::market::skill_market_list,
+            commands::market::skill_market_install,
+            commands::market::skill_market_uninstall,
+            commands::market::skill_market_installed,
             // Phase C §7.5 model catalog (Settings model picker)
             commands::models::models_get_available,
             commands::models::models_refresh,

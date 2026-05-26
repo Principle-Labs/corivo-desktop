@@ -67,6 +67,11 @@ sys-locale = "0.3"
 uuid = { version = "1", features = ["v4", "v5"] }
 ulid = "1"
 sha2 = "0.10"
+# Skill 市场下载链路：API 返回 tar.gz，commands/market.rs 流式解压到
+# ~/.corivo/skills/market/<slug>/。tar 0.4+ 默认拒绝 `..` 越界和绝对路径，
+# 防御 path traversal 攻击。flate2 走 rust-backend 不依赖系统 zlib。
+tar = "0.4"
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 # Privacy filter (docs/privacy-filter-spec.md): blake3 是 classify cache 的
 # 哈希算法（比 sha2 快一个量级，碰撞强度足够缓存键用），lru 是 spans 缓存
 # 的容器。

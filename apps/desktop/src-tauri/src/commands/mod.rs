@@ -18,6 +18,7 @@ pub mod dev;
 pub mod exec_agent;
 pub mod frames;
 pub mod log;
+pub mod market;
 pub mod memory;
 pub mod models;
 pub mod onboarding;
