@@ -41,6 +41,8 @@ impl ExclusionVerdict {
 /// Curated (not exhaustive) — covers the categories the spec calls out:
 /// secure messengers, password managers, banking. Users add more via
 /// `Config.exclusion.extra_app_bundle_ids` (the Settings → 隐私 list).
+///
+/// macOS entries are bundle ids and match by exact equality.
 pub const DEFAULT_BLOCKED_BUNDLES: &[&str] = &[
     // Secure messengers
     "org.whispersystems.signal-desktop",
@@ -55,6 +57,23 @@ pub const DEFAULT_BLOCKED_BUNDLES: &[&str] = &[
     "com.dashlane.dashlane",
     // Banking / personal finance (examples; users will add their own)
     "com.intuit.quicken.mac",
+];
+
+/// Windows entries are executable basenames reported by the capture helper
+/// and match case-insensitively by exact equality.
+pub const DEFAULT_BLOCKED_EXECUTABLE_NAMES: &[&str] = &[
+    // Secure messengers
+    "Signal.exe",
+    "Telegram.exe",
+    // Password managers
+    "1Password.exe",
+    "Bitwarden.exe",
+    "Dashlane.exe",
+    "Enpass.exe",
+    "KeePass.exe",
+    "KeePassXC.exe",
+    // Banking / personal finance (examples; users will add their own)
+    "Quicken.exe",
 ];
 
 /// Bundle-id prefixes identifying Corivo's own windows on macOS. Matched by
@@ -74,6 +93,11 @@ pub const SELF_EXECUTABLE_NAMES: &[&str] = &["corivo-app.exe"];
 /// distinctly in the UI.
 pub fn default_blocked_bundles() -> &'static [&'static str] {
     DEFAULT_BLOCKED_BUNDLES
+}
+
+/// Read-only view onto Windows executable defaults.
+pub fn default_blocked_executables() -> &'static [&'static str] {
+    DEFAULT_BLOCKED_EXECUTABLE_NAMES
 }
 
 /// Read-only view onto the self-exclusion prefixes. Surfaced to the
@@ -123,6 +147,7 @@ pub fn matches_self(id: &str) -> bool {
 #[derive(Debug, Clone)]
 pub struct ExclusionEngine {
     blocked_bundle_ids: HashSet<String>,
+    blocked_executable_names: HashSet<String>,
 }
 
 impl ExclusionEngine {
@@ -133,6 +158,10 @@ impl ExclusionEngine {
                 .iter()
                 .map(|s| s.to_string())
                 .collect(),
+            blocked_executable_names: DEFAULT_BLOCKED_EXECUTABLE_NAMES
+                .iter()
+                .map(|s| executable_key(s))
+                .collect(),
         }
     }
 
@@ -142,11 +171,24 @@ impl ExclusionEngine {
             .iter()
             .map(|s| s.to_string())
             .collect();
+        let mut exe_set: HashSet<String> = DEFAULT_BLOCKED_EXECUTABLE_NAMES
+            .iter()
+            .map(|s| executable_key(s))
+            .collect();
         for extra in extras {
-            set.insert(extra);
+            let extra = extra.trim();
+            if extra.is_empty() {
+                continue;
+            }
+            if is_executable_identifier(extra) {
+                exe_set.insert(executable_key(extra));
+            } else {
+                set.insert(extra.to_string());
+            }
         }
         Self {
             blocked_bundle_ids: set,
+            blocked_executable_names: exe_set,
         }
     }
 
@@ -165,6 +207,13 @@ impl ExclusionEngine {
         if matches_self(id) {
             return ExclusionVerdict::BlockSelf;
         }
+        if is_executable_identifier(id)
+            && self.blocked_executable_names.contains(&executable_key(id))
+        {
+            return ExclusionVerdict::Block {
+                reason: format!("app:{id}"),
+            };
+        }
         if self.blocked_bundle_ids.contains(id) {
             ExclusionVerdict::Block {
                 reason: format!("app:{id}"),
@@ -174,10 +223,18 @@ impl ExclusionEngine {
         }
     }
 
-    /// How many bundle ids the engine currently blocks. Mostly for tests.
+    /// How many app identifiers the engine currently blocks. Mostly for tests.
     pub fn blocked_count(&self) -> usize {
-        self.blocked_bundle_ids.len()
+        self.blocked_bundle_ids.len() + self.blocked_executable_names.len()
     }
+}
+
+pub fn is_executable_identifier(id: &str) -> bool {
+    id.trim().to_ascii_lowercase().ends_with(".exe")
+}
+
+pub fn executable_key(id: &str) -> String {
+    id.trim().to_ascii_lowercase()
 }
 
 impl Default for ExclusionEngine {
@@ -199,6 +256,18 @@ mod tests {
                 assert_eq!(reason, "app:org.whispersystems.signal-desktop");
             }
             _ => panic!("signal should be blocked by default"),
+        }
+    }
+
+    #[test]
+    fn default_engine_blocks_windows_signal() {
+        let engine = ExclusionEngine::from_defaults();
+        let verdict = engine.check(Some("SIGNAL.EXE"));
+        match verdict {
+            ExclusionVerdict::Block { reason } => {
+                assert_eq!(reason, "app:SIGNAL.EXE");
+            }
+            _ => panic!("windows signal should be blocked by default"),
         }
     }
 
@@ -229,9 +298,23 @@ mod tests {
     }
 
     #[test]
+    fn user_executable_extras_are_case_insensitive() {
+        let engine = ExclusionEngine::with_extras(["PrivateVault.exe".to_string()]);
+        match engine.check(Some("privatevault.EXE")) {
+            ExclusionVerdict::Block { reason } => {
+                assert_eq!(reason, "app:privatevault.EXE");
+            }
+            _ => panic!("user executable extra should be blocked"),
+        }
+    }
+
+    #[test]
     fn extras_dedupe_with_defaults() {
         // Adding a default-listed id again does not double-count.
-        let extras = ["org.whispersystems.signal-desktop".to_string()];
+        let extras = [
+            "org.whispersystems.signal-desktop".to_string(),
+            "signal.exe".to_string(),
+        ];
         let engine = ExclusionEngine::with_extras(extras);
         let baseline = ExclusionEngine::from_defaults().blocked_count();
         assert_eq!(engine.blocked_count(), baseline);
@@ -283,6 +366,10 @@ mod tests {
         );
         assert_eq!(
             engine.check(Some("corivo-app-helper.exe")),
+            ExclusionVerdict::Allow,
+        );
+        assert_eq!(
+            engine.check(Some("SignalHelper.exe")),
             ExclusionVerdict::Allow,
         );
     }

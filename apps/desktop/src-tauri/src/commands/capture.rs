@@ -22,7 +22,8 @@ use crate::{
     services::{
         capture_pipeline::CaptureStatus,
         exclusion::{
-            default_blocked_bundles, self_bundle_prefixes, self_executable_names, ExclusionEngine,
+            default_blocked_bundles, default_blocked_executables, executable_key,
+            is_executable_identifier, self_bundle_prefixes, self_executable_names, ExclusionEngine,
         },
     },
 };
@@ -260,13 +261,30 @@ pub async fn exclusion_list(state: State<'_, AppState>) -> Result<Vec<ExclusionE
         bundle_id: (*id).to_string(),
         source: "default".to_string(),
     }));
+    out.extend(
+        default_blocked_executables()
+            .iter()
+            .map(|exe| ExclusionEntry {
+                bundle_id: (*exe).to_string(),
+                source: "default".to_string(),
+            }),
+    );
     for bundle_id in cfg.exclusion.extra_app_bundle_ids.iter() {
         // Hide user rows that duplicate a default — keeps the list
         // tidy and avoids the user wondering why removing their entry
-        // doesn't actually unblock the app. Both exact-match defaults
-        // and the self-prefix engine rule shadow user adds.
+        // doesn't actually unblock the app. Bundle defaults shadow by
+        // exact match; executable defaults shadow case-insensitively.
         if default_blocked_bundles().iter().any(|d| *d == bundle_id) {
             continue;
+        }
+        if is_executable_identifier(bundle_id) {
+            let key = executable_key(bundle_id);
+            if default_blocked_executables()
+                .iter()
+                .any(|d| executable_key(d) == key)
+            {
+                continue;
+            }
         }
         if crate::services::exclusion::matches_self(bundle_id) {
             continue;
@@ -297,7 +315,7 @@ pub async fn exclusion_add(
         .exclusion
         .extra_app_bundle_ids
         .iter()
-        .any(|id| id == &trimmed)
+        .any(|id| same_app_identifier(id, &trimmed))
     {
         persisted.exclusion.extra_app_bundle_ids.push(trimmed);
     }
@@ -318,13 +336,21 @@ pub async fn exclusion_remove(
     persisted
         .exclusion
         .extra_app_bundle_ids
-        .retain(|id| id != &bundle_id);
+        .retain(|id| !same_app_identifier(id, &bundle_id));
     rebuild_pipeline_exclusion(&state, &persisted).await;
     state
         .config_service
         .update(persisted)
         .map_err(String::from)?;
     exclusion_list(state).await
+}
+
+fn same_app_identifier(a: &str, b: &str) -> bool {
+    if is_executable_identifier(a) && is_executable_identifier(b) {
+        executable_key(a) == executable_key(b)
+    } else {
+        a == b
+    }
 }
 
 async fn rebuild_pipeline_exclusion(
