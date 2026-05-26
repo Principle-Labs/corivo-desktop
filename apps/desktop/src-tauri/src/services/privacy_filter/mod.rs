@@ -32,7 +32,7 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use crate::domain::privacy::PrivacySettings;
+use crate::domain::privacy::{PiiLabel, PrivacySettings};
 
 use cache::SpanCache;
 use session::PrivacySession;
@@ -124,15 +124,57 @@ impl PrivacyFilter {
         drop(snap);
 
         let key = self.cache.key_for(text);
-        let spans = if let Some(cached) = self.cache.get(&key) {
-            cached
+        let (spans, cache_hit) = if let Some(cached) = self.cache.get(&key) {
+            (cached, true)
         } else {
             let spans = self.session.classify(text).await;
             self.cache.put(key, spans.clone());
-            spans
+            (spans, false)
         };
 
-        redact::redact(text, &spans, &toggles)
+        let out = redact::redact(text, &spans, &toggles);
+
+        // Per-call diagnostic. **Never** log original text, redacted output,
+        // or span text slices — that would leak the very PII the model just
+        // identified back into the log. Only non-content signals: input
+        // length, cache hit, span count, label histogram, and whether the
+        // output differs. The enabled!() guard skips HashMap allocation
+        // when no DEBUG subscriber is attached.
+        if tracing::enabled!(target: "privacy_filter", tracing::Level::DEBUG) {
+            let mut labels: std::collections::HashMap<PiiLabel, usize> =
+                std::collections::HashMap::new();
+            for s in &spans {
+                *labels.entry(s.label).or_insert(0) += 1;
+            }
+            tracing::debug!(
+                target: "privacy_filter",
+                text_len = text.len(),
+                cache_hit,
+                count = spans.len(),
+                labels = ?labels,
+                changed = out != text,
+                "enforce.spans"
+            );
+        }
+
+        // Content-exposing diagnostic — gated at TRACE so it never fires by
+        // default. The very text on these two lines is the PII the model
+        // just identified, so anything that ingests the log file
+        // (file-layer scrape, Sentry breadcrumb, shoulder-surfing) sees
+        // raw user data. Enable explicitly with e.g.
+        //   $env:RUST_LOG = "privacy_filter=trace,debug"
+        // before launching `pnpm app:dev`. File layer is INFO+ so even
+        // when TRACE is on this still won't land on disk.
+        if tracing::enabled!(target: "privacy_filter", tracing::Level::TRACE) {
+            tracing::trace!(
+                target: "privacy_filter",
+                input = %text,
+                output = %out,
+                "enforce.content"
+            );
+        }
+
+        out
     }
 }
 
