@@ -30,12 +30,12 @@ use serde::{Deserialize, Serialize};
 #[cfg(any(unix, windows))]
 use serde_json::{json, Value};
 use tauri::{AppHandle, Wry};
-#[cfg(unix)]
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+#[cfg(any(unix, windows))]
+use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
 #[cfg(windows)]
-use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
+use tokio::net::windows::named_pipe::ServerOptions;
 #[cfg(unix)]
-use tokio::net::{UnixListener, UnixStream};
+use tokio::net::UnixListener;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
@@ -195,7 +195,10 @@ pub async fn start(socket_path: &Path, deps: RpcDeps) -> Result<RpcServerHandle>
                     // accept further connections on this turn.
                     let deps = deps.clone();
                     tokio::spawn(async move {
-                        if let Err(error) = handle_connection_pipe(connected, deps).await {
+                        let (read_half, write_half) = tokio::io::split(connected);
+                        if let Err(error) =
+                            handle_connection_io(read_half, write_half, deps).await
+                        {
                             tracing::warn!(?error, "exec_agent.rpc_server.connection_error");
                         }
                     });
@@ -205,7 +208,8 @@ pub async fn start(socket_path: &Path, deps: RpcDeps) -> Result<RpcServerHandle>
 
             let deps = deps.clone();
             tokio::spawn(async move {
-                if let Err(error) = handle_connection_pipe(connected, deps).await {
+                let (read_half, write_half) = tokio::io::split(connected);
+                if let Err(error) = handle_connection_io(read_half, write_half, deps).await {
                     tracing::warn!(?error, "exec_agent.rpc_server.connection_error");
                 }
             });
@@ -216,83 +220,6 @@ pub async fn start(socket_path: &Path, deps: RpcDeps) -> Result<RpcServerHandle>
         socket_path: socket_path.to_path_buf(),
         accept_task: Mutex::new(Some(task)),
     })
-}
-
-/// Windows variant of `handle_connection`. Same wire protocol, different
-/// underlying stream type — `NamedPipeServer` doesn't have UnixStream's
-/// `into_split`, so we BufReader over a borrow and write through the same
-/// handle under a Mutex.
-#[cfg(windows)]
-async fn handle_connection_pipe(stream: NamedPipeServer, deps: RpcDeps) -> Result<()> {
-    use tokio::io::AsyncReadExt;
-    use tokio::io::AsyncWriteExt;
-    let stream = Arc::new(Mutex::new(stream));
-
-    // Read loop: pull one line at a time. NamedPipeServer doesn't split,
-    // so we read into a local buffer and find '\n' manually rather than
-    // pulling in `tokio::io::Lines`.
-    let mut buf: Vec<u8> = Vec::with_capacity(2048);
-    let mut scratch = [0u8; 1024];
-    loop {
-        let n = {
-            let mut s = stream.lock().await;
-            match s.read(&mut scratch).await {
-                Ok(0) => break,
-                Ok(n) => n,
-                Err(error) => {
-                    tracing::warn!(?error, "exec_agent.rpc_server.read_error");
-                    break;
-                }
-            }
-        };
-        buf.extend_from_slice(&scratch[..n]);
-
-        while let Some(idx) = buf.iter().position(|b| *b == b'\n') {
-            let line_bytes: Vec<u8> = buf.drain(..=idx).collect();
-            let line = match std::str::from_utf8(&line_bytes[..idx]) {
-                Ok(s) => s.trim(),
-                Err(_) => continue,
-            };
-            if line.is_empty() {
-                continue;
-            }
-            let req: RpcRequest = match serde_json::from_str(line) {
-                Ok(r) => r,
-                Err(e) => {
-                    tracing::warn!(error = %e, line = %line, "exec_agent.rpc_server.parse_failed");
-                    continue;
-                }
-            };
-
-            let deps = deps.clone();
-            let stream = stream.clone();
-            let method = req.method.clone();
-            let request_started_at = Instant::now();
-            tokio::spawn(async move {
-                let response = dispatch(req, deps).await;
-                tracing::info!(
-                    target: "exec_agent",
-                    method = %method,
-                    success = response.error.is_none(),
-                    phase_ms = elapsed_ms(request_started_at),
-                    "exec_agent.rpc_server.request_done"
-                );
-                let mut payload = match serde_json::to_vec(&response) {
-                    Ok(b) => b,
-                    Err(e) => {
-                        tracing::error!(?e, "exec_agent.rpc_server.serialize_response_failed");
-                        return;
-                    }
-                };
-                payload.push(b'\n');
-                let mut s = stream.lock().await;
-                if let Err(e) = s.write_all(&payload).await {
-                    tracing::warn!(?e, "exec_agent.rpc_server.write_failed");
-                }
-            });
-        }
-    }
-    Ok(())
 }
 
 /// Bind the UDS socket and spawn the accept loop on the current
@@ -319,7 +246,10 @@ pub async fn start(socket_path: &Path, deps: RpcDeps) -> Result<RpcServerHandle>
                     tracing::debug!("exec_agent.rpc_server.connection_accepted");
                     let deps = deps.clone();
                     tokio::spawn(async move {
-                        if let Err(error) = handle_connection(stream, deps).await {
+                        let (read_half, write_half) = stream.into_split();
+                        if let Err(error) =
+                            handle_connection_io(read_half, write_half, deps).await
+                        {
                             tracing::warn!(?error, "exec_agent.rpc_server.connection_error");
                         }
                     });
@@ -371,11 +301,21 @@ struct RpcError {
     data: Option<Value>,
 }
 
-#[cfg(unix)]
-async fn handle_connection(stream: UnixStream, deps: RpcDeps) -> Result<()> {
-    let (read_half, write_half) = stream.into_split();
-    let mut reader = BufReader::new(read_half).lines();
-    let writer = Arc::new(Mutex::new(write_half));
+/// Shared connection handler driven by an already-split (reader, writer)
+/// pair. Reading and writing must be independent — both `UnixStream::into_split`
+/// (unix) and `tokio::io::split` (windows named pipes) satisfy that. The
+/// earlier Windows-only variant put the whole `NamedPipeServer` behind a
+/// single `Mutex`, which deadlocked the moment a dispatch task tried to
+/// write a response back while the read loop was parked on the next-line
+/// `await` — that path is gone now.
+#[cfg(any(unix, windows))]
+async fn handle_connection_io<R, W>(reader: R, writer: W, deps: RpcDeps) -> Result<()>
+where
+    R: AsyncRead + Unpin + Send + 'static,
+    W: AsyncWrite + Unpin + Send + 'static,
+{
+    let mut reader = BufReader::new(reader).lines();
+    let writer = Arc::new(Mutex::new(writer));
 
     while let Ok(Some(line)) = reader.next_line().await {
         let trimmed = line.trim();

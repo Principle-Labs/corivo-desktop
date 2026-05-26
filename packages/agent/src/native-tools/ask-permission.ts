@@ -40,10 +40,14 @@ export const askPermissionTool: AgentTool<typeof Parameters> = {
     if (isMockMode()) {
       result = { behavior: "allow", message: "(mock auto-approved)" };
     } else {
+      // ask_permission blocks on a real user — opt out of the default
+      // RPC timeout (90s) by passing Infinity. The agent's own cancel
+      // signal is the right way out if the user walks away.
       result = (await rustRpc(
         "ask_permission",
         params,
         signal,
+        Infinity,
       )) as AskPermissionResult;
     }
 
