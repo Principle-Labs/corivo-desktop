@@ -10,10 +10,10 @@ use tauri::{AppHandle, Manager, State};
 use tokio::sync::Notify;
 
 use crate::commands::config::AppState;
-use crate::domain::config::Language;
+use crate::domain::config::{ApiShape, ExecAgentAuthMode, Language};
 use crate::services::exec_agent::rpc_server::RpcDeps;
 use crate::services::exec_agent::runner::FocusContextInput;
-use crate::services::exec_agent::runtime::resolve_user_turn_runtime;
+use crate::services::exec_agent::runtime::{chatgpt_model_id, resolve_user_turn_runtime};
 use crate::services::exec_agent::{
     load_local_context, run_turn, CorivoRunInput, LoadInputs, PermissionReply,
 };
@@ -213,13 +213,18 @@ pub async fn exec_agent_send(
             None => id,
         }
     }
-    let bound_upstream = strip_corivo_prefix(thread.bound_model_id);
+    // Both are `let mut` because the Chatgpt-mode self-heal below may
+    // rewrite the thread's frozen pair when the user has switched modes
+    // since thread-create time — we want subsequent log lines to reflect
+    // the repaired binding, not the stale one we loaded from disk.
+    let mut bound_upstream = strip_corivo_prefix(thread.bound_model_id);
+    let mut bound_api_shape = thread.bound_api_shape;
     tracing::info!(
         target: "exec_agent",
         thread_id = %thread_id,
         phase_ms = elapsed_ms(thread_load_started_at),
         total_ms = elapsed_ms(send_started_at),
-        bound_api_shape = ?thread.bound_api_shape,
+        bound_api_shape = ?bound_api_shape,
         bound_upstream = %bound_upstream,
         "exec_agent.send.thread_loaded"
     );
@@ -255,6 +260,54 @@ pub async fn exec_agent_send(
         "exec_agent.send.runtime_resolved"
     );
 
+    // Self-heal stale Chatgpt-mode thread bindings.
+    //
+    // `chatgpt.com/backend-api/codex/responses` accepts exactly one
+    // model id (`chatgpt_model_id()`); `resolve_chatgpt_runtime` already
+    // forces that id at send time, so the request itself is fine. But
+    // if the thread was created under CorivoProxy / BYOK and the user
+    // later switched to Chatgpt mode, the frozen `(bound_model_id,
+    // bound_api_shape)` on the row keeps diverging from what we actually
+    // send — every turn surfaces a misleading
+    // `bound_upstream=… / effective_model_id=gpt-5.4` log line.
+    //
+    // Rewrite the row once on first send under the new mode and update
+    // the locals so the `exec_agent.send.resolved` line below shows the
+    // repaired pair. Logged-and-swallowed: if the DB write fails the
+    // turn still proceeds with the correct effective binding.
+    if matches!(cfg_snapshot.exec_agent.auth_mode, ExecAgentAuthMode::Chatgpt) {
+        let canonical_model = chatgpt_model_id();
+        let canonical_shape = ApiShape::OpenaiResponses;
+        if bound_upstream != canonical_model || bound_api_shape != canonical_shape {
+            match threads
+                .rebind(&thread_id, canonical_model, canonical_shape)
+                .await
+            {
+                Ok(()) => {
+                    tracing::info!(
+                        target: "exec_agent",
+                        thread_id = %thread_id,
+                        previous_bound_upstream = %bound_upstream,
+                        previous_bound_api_shape = ?bound_api_shape,
+                        new_bound_upstream = %canonical_model,
+                        new_bound_api_shape = ?canonical_shape,
+                        "exec_agent.send.thread_rebound_for_chatgpt"
+                    );
+                    bound_upstream = canonical_model.to_string();
+                    bound_api_shape = canonical_shape;
+                }
+                Err(error) => {
+                    tracing::warn!(
+                        target: "exec_agent",
+                        ?error,
+                        thread_id = %thread_id,
+                        "exec_agent.send.thread_rebind_failed"
+                    );
+                }
+            }
+        }
+    }
+
     // Stamp `chat_messages.model_used` for the assistant placeholder
     // BEFORE the sidecar fires. The audit lands even on a crash, and
     // re-running is a no-op. We only have an alias in CorivoProxy
@@ -283,7 +336,7 @@ pub async fn exec_agent_send(
         target: "exec_agent",
         thread_id = %thread_id,
         bound_upstream = %bound_upstream,
-        bound_api_shape = ?thread.bound_api_shape,
+        bound_api_shape = ?bound_api_shape,
         effective_model_id = %thread_model_id,
         effective_api_shape = ?effective_api_shape,
         thinking_level = cfg_snapshot.exec_agent.thinking_level.as_str(),

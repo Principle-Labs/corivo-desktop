@@ -108,6 +108,20 @@ fn resolve_thread_binding(
     cfg: &crate::domain::config::Config,
     catalog: Option<&std::sync::Arc<crate::services::model_catalog::ModelCatalog>>,
 ) -> Result<ThreadBinding, String> {
+    // Chatgpt mode: the chatgpt.com/backend-api/codex endpoint only
+    // accepts a single id (see `runtime::CHATGPT_MODEL_ID`). Freeze
+    // that pair onto the thread row at create time so the bound model
+    // matches what `resolve_chatgpt_runtime` will actually send —
+    // otherwise the log surface shows a spurious
+    // `bound_upstream=<settings-pick> / effective=gpt-5.4` mismatch
+    // every turn even though the network call is correct.
+    if matches!(cfg.exec_agent.auth_mode, ExecAgentAuthMode::Chatgpt) {
+        return Ok(ThreadBinding {
+            model_id: crate::services::exec_agent::runtime::chatgpt_model_id().to_string(),
+            api_shape: ApiShape::OpenaiResponses,
+        });
+    }
+
     // BYOK first — when the user has explicitly toggled to "自带 API
     // Key", the picker UI may legitimately have an empty
     // `selected_model_id`. We only fall through to the CorivoProxy

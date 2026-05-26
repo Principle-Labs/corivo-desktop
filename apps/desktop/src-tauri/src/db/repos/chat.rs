@@ -49,7 +49,10 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct NewChatThread {
     pub title: Option<String>,
-    /// Permanent binding — never mutated after creation.
+    /// Frozen at create time. Only `rebind` is allowed to rewrite the
+    /// `(model_id, api_shape)` pair, and only when the active auth mode
+    /// physically cannot honor the original pair (today: Chatgpt mode
+    /// after the thread was created under CorivoProxy/BYOK).
     pub bound_model_id: String,
     pub bound_api_shape: ApiShape,
     /// memory-system-spec §11.2. Defaults to `User`; background agent
@@ -113,6 +116,12 @@ pub trait ChatThreadRepo: Send + Sync {
     /// v1300 sidebar lifecycle. `Some(now)` archives, `None` unarchives.
     /// Same `updated_at` discipline as `set_pinned`.
     async fn set_archived(&self, id: &str, archived: bool) -> Result<()>;
+    /// Repair stale `(bound_model_id, bound_api_shape)` on a thread row.
+    /// Used when the auth mode in effect can't honor the originally-bound
+    /// pair (today: switching into Chatgpt mode after the thread was
+    /// created under CorivoProxy/BYOK) — leaves `updated_at` alone so
+    /// this looks like metadata maintenance, not fresh activity.
+    async fn rebind(&self, id: &str, model_id: &str, api_shape: ApiShape) -> Result<()>;
     /// memory-system-spec §12.3. Session learner overwrites the entire
     /// summary + topics per run (cheap; threads are short). `topics`
     /// should be the Rust-tokenized space-separated form.
@@ -446,6 +455,24 @@ impl ChatThreadRepo for SqliteChatThreadRepo {
                 params![stamp, id],
             )
             .map_err(|error| CorivoError::Internal(format!("set archived_at 失败: {error}")))?;
+            Ok(())
+        })
+        .await
+    }
+
+    async fn rebind(&self, id: &str, model_id: &str, api_shape: ApiShape) -> Result<()> {
+        let id = id.to_string();
+        let model_id = model_id.to_string();
+        let api_shape = api_shape.as_str().to_string();
+        run_blocking(self.pool.clone(), move |conn| {
+            conn.execute(
+                "UPDATE chat_threads
+                   SET bound_model_id = ?1,
+                       bound_api_shape = ?2
+                 WHERE id = ?3",
+                params![model_id, api_shape, id],
+            )
+            .map_err(|error| CorivoError::Internal(format!("rebind chat_thread 失败: {error}")))?;
             Ok(())
         })
         .await

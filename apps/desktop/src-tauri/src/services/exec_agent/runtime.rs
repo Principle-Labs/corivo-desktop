@@ -22,7 +22,19 @@ const DEFAULT_COMPACTION_OPENAI: &str = "gpt-4o-mini";
 /// ChatGPT account." — that variant is reserved for OpenAI's internal /
 /// API-key flows. `gpt-5.4` is the id the ChatGPT-subscription Codex
 /// path actually accepts.
-const CHATGPT_MODEL_ID: &str = "gpt-5.4";
+///
+/// Exposed via [`chatgpt_model_id`] so thread-create paths can pin the
+/// same id at bind time — otherwise the bound model diverges from what
+/// `resolve_chatgpt_runtime` actually sends and we get confusing
+/// `bound_upstream != effective_model_id` log lines.
+pub const CHATGPT_MODEL_ID: &str = "gpt-5.4";
+
+/// Public accessor for the single model id that works against the
+/// ChatGPT-subscription Codex endpoint. Use this anywhere that needs
+/// to pre-commit a model binding for a Chatgpt-mode turn.
+pub fn chatgpt_model_id() -> &'static str {
+    CHATGPT_MODEL_ID
+}
 /// Refresh the ChatGPT access token if it expires within this window.
 /// 5 minutes matches what Codex CLI uses internally.
 const CHATGPT_REFRESH_LEEWAY: Duration = Duration::from_secs(5 * 60);
