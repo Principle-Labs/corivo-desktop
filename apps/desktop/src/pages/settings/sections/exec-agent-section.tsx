@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
@@ -7,6 +7,12 @@ import { toast } from "sonner";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@repo/ui/components/tabs";
 
 import { useCapabilities } from "@/hooks/use-capabilities";
 import { useConfig } from "@/hooks/use-config";
@@ -133,12 +139,6 @@ export function ExecAgentSection() {
       toast.error(t.common.logoutFailed(fromInvokeError(error))),
   });
 
-  // BYOK section is collapsed by default — surfaced as "advanced" so
-  // the recommended (CorivoProxy + login) path stays the obvious one.
-  // Auto-open when the user is already in BYOK mode so we don't hide
-  // their saved settings.
-  const [byokOpen, setByokOpen] = useState(false);
-
   // Every alias the user has been granted. The directory comes from
   // /v1/me/models — no client-side filtering (the backend already
   // dropped disabled rows). Empty array while the cache is hydrating
@@ -225,8 +225,12 @@ export function ExecAgentSection() {
     }));
   };
 
-  const showCorivoProxy = cloudAuthAvailable && authMode === "corivo_proxy";
-  const showByok = authMode === "byok" || byokOpen || !cloudAuthAvailable;
+  // When the build doesn't ship cloud auth, the Corivo tab is disabled.
+  // If config still says "corivo_proxy", surface BYOK as the active tab
+  // so the user sees usable content. We don't rewrite config here —
+  // that happens when they actually click a different tab.
+  const activeTab: ExecAgentAuthMode =
+    !cloudAuthAvailable && authMode === "corivo_proxy" ? "byok" : authMode;
 
   return (
     <div className="max-w-xl space-y-8">
@@ -235,131 +239,258 @@ export function ExecAgentSection() {
         description={t.settings.execAgent.description}
       />
 
-      <FieldGroup title={t.settings.execAgent.authMethodGroup}>
-        <div className="space-y-3">
-          <ModeRadio
-            id="mode-corivo"
-            label={t.settings.execAgent.modes.corivo.label}
-            description={t.settings.execAgent.modes.corivo.description}
+      <Tabs
+        value={activeTab}
+        onValueChange={(next) => setAuthMode(next as ExecAgentAuthMode)}
+        className="space-y-6"
+      >
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger
             value="corivo_proxy"
-            current={authMode}
             disabled={isSaving || !cloudAuthAvailable}
-            onChange={setAuthMode}
-          />
-          <ModeRadio
-            id="mode-byok"
-            label={t.settings.execAgent.modes.byok.label}
-            description={t.settings.execAgent.modes.byok.description}
-            value="byok"
-            current={authMode}
-            disabled={isSaving}
-            onChange={setAuthMode}
-          />
-          <ModeRadio
-            id="mode-chatgpt"
-            label={t.settings.execAgent.modes.chatgpt.label}
-            description={t.settings.execAgent.modes.chatgpt.description}
-            value="chatgpt"
-            current={authMode}
-            disabled={isSaving}
-            onChange={setAuthMode}
-          />
-        </div>
-      </FieldGroup>
+          >
+            {t.settings.execAgent.tabCorivo}
+          </TabsTrigger>
+          <TabsTrigger value="byok" disabled={isSaving}>
+            {t.settings.execAgent.tabByok}
+          </TabsTrigger>
+          <TabsTrigger value="chatgpt" disabled={isSaving}>
+            {t.settings.execAgent.tabChatgpt}
+          </TabsTrigger>
+        </TabsList>
 
-      {authMode === "chatgpt" ? (
-        <FieldGroup title={t.settings.execAgent.chatgptGroup}>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between rounded-md border border-border/40 p-3">
-              <div className="space-y-1">
-                <div className="font-medium">
-                  {chatgptAuth?.signedIn
-                    ? t.settings.execAgent.chatgptSignedIn
-                    : t.settings.execAgent.chatgptSignedOut}
-                </div>
-                {chatgptAuth?.email ? (
-                  <div className="text-xs text-muted-foreground">
-                    {t.settings.execAgent.chatgptEmailLabel(chatgptAuth.email)}
-                  </div>
-                ) : null}
-                {chatgptAuth?.planType ? (
-                  <div className="text-xs text-muted-foreground">
-                    {t.settings.execAgent.chatgptPlanLabel(chatgptAuth.planType)}
-                  </div>
-                ) : null}
+        <TabsContent value="corivo_proxy" className="space-y-6">
+          <p className="text-xs text-muted-foreground">
+            {t.settings.execAgent.modes.corivo.description}
+          </p>
+
+          <FieldGroup title={t.settings.execAgent.modelGroup}>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">{t.settings.execAgent.mainModelLabel}</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => refreshModels.mutate()}
+                  disabled={refreshModels.isPending}
+                  title={t.settings.execAgent.refreshTitle}
+                >
+                  <RefreshCw
+                    className={`mr-1 h-3 w-3 ${
+                      refreshModels.isPending ? "animate-spin" : ""
+                    }`}
+                  />
+                  {t.settings.execAgent.refresh}
+                </Button>
               </div>
-              {chatgptAuth?.signedIn ? (
-                <Button
-                  variant="outline"
-                  onClick={() => chatgptLogout.mutate()}
-                  disabled={chatgptLogout.isPending}
-                >
-                  {t.settings.execAgent.chatgptLogoutCta}
-                </Button>
+
+              {managed.length === 0 ? (
+                <p className="rounded-md border border-border/40 bg-muted/30 p-3 text-xs text-muted-foreground">
+                  {modelsLoading
+                    ? t.settings.execAgent.modelsLoading
+                    : t.settings.execAgent.modelsEmpty}
+                </p>
               ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => chatgptLogin.mutate()}
-                  disabled={chatgptLogin.isPending}
-                >
-                  {chatgptLogin.isPending
-                    ? t.settings.execAgent.chatgptLoginInProgress
-                    : t.settings.execAgent.chatgptLoginCta}
-                </Button>
+                <div className="space-y-2">
+                  {managed.map((model) => (
+                    <ModelOption
+                      key={model.alias}
+                      model={model}
+                      isDefault={model.alias === directory?.default_alias}
+                      checked={selectedModelId === model.alias}
+                      disabled={isSaving}
+                      onChange={() => setSelectedModelId(model.alias)}
+                    />
+                  ))}
+                </div>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {t.settings.execAgent.chatgptExperimentalHint}
-            </p>
-          </div>
-        </FieldGroup>
-      ) : null}
+          </FieldGroup>
 
-      {showCorivoProxy ? (
-        <FieldGroup title={t.settings.execAgent.modelGroup}>
-          <div className="space-y-3 text-sm">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm">{t.settings.execAgent.mainModelLabel}</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => refreshModels.mutate()}
-                disabled={refreshModels.isPending}
-                title={t.settings.execAgent.refreshTitle}
-              >
-                <RefreshCw
-                  className={`mr-1 h-3 w-3 ${
-                    refreshModels.isPending ? "animate-spin" : ""
-                  }`}
-                />
-                {t.settings.execAgent.refresh}
-              </Button>
-            </div>
-
-            {managed.length === 0 ? (
-              <p className="rounded-md border border-border/40 bg-muted/30 p-3 text-xs text-muted-foreground">
-                {modelsLoading
-                  ? t.settings.execAgent.modelsLoading
-                  : t.settings.execAgent.modelsEmpty}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {managed.map((model) => (
-                  <ModelOption
-                    key={model.alias}
-                    model={model}
-                    isDefault={model.alias === directory?.default_alias}
-                    checked={selectedModelId === model.alias}
-                    disabled={isSaving}
-                    onChange={() => setSelectedModelId(model.alias)}
-                  />
-                ))}
+          <FieldGroup title={t.settings.execAgent.corivoLoginGroup}>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between rounded-md border border-border/40 p-3">
+                <div className="space-y-1">
+                  <div className="font-medium">
+                    {auth?.loggedIn
+                      ? t.settings.execAgent.loggedIn
+                      : t.settings.execAgent.loggedOut}
+                  </div>
+                  {auth?.label ? (
+                    <div className="text-xs text-muted-foreground">
+                      {t.settings.execAgent.accountLabel(auth.label)}
+                    </div>
+                  ) : !auth?.loggedIn ? (
+                    <div className="text-xs text-muted-foreground">
+                      {t.settings.execAgent.pleaseLogin}
+                    </div>
+                  ) : null}
+                </div>
+                {auth?.loggedIn ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => logout.mutate()}
+                    disabled={logout.isPending}
+                  >
+                    {t.settings.execAgent.logoutCta}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => void navigate({ to: "/login" })}
+                  >
+                    {t.settings.execAgent.goLoginCta}
+                  </Button>
+                )}
               </div>
-            )}
-          </div>
-        </FieldGroup>
-      ) : null}
+            </div>
+          </FieldGroup>
+        </TabsContent>
+
+        <TabsContent value="byok" className="space-y-6">
+          <p className="text-xs text-muted-foreground">
+            {t.settings.execAgent.modes.byok.description}
+          </p>
+
+          <FieldGroup title={t.settings.execAgent.byokGroup}>
+            <div className="space-y-3 rounded-md border border-border/40 p-3 text-sm">
+              <div className="space-y-2">
+                <Label htmlFor="byok-api-shape">
+                  {t.settings.execAgent.byokApiShapeLabel}
+                </Label>
+                <select
+                  id="byok-api-shape"
+                  value={byokApiShape}
+                  disabled={isSaving}
+                  onChange={(event) =>
+                    setByokField("byok_api_shape", event.target.value)
+                  }
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {API_SHAPES.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="byok-base-url">
+                  {t.settings.execAgent.byokBaseUrlLabel}
+                </Label>
+                <Input
+                  id="byok-base-url"
+                  type="text"
+                  value={byokBaseUrl}
+                  placeholder={
+                    API_SHAPES.find((s) => s.value === byokApiShape)
+                      ?.placeholder
+                  }
+                  onChange={(event) =>
+                    setByokField("byok_base_url", event.target.value)
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t.settings.execAgent.byokBaseUrlHint}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="byok-key">{t.settings.execAgent.byokKeyLabel}</Label>
+                <Input
+                  id="byok-key"
+                  type="password"
+                  value={byokKey}
+                  placeholder={
+                    byokApiShape === "anthropic"
+                      ? "sk-ant-api03-..."
+                      : "sk-..."
+                  }
+                  onChange={(event) =>
+                    setByokField("byok_key", event.target.value)
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="byok-model">
+                  {t.settings.execAgent.byokModelLabel}
+                </Label>
+                <Input
+                  id="byok-model"
+                  type="text"
+                  value={byokModel}
+                  placeholder={
+                    byokApiShape === "anthropic"
+                      ? "claude-sonnet-4-20250514"
+                      : "gpt-4o"
+                  }
+                  onChange={(event) =>
+                    setByokField("byok_model", event.target.value)
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t.settings.execAgent.byokModelHint}
+                </p>
+              </div>
+            </div>
+          </FieldGroup>
+        </TabsContent>
+
+        <TabsContent value="chatgpt" className="space-y-6">
+          <p className="text-xs text-muted-foreground">
+            {t.settings.execAgent.modes.chatgpt.description}
+          </p>
+
+          <FieldGroup title={t.settings.execAgent.chatgptGroup}>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between rounded-md border border-border/40 p-3">
+                <div className="space-y-1">
+                  <div className="font-medium">
+                    {chatgptAuth?.signedIn
+                      ? t.settings.execAgent.chatgptSignedIn
+                      : t.settings.execAgent.chatgptSignedOut}
+                  </div>
+                  {chatgptAuth?.email ? (
+                    <div className="text-xs text-muted-foreground">
+                      {t.settings.execAgent.chatgptEmailLabel(chatgptAuth.email)}
+                    </div>
+                  ) : null}
+                  {chatgptAuth?.planType ? (
+                    <div className="text-xs text-muted-foreground">
+                      {t.settings.execAgent.chatgptPlanLabel(chatgptAuth.planType)}
+                    </div>
+                  ) : null}
+                </div>
+                {chatgptAuth?.signedIn ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => chatgptLogout.mutate()}
+                    disabled={chatgptLogout.isPending}
+                  >
+                    {t.settings.execAgent.chatgptLogoutCta}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => chatgptLogin.mutate()}
+                    disabled={chatgptLogin.isPending}
+                  >
+                    {chatgptLogin.isPending
+                      ? t.settings.execAgent.chatgptLoginInProgress
+                      : t.settings.execAgent.chatgptLoginCta}
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t.settings.execAgent.chatgptExperimentalHint}
+              </p>
+            </div>
+          </FieldGroup>
+        </TabsContent>
+      </Tabs>
 
       <FieldGroup title={t.settings.execAgent.thinkingBudgetGroup}>
         <div className="space-y-2 text-sm">
@@ -384,143 +515,6 @@ export function ExecAgentSection() {
           </p>
         </div>
       </FieldGroup>
-
-      {authMode === "corivo_proxy" ? (
-        <FieldGroup title={t.settings.execAgent.corivoLoginGroup}>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between rounded-md border border-border/40 p-3">
-              <div className="space-y-1">
-                <div className="font-medium">
-                  {auth?.loggedIn
-                    ? t.settings.execAgent.loggedIn
-                    : t.settings.execAgent.loggedOut}
-                </div>
-                {auth?.label ? (
-                  <div className="text-xs text-muted-foreground">
-                    {t.settings.execAgent.accountLabel(auth.label)}
-                  </div>
-                ) : !auth?.loggedIn ? (
-                  <div className="text-xs text-muted-foreground">
-                    {t.settings.execAgent.pleaseLogin}
-                  </div>
-                ) : null}
-              </div>
-              {auth?.loggedIn ? (
-                <Button
-                  variant="outline"
-                  onClick={() => logout.mutate()}
-                  disabled={logout.isPending}
-                >
-                  {t.settings.execAgent.logoutCta}
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => void navigate({ to: "/login" })}
-                >
-                  {t.settings.execAgent.goLoginCta}
-                </Button>
-              )}
-            </div>
-          </div>
-        </FieldGroup>
-      ) : null}
-
-      {showByok ? (
-        <FieldGroup title={t.settings.execAgent.byokGroup}>
-          <div className="space-y-3 rounded-md border border-border/40 p-3 text-sm">
-            <div className="space-y-2">
-              <Label htmlFor="byok-api-shape">
-                {t.settings.execAgent.byokApiShapeLabel}
-              </Label>
-              <select
-                id="byok-api-shape"
-                value={byokApiShape}
-                disabled={isSaving}
-                onChange={(event) =>
-                  setByokField("byok_api_shape", event.target.value)
-                }
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                {API_SHAPES.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="byok-base-url">
-                {t.settings.execAgent.byokBaseUrlLabel}
-              </Label>
-              <Input
-                id="byok-base-url"
-                type="text"
-                value={byokBaseUrl}
-                placeholder={
-                  API_SHAPES.find((s) => s.value === byokApiShape)
-                    ?.placeholder
-                }
-                onChange={(event) =>
-                  setByokField("byok_base_url", event.target.value)
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                {t.settings.execAgent.byokBaseUrlHint}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="byok-key">{t.settings.execAgent.byokKeyLabel}</Label>
-              <Input
-                id="byok-key"
-                type="password"
-                value={byokKey}
-                placeholder={
-                  byokApiShape === "anthropic"
-                    ? "sk-ant-api03-..."
-                    : "sk-..."
-                }
-                onChange={(event) =>
-                  setByokField("byok_key", event.target.value)
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="byok-model">
-                {t.settings.execAgent.byokModelLabel}
-              </Label>
-              <Input
-                id="byok-model"
-                type="text"
-                value={byokModel}
-                placeholder={
-                  byokApiShape === "anthropic"
-                    ? "claude-sonnet-4-20250514"
-                    : "gpt-4o"
-                }
-                onChange={(event) =>
-                  setByokField("byok_model", event.target.value)
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                {t.settings.execAgent.byokModelHint}
-              </p>
-            </div>
-          </div>
-          {authMode !== "byok" ? (
-            <button
-              type="button"
-              className="text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => setByokOpen(false)}
-            >
-              {t.settings.execAgent.byokCollapse}
-            </button>
-          ) : null}
-        </FieldGroup>
-      ) : null}
     </div>
   );
 }
@@ -588,42 +582,3 @@ function ModelOption({
   );
 }
 
-function ModeRadio({
-  id,
-  label,
-  description,
-  value,
-  current,
-  disabled,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  description: string;
-  value: ExecAgentAuthMode;
-  current: ExecAgentAuthMode;
-  disabled: boolean;
-  onChange: (next: ExecAgentAuthMode) => void;
-}) {
-  const checked = current === value;
-  return (
-    <label
-      htmlFor={id}
-      className="flex cursor-pointer items-start gap-3 rounded-md border border-border/40 p-3 hover:bg-accent/30"
-    >
-      <input
-        id={id}
-        type="radio"
-        name="exec-agent-auth-mode"
-        checked={checked}
-        disabled={disabled}
-        onChange={() => onChange(value)}
-        className="mt-1"
-      />
-      <div className="space-y-1">
-        <div className="text-sm font-medium">{label}</div>
-        <div className="text-xs text-muted-foreground">{description}</div>
-      </div>
-    </label>
-  );
-}

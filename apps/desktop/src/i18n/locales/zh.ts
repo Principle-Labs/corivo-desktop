@@ -849,7 +849,6 @@ export const zh = {
       title: "执行引擎",
       description:
         "所有 chat(/ask 与 Quick Ask)都走 corivo-agent sidecar。可选 Corivo 登录(推荐)或自带 API Key(BYOK)。",
-      authMethodGroup: "认证方式",
       modes: {
         corivo: {
           label: "使用 Corivo 登录(推荐)",
@@ -867,6 +866,9 @@ export const zh = {
             "用 ChatGPT Plus / Pro / Business / Enterprise / Edu 订阅授权 Codex 模型；无需另付 API 费。",
         },
       },
+      tabCorivo: "Corivo",
+      tabByok: "BYOK",
+      tabChatgpt: "ChatGPT",
       chatgptGroup: "ChatGPT 登录",
       chatgptSignedIn: "已登录",
       chatgptSignedOut: "未登录",
@@ -918,7 +920,6 @@ export const zh = {
       byokModelLabel: "Model id",
       byokModelHint:
         "sidecar 启动时会调 provider 的 /v1/models 校验 id 合法性。填错时设置页会显示具体错误。",
-      byokCollapse: "收起 BYOK 配置",
     },
     skills: {
       title: "技能库",

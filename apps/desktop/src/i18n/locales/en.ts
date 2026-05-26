@@ -838,7 +838,6 @@ export const en: LocaleDict = {
       title: "Execution engine",
       description:
         "Both /ask and Quick Ask go through the corivo-agent sidecar. Pick Corivo sign-in (recommended) or bring your own API key (BYOK).",
-      authMethodGroup: "Authentication",
       modes: {
         corivo: {
           label: "Sign in with Corivo (recommended)",
@@ -856,6 +855,9 @@ export const en: LocaleDict = {
             "Authorize Codex models with your ChatGPT Plus / Pro / Business / Enterprise / Edu subscription — no extra API spend.",
         },
       },
+      tabCorivo: "Corivo",
+      tabByok: "BYOK",
+      tabChatgpt: "ChatGPT",
       chatgptGroup: "ChatGPT sign-in",
       chatgptSignedIn: "Signed in",
       chatgptSignedOut: "Not signed in",
@@ -907,7 +909,6 @@ export const en: LocaleDict = {
       byokModelLabel: "Model id",
       byokModelHint:
         "On launch the sidecar calls the provider's /v1/models to validate the id. Mistakes surface as a specific error in Settings.",
-      byokCollapse: "Collapse BYOK config",
     },
     skills: {
       title: "Skills library",
