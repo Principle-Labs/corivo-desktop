@@ -36,7 +36,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <Sidebar />
         <main
           data-testid="app-content-shell"
-          className="relative mt-5 mr-5 min-h-0 min-w-0 flex-1 overflow-hidden rounded-t-[20px] border-t border-r border-l border-border bg-card shadow-[0_-1px_0_rgba(255,255,255,0.6)_inset]"
+          className="relative mt-5 mr-5 min-h-0 min-w-0 flex-1 overflow-hidden rounded-t-[20px] border-t border-r border-l border-border bg-card shadow-[0_1px_0_rgba(255,255,255,0.6)_inset]"
         >
           <div
             className={cn(
