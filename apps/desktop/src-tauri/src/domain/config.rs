@@ -428,7 +428,7 @@ pub enum ExecAgentAuthMode {
     #[serde(alias = "api_key")]
     Byok,
     /// "Sign in with ChatGPT" — ChatGPT subscription powers the sidecar.
-    /// Model + api_shape are hardcoded by `runtime.rs` (gpt-5-codex on
+    /// Model + api_shape are hardcoded by `runtime.rs` (gpt-5.4 on
     /// Responses API); credentials come from `ExecAgentConfig.chatgpt`.
     Chatgpt,
 }

@@ -133,11 +133,34 @@ function mutateForChatgpt(
 }
 
 /**
- * Parse `raw` as JSON and ensure `store: false` is set. Returns the
+ * Body fields the chatgpt.com Codex endpoint doesn't accept (verified
+ * empirically: sending any of these returns 400 with no body).
+ *
+ * `prompt_cache_key` + `prompt_cache_retention` are paid-tier Responses
+ * API features that openai-node attaches by default — Codex CLI's own
+ * request construction skips them. Strip before forwarding.
+ */
+const CHATGPT_UNSUPPORTED_FIELDS = [
+  "prompt_cache_key",
+  "prompt_cache_retention",
+  // `max_output_tokens` is a paid Responses-API parameter — chatgpt.com
+  // returns 400 `"Unsupported parameter: max_output_tokens"`. ChatGPT
+  // subscriptions cap output via plan-level rate limits, not per-request.
+  "max_output_tokens",
+] as const;
+
+/**
+ * Parse `raw` as JSON, ensure `store: false`, hoist the system message
+ * out of `input[]` into a top-level `instructions` field (the chatgpt.com
+ * Codex endpoint rejects requests without it with `"Instructions are
+ * required"`), and strip any fields the endpoint refuses. Returns the
  * re-stringified body, or `null` when the body isn't an object we can
- * sensibly mutate (in which case the caller forwards it unchanged —
- * the chatgpt.com endpoint will then 400 us with a clear error, which
- * is better than corrupting the payload).
+ * sensibly mutate.
+ *
+ * pi-ai / openai-node send the system prompt as a normal `system` role
+ * entry in `input[]` — that's how OpenAI's public Responses API takes
+ * it. The ChatGPT-subscription variant requires it on `instructions`
+ * instead, mirroring how Codex CLI builds its own request.
  */
 function injectStoreFalse(raw: string): string | null {
   try {
@@ -149,9 +172,83 @@ function injectStoreFalse(raw: string): string | null {
     ) {
       return null;
     }
-    const next = { ...(parsed as Record<string, unknown>), store: false };
+    const next: Record<string, unknown> = {
+      ...(parsed as Record<string, unknown>),
+      store: false,
+    };
+    for (const k of CHATGPT_UNSUPPORTED_FIELDS) {
+      delete next[k];
+    }
+    hoistSystemToInstructions(next);
     return JSON.stringify(next);
   } catch {
     return null;
   }
+}
+
+/**
+ * Mutate `body` so that any `role: "system"` entries in `input[]` are
+ * concatenated into a single top-level `instructions` string and
+ * removed from the input array. No-op when there's no system entry or
+ * `instructions` is already populated (caller wins).
+ *
+ * Multiple system entries get joined with a blank line, mirroring
+ * Codex CLI's behavior when a workflow stitches together base prompt +
+ * persona + tools doc.
+ */
+function hoistSystemToInstructions(body: Record<string, unknown>): void {
+  const input = body.input;
+  if (!Array.isArray(input)) return;
+  const systemTexts: string[] = [];
+  const kept: unknown[] = [];
+  for (const entry of input) {
+    if (
+      entry !== null &&
+      typeof entry === "object" &&
+      (entry as { role?: unknown }).role === "system"
+    ) {
+      const content = (entry as { content?: unknown }).content;
+      const text = extractText(content);
+      if (text) systemTexts.push(text);
+      continue;
+    }
+    kept.push(entry);
+  }
+  if (systemTexts.length === 0) return;
+  if (typeof body.instructions !== "string" || body.instructions.length === 0) {
+    body.instructions = systemTexts.join("\n\n");
+  }
+  body.input = kept;
+}
+
+/**
+ * Flatten an OpenAI Responses-API `content` field down to a single
+ * string. Accepts the three shapes openai-node ever produces:
+ *   * plain string
+ *   * `[{ type: "input_text" | "output_text", text: "..." }, ...]`
+ *   * a single `{ text: "..." }` object
+ */
+function extractText(content: unknown): string | null {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    const parts: string[] = [];
+    for (const part of content) {
+      if (
+        part !== null &&
+        typeof part === "object" &&
+        typeof (part as { text?: unknown }).text === "string"
+      ) {
+        parts.push((part as { text: string }).text);
+      }
+    }
+    return parts.length > 0 ? parts.join("") : null;
+  }
+  if (
+    content !== null &&
+    typeof content === "object" &&
+    typeof (content as { text?: unknown }).text === "string"
+  ) {
+    return (content as { text: string }).text;
+  }
+  return null;
 }

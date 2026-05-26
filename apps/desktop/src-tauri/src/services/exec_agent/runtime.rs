@@ -12,11 +12,17 @@ use crate::services::model_catalog::ModelCatalog;
 
 const DEFAULT_COMPACTION_ANTHROPIC: &str = "claude-haiku-4-5";
 const DEFAULT_COMPACTION_OPENAI: &str = "gpt-4o-mini";
-/// The ChatGPT-subscription endpoint (`chatgpt.com/backend-api/codex`)
-/// only exposes Codex-family models. Both the main turn and compaction
-/// use the same id — there is no separate cheap-model path on that
-/// endpoint.
-const CHATGPT_MODEL_ID: &str = "gpt-5-codex";
+/// Model id sent to `chatgpt.com/backend-api/codex/responses`. Both the
+/// main turn and compaction use the same id — there is no separate
+/// cheap-model path on that endpoint.
+///
+/// Empirical: trying `gpt-5-codex` (what the public Codex CLI ships
+/// against the same endpoint) returns
+/// "The 'gpt-5-codex' model is not supported when using Codex with a
+/// ChatGPT account." — that variant is reserved for OpenAI's internal /
+/// API-key flows. `gpt-5.4` is the id the ChatGPT-subscription Codex
+/// path actually accepts.
+const CHATGPT_MODEL_ID: &str = "gpt-5.4";
 /// Refresh the ChatGPT access token if it expires within this window.
 /// 5 minutes matches what Codex CLI uses internally.
 const CHATGPT_REFRESH_LEEWAY: Duration = Duration::from_secs(5 * 60);

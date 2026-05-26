@@ -33,6 +33,12 @@ let installed = false;
 const LLM_URL_PATTERNS = [
   "/chat/completions",
   "/messages",
+  // OpenAI Responses API (`POST .../responses`) — used by openai-responses
+  // adapter and the ChatGPT-subscription Codex endpoint
+  // (`chatgpt.com/backend-api/codex/responses`). Without this entry a
+  // 4xx from chatgpt.com surfaces as "<status> status code (no body)"
+  // because the interceptor skips capturing the response.
+  "/responses",
 ];
 
 function looksLikeLlmCall(url: string | undefined): boolean {
