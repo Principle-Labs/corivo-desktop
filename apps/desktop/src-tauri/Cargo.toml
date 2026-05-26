@@ -185,4 +185,10 @@ windows-sys = { version = "0.61.2", features = [
     "Win32_System_Threading",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_WindowsAndMessaging",
+    # FocusCard 的 app-icon 抓取走 Windows 分支 (commands/app_icon.rs):
+    # ProcessStatus 用来枚举进程把 bundle_id="WXWork.exe" 反查回完整 exe
+    # 路径; WindowsAndMessaging 里的 PrivateExtractIconsW 拉最大尺寸 HICON;
+    # Gdi 把 HICON → DIB → RGBA 字节再喂给 image crate 编码 PNG。
+    "Win32_System_ProcessStatus",
+    "Win32_Graphics_Gdi",
 ] }
