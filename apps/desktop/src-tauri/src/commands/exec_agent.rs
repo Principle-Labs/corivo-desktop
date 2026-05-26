@@ -10,17 +10,15 @@ use tauri::{AppHandle, Manager, State};
 use tokio::sync::Notify;
 
 use crate::commands::config::AppState;
-use crate::domain::config::{ApiShape, ExecAgentAuthMode, Language};
+use crate::domain::config::Language;
 use crate::services::exec_agent::rpc_server::RpcDeps;
-use crate::services::exec_agent::runner::{CorivoAuth, FocusContextInput};
+use crate::services::exec_agent::runner::FocusContextInput;
+use crate::services::exec_agent::runtime::{resolve_compaction_partner, resolve_user_turn_runtime};
 use crate::services::exec_agent::{
     load_local_context, run_turn, CorivoRunInput, LoadInputs, PermissionReply,
 };
 use crate::services::memory::{MemoryService, RecallRequest};
 use crate::services::recall::{FinishReason, StreamEmitter};
-
-const DEFAULT_COMPACTION_ANTHROPIC: &str = "claude-haiku-4-5";
-const DEFAULT_COMPACTION_OPENAI: &str = "gpt-4o-mini";
 
 /// Optional focus context Quick Ask attaches to the user message.
 /// `/ask` doesn't pass this — the model sees the user's question alone.
@@ -43,139 +41,11 @@ pub struct FocusContextPayload {
     pub selection: Option<String>,
 }
 
-/// Per-turn runtime binding: the auth bundle + the alias-derived
-/// (upstream_model, api_shape) for this turn. Single-key
-/// architecture: every account has ONE sub2api key whose group is
-/// the model selector. The key is read from `CloudSessionService`
-/// (same cloud credential pair that drives auth), the active alias is
-/// read from the model directory cache.
-struct RuntimeBinding {
-    auth: CorivoAuth,
-    /// What gets sent to sub2api as the `model` field.
-    model_id: String,
-    /// Drives the sidecar's adapter pick + the compaction partner
-    /// fallback. Comes from the active alias's `client_protocol`.
-    api_shape: ApiShape,
-    /// Directory alias that actually drove this turn — stamped onto
-    /// the assistant message for audit. `None` in Byok mode.
-    alias: Option<String>,
-}
-
-/// Resolve the auth bundle + (model_id, api_shape, alias) for this
-/// turn. CorivoProxy mode reads:
-///   * host + api_key from `CloudSessionService::fetch_agent_creds()` (the
-///     single per-user sub2api key minted at signup),
-///   * active alias from `model_catalog.active_entry()` (set by the
-///     picker via `models_set_active_model`).
-/// Byok mode forwards the thread's frozen pair unchanged.
-async fn resolve_corivo_runtime(
-    state: &AppState,
-    cfg: &crate::domain::config::Config,
-    thread_upstream_model: &str,
-    thread_api_shape: ApiShape,
-) -> Result<RuntimeBinding, String> {
-    match cfg.exec_agent.auth_mode {
-        ExecAgentAuthMode::CorivoProxy => {
-            let session = state.cloud.session.clone();
-            let catalog = state
-                .model_catalog
-                .as_ref()
-                .ok_or_else(|| "model directory not initialized — restart after login".to_string())?
-                .clone();
-            let entry = catalog.active_entry().ok_or_else(|| {
-                "model directory is empty — refresh after the admin enables at least one model"
-                    .to_string()
-            })?;
-            // Fetch creds (the long-lived per-user key); on 401 the
-            // session is wiped and the UI is notified.
-            let creds = session
-                .fetch_agent_creds()
-                .await
-                .map_err(|e| e.to_string())?;
-            // Align the sub2api key's group_id with the alias we're
-            // about to invoke. sub2api routes by group, not by the
-            // chat request's `model` field — so the picker's "current
-            // alias" and the gateway's "current group" can drift
-            // (notably on first turn after fresh login, before the
-            // user has ever opened the picker). Cached per-process so
-            // steady-state turns skip the round-trip.
-            session
-                .ensure_model_alias_synced(catalog.clone(), entry.alias.clone())
-                .await
-                .map_err(|e| {
-                    format!("failed to align gateway with alias {}: {}", entry.alias, e)
-                })?;
-            tracing::info!(
-                target: "exec_agent",
-                api_host = %creds.api_host,
-                alias = %entry.alias,
-                upstream_model = %entry.upstream_model,
-                api_shape = ?entry.client_protocol,
-                api_key_len = creds.api_key.len(),
-                label = ?creds.label,
-                email = ?creds.email,
-                "exec_agent.corivo_proxy.creds_resolved"
-            );
-            Ok(RuntimeBinding {
-                model_id: entry.upstream_model,
-                api_shape: entry.client_protocol,
-                alias: Some(entry.alias),
-                auth: CorivoAuth::CorivoProxy {
-                    gateway_url: creds.api_host,
-                    api_key: creds.api_key,
-                },
-            })
-        }
-        ExecAgentAuthMode::Byok => {
-            let api_key = cfg
-                .exec_agent
-                .byok_key
-                .as_deref()
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(str::to_string)
-                .ok_or_else(|| "BYOK mode is selected but no API key is configured".to_string())?;
-            Ok(RuntimeBinding {
-                auth: CorivoAuth::Byok {
-                    base_url: cfg
-                        .exec_agent
-                        .byok_base_url
-                        .as_deref()
-                        .map(str::trim)
-                        .filter(|s| !s.is_empty())
-                        .map(str::to_string),
-                    api_key,
-                },
-                model_id: thread_upstream_model.to_string(),
-                api_shape: thread_api_shape,
-                alias: None,
-            })
-        }
-    }
-}
-
-/// Resolve the compaction model id for a turn. The new directory
-/// shape (`/v1/me/models`) does not surface a per-alias compaction
-/// partner — sub2api routes the cheap-model traffic through the
-/// same key, and a Corivo-wide default per protocol is good enough
-/// while the catalog is small. If we later want per-alias overrides,
-/// extend `ModelMeta` with `compaction_upstream_model: Option<String>`
-/// in the backend and look it up here.
-fn resolve_compaction_partner(api_shape: ApiShape) -> String {
-    match api_shape {
-        ApiShape::Anthropic => DEFAULT_COMPACTION_ANTHROPIC.to_string(),
-        // Responses / Completions 共用同一个 OpenAI cheap compaction model
-        // ——gpt-4o-mini 在两个 API 形态都跑得通,sub2api 按 alias 路由,
-        // 这里不需要为 Responses 单列一个 id。
-        ApiShape::Openai | ApiShape::OpenaiResponses => DEFAULT_COMPACTION_OPENAI.to_string(),
-    }
-}
-
 /// Drive one chat turn through the corivo-agent sidecar.
 ///
 /// `assistant_message_id` is the `status='streaming'` row the frontend
 /// pre-created via `chat_assistant_message_start`. We stamp
-/// `model_used` on it once `resolve_corivo_runtime` decides the alias.
+/// `model_used` on it once `resolve_user_turn_runtime` decides the alias.
 /// The active model is read from `model_catalog.active_entry()` —
 /// switched via `models_set_active_model`, not per-turn.
 #[tauri::command]
@@ -359,9 +229,10 @@ pub async fn exec_agent_send(
     // the returned `model_id` / `api_shape` are what we send to
     // sub2api and pi-ai, NOT the (possibly stale) thread fields.
     let runtime_started_at = Instant::now();
-    let runtime = resolve_corivo_runtime(
-        &state,
+    let runtime = resolve_user_turn_runtime(
         &cfg_snapshot,
+        Some(state.cloud.session.clone()),
+        state.model_catalog.as_ref().cloned(),
         &bound_upstream,
         thread.bound_api_shape,
     )
@@ -559,16 +430,6 @@ pub async fn exec_agent_send(
         map.insert(thread_id.clone(), cancel_signal.clone());
     }
 
-    // Hand the runner a cloud session handle only in CorivoProxy
-    // mode — that's the only mode where a sidecar `auth_failed`
-    // upstream error should reach into corivo's session manager to
-    // refresh creds. BYOK is the user's own key; if their upstream
-    // 401s, refreshing the cloud session isn't going to fix it.
-    let session_for_runner = match cfg_snapshot.exec_agent.auth_mode {
-        crate::domain::config::ExecAgentAuthMode::CorivoProxy => Some(state.cloud.session.clone()),
-        crate::domain::config::ExecAgentAuthMode::Byok => None,
-    };
-
     let run_turn_started_at = Instant::now();
     let run_result = run_turn(
         &thread_id,
@@ -577,7 +438,7 @@ pub async fn exec_agent_send(
         extra_system_prompt,
         &emitter,
         cancel_signal,
-        session_for_runner,
+        runtime.cloud_session,
     )
     .await;
     tracing::info!(

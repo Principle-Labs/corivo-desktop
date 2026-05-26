@@ -231,7 +231,7 @@ pub async fn run<T: BackgroundAgentTask + ?Sized>(
                 &emitter,
                 cancel,
                 &tools_native,
-                Some(cloud_session),
+                cloud_session,
             )
             .await
         });

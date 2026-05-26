@@ -72,8 +72,15 @@ async fn tick(inner: &HookInner) {
     let Some(state) = inner.app.try_state::<AppState>() else {
         return;
     };
-    let Some(deps) = TaskDeps::from_state(&state, inner.app.clone()).await else {
-        return;
+    let deps = match TaskDeps::try_from_state(&state, inner.app.clone()).await {
+        Ok(deps) => deps,
+        Err(reason) => {
+            tracing::debug!(
+                reason = %reason,
+                "session_learner.idle_hook.deps_not_ready"
+            );
+            return;
+        }
     };
     let Ok(threads) = deps.chat_threads.list(100).await else {
         return;

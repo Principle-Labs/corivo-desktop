@@ -53,8 +53,10 @@ use crate::domain::chat::SystemTaskKind;
 use crate::domain::config::{ApiShape, ThinkingLevel};
 use crate::error::Result;
 use crate::services::cloud::CloudSessionService;
+use crate::services::exec_agent::runtime::{
+    resolve_background_runtime, resolve_compaction_partner,
+};
 use crate::services::exec_agent::CorivoAuth;
-use crate::services::model_catalog::ModelCatalog;
 use std::path::PathBuf;
 
 pub use runner::TaskOutcome;
@@ -85,13 +87,11 @@ pub struct TaskDeps {
     pub bundled_skills_dir: Option<PathBuf>,
     pub bridge_pending: crate::services::exec_agent::mcp_bridge::PendingMap,
     pub app: tauri::AppHandle<tauri::Wry>,
-    /// Live cloud session handle. Background tasks are always
-    /// CorivoProxy (they're built from `session.fetch_agent_creds()` above),
-    /// so this is `Some` whenever the deps make it past `from_state`.
-    /// Passed through to the runner so an `auth_failed` from the
-    /// sidecar can trigger a cloud-session refresh just like the
-    /// user-facing chat path.
-    pub cloud_session: Arc<dyn CloudSessionService>,
+    /// Live cloud session handle. `Some` only in CorivoProxy mode so an
+    /// `auth_failed` from the sidecar can refresh Corivo-managed
+    /// credentials. BYOK background tasks pass `None` because the user's
+    /// upstream key must fail directly.
+    pub cloud_session: Option<Arc<dyn CloudSessionService>>,
     /// v1511 — `WorkflowStore` handle exposed so background tasks that
     /// invoke `schedule_task` (e.g. session learner proposing a
     /// recurring review) can reach the same write path the user-facing
@@ -105,43 +105,65 @@ impl TaskDeps {
     /// still mid-boot (a repo / session / model catalog isn't ready);
     /// the scheduler treats that as "skip this tick, try next interval".
     pub async fn from_state(state: &AppState, app: tauri::AppHandle<tauri::Wry>) -> Option<Self> {
-        let chat_threads = state.chat_threads.as_ref()?.clone();
-        let chat_messages = state.chat_messages.as_ref()?.clone();
-        let notes_repo = state.notes_repo.as_ref()?.clone();
-        let frames_repo = state.frames_repo.as_ref()?.clone();
+        Self::try_from_state(state, app).await.ok()
+    }
+
+    pub async fn try_from_state(
+        state: &AppState,
+        app: tauri::AppHandle<tauri::Wry>,
+    ) -> std::result::Result<Self, String> {
+        let chat_threads = state
+            .chat_threads
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| "chat_threads_not_initialized".to_string())?;
+        let chat_messages = state
+            .chat_messages
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| "chat_messages_not_initialized".to_string())?;
+        let notes_repo = state
+            .notes_repo
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| "notes_repo_not_initialized".to_string())?;
+        let frames_repo = state
+            .frames_repo
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| "frames_repo_not_initialized".to_string())?;
         // Pending map lives on AppState directly now; the UDS bridge is
         // optional and only relevant for external corivo-mcp clients.
         let bridge_pending = state.permission_pending.clone();
-        let session = state.cloud.session.clone();
-        let catalog: Arc<ModelCatalog> = state.model_catalog.as_ref()?.clone();
-        let creds = session.fetch_agent_creds().await.ok()?;
-        let entry = catalog.active_entry()?;
         let cfg = state.config_service.get();
         let db_pool = state.db.pool();
-        let app_data_dir = tauri::Manager::path(&app).app_data_dir().ok()?;
+        let app_data_dir = tauri::Manager::path(&app)
+            .app_data_dir()
+            .map_err(|e| format!("app_data_dir_failed: {e}"))?;
         let sessions_dir = app_data_dir.join("corivo-agent-sessions");
         let bundled_skills_dir = tauri::Manager::path(&app)
             .resource_dir()
             .ok()
             .map(|d| d.join("bundled-skills"))
             .filter(|p| p.is_dir());
-        let compaction_model_id = match entry.client_protocol {
-            ApiShape::Anthropic => "claude-haiku-4-5".to_string(),
-            ApiShape::Openai | ApiShape::OpenaiResponses => "gpt-4o-mini".to_string(),
-        };
+        let runtime = resolve_background_runtime(
+            &cfg,
+            Some(state.cloud.session.clone()),
+            state.model_catalog.as_ref().cloned(),
+        )
+        .await
+        .map_err(|e| format!("runtime_not_ready: {e}"))?;
+        let compaction_model_id = resolve_compaction_partner(runtime.api_shape);
         let workflow_store = state.workflow_store.as_ref().cloned();
-        Some(TaskDeps {
+        Ok(TaskDeps {
             db_pool,
             chat_threads,
             chat_messages,
             notes_repo,
             frames_repo,
-            auth: CorivoAuth::CorivoProxy {
-                gateway_url: creds.api_host,
-                api_key: creds.api_key,
-            },
-            model_id: entry.upstream_model,
-            api_shape: entry.client_protocol,
+            auth: runtime.auth,
+            model_id: runtime.model_id,
+            api_shape: runtime.api_shape,
             thinking_level: cfg.exec_agent.thinking_level,
             compaction_model_id,
             sessions_dir,
@@ -149,7 +171,7 @@ impl TaskDeps {
             bundled_skills_dir,
             bridge_pending,
             app,
-            cloud_session: session,
+            cloud_session: runtime.cloud_session,
             workflow_store,
         })
     }
