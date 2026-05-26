@@ -3,7 +3,12 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "cache": false,
+      "inputs": [
+        "src/**",
+        "build.mjs",
+        "package.json",
+        "tsconfig.json"
+      ],
       "outputs": [
         "../../apps/desktop/src-tauri/binaries/corivo-agent-aarch64-apple-darwin",
         "../../apps/desktop/src-tauri/binaries/corivo-agent-x86_64-apple-darwin",
@@ -12,7 +17,12 @@
       ]
     },
     "build:debug": {
-      "cache": false,
+      "inputs": [
+        "src/**",
+        "build.mjs",
+        "package.json",
+        "tsconfig.json"
+      ],
       "outputs": [
         "../../apps/desktop/src-tauri/binaries/corivo-agent-aarch64-apple-darwin",
         "../../apps/desktop/src-tauri/binaries/corivo-agent-x86_64-apple-darwin",
