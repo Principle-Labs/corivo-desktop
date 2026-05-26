@@ -18,6 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
 import { cn } from "@repo/ui/lib/utils";
@@ -457,6 +458,30 @@ function ThreadRow({
             align="start"
             sideOffset={4}
             className="w-44"
+            onKeyDown={(e) => {
+              // Single-key shortcuts (P / A / D) while the menu has
+              // focus. Ignore modifier combos so they don't collide
+              // with Cmd+A "select all" etc., and ignore repeats so
+              // holding a key doesn't double-fire the mutation.
+              if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+              const key = e.key.toLowerCase();
+              if (key === "p") {
+                e.preventDefault();
+                pinMutation.mutate({ id: thread.id, pinned: !isPinned });
+                setMenuOpen(false);
+              } else if (key === "a") {
+                e.preventDefault();
+                archiveMutation.mutate({
+                  id: thread.id,
+                  archived: !isArchived,
+                });
+                setMenuOpen(false);
+              } else if (key === "d") {
+                e.preventDefault();
+                handleDelete();
+                setMenuOpen(false);
+              }
+            }}
           >
             {isArchived ? (
               <DropdownMenuItem
@@ -470,6 +495,7 @@ function ThreadRow({
               >
                 <ArchiveRestore className="h-3.5 w-3.5" />
                 {t.ask.threadList.action.unarchive}
+                <DropdownMenuShortcut>A</DropdownMenuShortcut>
               </DropdownMenuItem>
             ) : (
               <>
@@ -490,6 +516,7 @@ function ThreadRow({
                   {isPinned
                     ? t.ask.threadList.action.unpin
                     : t.ask.threadList.action.pin}
+                  <DropdownMenuShortcut>P</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() =>
@@ -502,6 +529,7 @@ function ThreadRow({
                 >
                   <Archive className="h-3.5 w-3.5" />
                   {t.ask.threadList.action.archive}
+                  <DropdownMenuShortcut>A</DropdownMenuShortcut>
                 </DropdownMenuItem>
               </>
             )}
@@ -512,6 +540,7 @@ function ThreadRow({
             >
               <Trash2 className="h-3.5 w-3.5" />
               {t.ask.threadList.action.delete}
+              <DropdownMenuShortcut>D</DropdownMenuShortcut>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
