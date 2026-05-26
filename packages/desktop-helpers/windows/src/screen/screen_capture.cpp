@@ -243,6 +243,15 @@ CaptureResponse capture(const CaptureRequest& request) {
         session.IsCursorCaptureEnabled(false);
     }
 
+    // Suppress the yellow capture-indicator border WGC draws around the
+    // captured monitor. Unpackaged Win32 apps can opt out directly; no
+    // consent prompt. Property exists on Windows 11 22621+.
+    if (winrt::Windows::Foundation::Metadata::ApiInformation::IsPropertyPresent(
+            L"Windows.Graphics.Capture.GraphicsCaptureSession",
+            L"IsBorderRequired")) {
+        session.IsBorderRequired(false);
+    }
+
     HANDLE arrived = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (!arrived) {
         throw std::runtime_error("CreateEvent failed: " +
