@@ -205,32 +205,37 @@ async fn run_worker_loop(inner: Arc<SchedulerInner>) {
             );
             continue;
         };
-        let Some(deps) = TaskDeps::from_state(&state, inner.app.clone()).await else {
-            queued.deps_attempts += 1;
-            if queued.deps_attempts >= MAX_DEPS_RETRIES {
-                tracing::warn!(
+        let deps = match TaskDeps::try_from_state(&state, inner.app.clone()).await {
+            Ok(deps) => deps,
+            Err(reason) => {
+                queued.deps_attempts += 1;
+                if queued.deps_attempts >= MAX_DEPS_RETRIES {
+                    tracing::warn!(
+                        task = kind.as_str(),
+                        attempts = queued.deps_attempts,
+                        reason = %reason,
+                        "background_agent_task.deps_not_ready_abandon"
+                    );
+                    // Give up. Notify the task so it can release any
+                    // dedup claim, persist a failure row, fire a
+                    // workflow:completed event with a clear reason, etc.
+                    queued
+                        .task
+                        .on_dispatch_aborted(&format!("deps_not_ready_exceeded_retries: {reason}"));
+                    continue;
+                }
+                tracing::info!(
                     task = kind.as_str(),
                     attempts = queued.deps_attempts,
-                    "background_agent_task.deps_not_ready_abandon"
+                    reason = %reason,
+                    "background_agent_task.deps_not_ready_requeue"
                 );
-                // Give up. Notify the task so it can release any
-                // dedup claim, persist a failure row, fire a
-                // workflow:completed event with a clear reason, etc.
-                queued
-                    .task
-                    .on_dispatch_aborted("deps_not_ready_exceeded_retries");
+                // Push back to the front so we don't starve other tasks.
+                inner.queue.lock().await.push_front(queued);
+                // Sleep a beat so we don't busy-loop on a slow boot.
+                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
                 continue;
             }
-            tracing::info!(
-                task = kind.as_str(),
-                attempts = queued.deps_attempts,
-                "background_agent_task.deps_not_ready_requeue"
-            );
-            // Push back to the front so we don't starve other tasks.
-            inner.queue.lock().await.push_front(queued);
-            // Sleep a beat so we don't busy-loop on a slow boot.
-            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-            continue;
         };
 
         // Cancellable tasks (workflows): race the runner against a

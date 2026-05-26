@@ -17,6 +17,7 @@ pub mod memory_tools;
 mod protocol;
 pub mod rpc_server;
 pub mod runner;
+pub mod runtime;
 mod save_note_handler;
 mod schedule_task_handler;
 

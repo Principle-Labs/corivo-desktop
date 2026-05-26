@@ -29,9 +29,7 @@ import {
 interface Props {
   /** Preset the user picked, or `null` when editing an existing workflow. */
   presetId: PresetId | null
-  /** Existing workflow being edited. Mutually exclusive with `presetId` —
-   *  edit mode always starts in "advanced visible" since the slug + raw
-   *  fields are already meaningful. */
+  /** Existing workflow being edited. Mutually exclusive with `presetId`. */
   editing: WorkflowView | null
   /** Slug collision check for create mode. */
   existingSlugs: string[]
@@ -90,23 +88,12 @@ function formFromView(view: WorkflowView): FormState {
 }
 
 /**
- * Stage-2 form. Shape depends on which preset was picked:
- *
- *   - `daily-review` / `weekly-summary` — name preset + trigger
- *     picker (kind locked to "daily" / "weekly") + notify radio +
- *     立即启用. systemPrompt / tools / max_turns are pre-filled but
- *     only visible via the advanced toggle.
- *
- *   - `once` — reminder textarea + one-shot datetime picker. Same
- *     advanced toggle.
- *
- *   - `custom` — name + intent textarea (becomes systemPrompt) +
- *     trigger picker (all 4 structured kinds) + notify radio +
- *     立即启用. Slug auto-derived from name; advanced toggle exposes
- *     it.
- *
- *   - editing — advanced is always visible; the picker view never
- *     opens this branch.
+ * Stage-2 form. Surface is uniform across built-in presets and custom
+ * workflows: name + (intent / reminder if applicable) + when + notify
+ * + enabled. Technical fields (slug, system_prompt, tool_whitelist,
+ * max_turns) are pre-filled from the preset on create and preserved
+ * from the existing definition on edit — they never appear in the UI.
+ * Power users who need to tweak them edit the WORKFLOW.md on disk.
  */
 export function WorkflowDrawerForm({
   presetId,
@@ -128,17 +115,13 @@ export function WorkflowDrawerForm({
     if (preset) return emptyFormForPreset(preset)
     return emptyFormForPreset(findPreset("custom"))
   })
-  // Edit mode always shows advanced; create mode starts hidden.
-  const [showAdvanced, setShowAdvanced] = useState(!!editing)
-
-  // Auto-derive slug from name for create-mode users so they never see
-  // the field unless they open advanced.
+  // Auto-derive slug from name; slug is never exposed in the UI but
+  // the backend needs a valid one.
   useEffect(() => {
     if (editing) return
-    if (showAdvanced) return // user is editing slug manually
     const derived = kebabFromName(form.name)
     setForm((prev) => ({ ...prev, slug: derived }))
-  }, [form.name, editing, showAdvanced])
+  }, [form.name, editing])
 
   const save = useMutation({
     mutationFn: workflowsSave,
@@ -219,7 +202,26 @@ export function WorkflowDrawerForm({
         />
       </FieldRow>
 
-      {/* Intent / reminder text / system prompt depending on preset. */}
+      {/* Description — only in edit mode. Create mode either uses a
+          preset's pre-filled description verbatim, or the user is
+          writing an intent/reminder below which describes what the
+          workflow does. */}
+      {isEdit ? (
+        <FieldRow>
+          <Label>{t.workflows.drawer.description}</Label>
+          <Input
+            value={form.description}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                description: e.target.value,
+              }))
+            }
+          />
+        </FieldRow>
+      ) : null}
+
+      {/* Intent / reminder text depending on preset (create only). */}
       {isCustom ? (
         <FieldRow>
           <Label>{t.workflows.simple.intentLabel}</Label>
@@ -282,104 +284,6 @@ export function WorkflowDrawerForm({
         />
         {t.workflows.simple.enabledLabel}
       </label>
-
-      {/*
-        Advanced toggle is intentionally hidden in CREATE mode. The
-        whole point of the simple form is that the user expresses
-        intent and the system handles tools / prompts / max_turns —
-        even displaying a "显示完整字段" button plants the idea that
-        there's something they should be thinking about. Power users
-        who want to tweak an existing workflow can do so from EDIT
-        mode (which is what `isEdit` gates below).
-      */}
-      {isEdit ? (
-        <button
-          type="button"
-          onClick={() => setShowAdvanced((v) => !v)}
-          className="self-start text-[11px] text-muted-foreground hover:text-foreground"
-        >
-          {showAdvanced
-            ? t.workflows.simple.advancedHide
-            : t.workflows.simple.advancedToggle}
-        </button>
-      ) : null}
-
-      {isEdit && showAdvanced ? (
-        <div className="flex flex-col gap-3 rounded-md border border-dashed border-border/40 p-3">
-          <FieldRow>
-            <Label>{t.workflows.drawer.slug}</Label>
-            <Input
-              value={form.slug}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, slug: e.target.value }))
-              }
-              disabled={isEdit}
-              className="font-mono"
-            />
-            {slugCollision ? (
-              <p className="text-[10.5px] text-destructive">slug 已存在</p>
-            ) : null}
-          </FieldRow>
-          <FieldRow>
-            <Label>{t.workflows.drawer.description}</Label>
-            <Input
-              value={form.description}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
-            />
-          </FieldRow>
-          {!isCustom && !isReminder ? (
-            <FieldRow>
-              <Label>{t.workflows.drawer.systemPrompt}</Label>
-              <Textarea
-                value={form.systemPrompt}
-                rows={6}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    systemPrompt: e.target.value,
-                  }))
-                }
-                className="font-mono text-[11.5px]"
-              />
-            </FieldRow>
-          ) : null}
-          <FieldRow>
-            <Label>{t.workflows.drawer.tools}</Label>
-            <Textarea
-              value={form.toolsText}
-              rows={2}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, toolsText: e.target.value }))
-              }
-              className="font-mono text-[11.5px]"
-            />
-          </FieldRow>
-          <FieldRow>
-            <Label>{t.workflows.drawer.maxTurns}</Label>
-            <Input
-              type="number"
-              min={1}
-              max={50}
-              value={form.maxTurns}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  maxTurns: Math.max(
-                    1,
-                    parseInt(e.target.value || "1", 10) || 1,
-                  ),
-                }))
-              }
-              className="w-24"
-            />
-          </FieldRow>
-        </div>
-      ) : null}
 
       <div className="mt-auto flex justify-end gap-2 pt-2">
         <Button type="button" variant="ghost" onClick={onClose}>
