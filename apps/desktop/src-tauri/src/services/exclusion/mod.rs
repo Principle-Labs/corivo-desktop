@@ -1,7 +1,7 @@
-//! Bundle-id exclusion engine (spec §六).
+//! App-identifier exclusion engine (spec §六).
 //!
 //! **Phase 1 scope**: app-level only. The dispatcher checks the foreground
-//! bundle id against a default blocklist (Signal, password managers, banking)
+//! app identifier against a default blocklist (Signal, password managers, banking)
 //! plus any user-added entries from `Config`. Domain-level exclusion (URL
 //! category lookups) is deferred to Phase 2+ per the spec.
 //!
@@ -16,14 +16,14 @@ use std::collections::HashSet;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExclusionVerdict {
     Allow,
-    /// Foreground bundle hit an explicit blocklist entry (default-curated
+    /// Foreground app hit an explicit blocklist entry (default-curated
     /// or user-added). The capture_pipeline still writes a `'skipped'`
     /// frame row tagged with `reason` so the timeline reads "I was in
     /// this app at this time, but the content isn't stored".
     Block {
         reason: String,
     },
-    /// Foreground bundle is Corivo itself (matched by [`SELF_BUNDLE_PREFIXES`]).
+    /// Foreground app is Corivo itself (matched by [`matches_self`]).
     /// No frame row is written and no screenshot is taken — capturing
     /// our own UI just produces blank/recursive frames that pollute the
     /// timeline. Caller should silently no-op.
@@ -36,7 +36,7 @@ impl ExclusionVerdict {
     }
 }
 
-/// Default app blocklist. Bundle ids only — no fuzzy matching, no globs.
+/// Default app blocklist. App identifiers only — no fuzzy matching, no globs.
 ///
 /// Curated (not exhaustive) — covers the categories the spec calls out:
 /// secure messengers, password managers, banking. Users add more via
@@ -57,13 +57,17 @@ pub const DEFAULT_BLOCKED_BUNDLES: &[&str] = &[
     "com.intuit.quicken.mac",
 ];
 
-/// Bundle-id prefixes identifying Corivo's own windows. Matched by
+/// Bundle-id prefixes identifying Corivo's own windows on macOS. Matched by
 /// exact equality OR `<prefix>.` so the production app
 /// (`ai.corivo.desktop`), the dev build (`ai.corivo.desktop.dev`), and
 /// any future helper bundle id are all covered — but not unrelated ids
 /// that happen to share a substring. Hard-coded; not user-configurable
 /// and never removable from the UI.
 pub const SELF_BUNDLE_PREFIXES: &[&str] = &["ai.corivo.desktop"];
+
+/// Windows helper reports the foreground executable basename in the same
+/// `bundle_id` slot. Match exact exe names case-insensitively.
+pub const SELF_EXECUTABLE_NAMES: &[&str] = &["corivo-app.exe"];
 
 /// Read-only view onto the curated default blocklist — used by the
 /// settings command surface to render "default vs user-added" rows
@@ -79,11 +83,30 @@ pub fn self_bundle_prefixes() -> &'static [&'static str] {
     SELF_BUNDLE_PREFIXES
 }
 
-/// True when `id` matches any [`SELF_BUNDLE_PREFIXES`] entry by exact
-/// equality or `<prefix>.` segment boundary. Public so other layers
-/// (foreground_monitor, snapshot_consumer) can apply the same rule
-/// without independently re-implementing the dot-segment check.
+/// Read-only view onto the exact executable basenames identifying Corivo's
+/// own windows on platforms that do not provide bundle ids.
+pub fn self_executable_names() -> &'static [&'static str] {
+    SELF_EXECUTABLE_NAMES
+}
+
+/// True when `id` matches any self identifier. macOS bundle ids use exact
+/// equality or `<prefix>.` segment boundary; Windows exe basenames use exact
+/// case-insensitive equality. Public so other layers (foreground_monitor,
+/// snapshot_consumer) can apply the same rule without independently
+/// re-implementing platform-specific checks.
 pub fn matches_self(id: &str) -> bool {
+    let id = id.trim();
+    if id.is_empty() {
+        return false;
+    }
+
+    if SELF_EXECUTABLE_NAMES
+        .iter()
+        .any(|exe| id.eq_ignore_ascii_case(exe))
+    {
+        return true;
+    }
+
     SELF_BUNDLE_PREFIXES.iter().any(|prefix| {
         if id == *prefix {
             return true;
@@ -129,7 +152,7 @@ impl ExclusionEngine {
 
     /// Check whether the foreground app should be excluded.
     ///
-    /// `None` (no bundle id available) → `Allow` (we can't decide; let it
+    /// `None` (no app identifier available) → `Allow` (we can't decide; let it
     /// through). Capture pipeline still has the option to skip on its own
     /// (e.g. idle detection) before reaching the engine.
     pub fn check(&self, bundle_id: Option<&str>) -> ExclusionVerdict {
@@ -237,12 +260,29 @@ mod tests {
     }
 
     #[test]
+    fn corivo_windows_exe_is_block_self() {
+        let engine = ExclusionEngine::from_defaults();
+        assert_eq!(
+            engine.check(Some("corivo-app.exe")),
+            ExclusionVerdict::BlockSelf,
+        );
+        assert_eq!(
+            engine.check(Some("CORIVO-APP.EXE")),
+            ExclusionVerdict::BlockSelf,
+        );
+    }
+
+    #[test]
     fn similar_prefix_does_not_match_self() {
         // No dot separator → not a Corivo bundle id, must NOT be
         // mistaken for one.
         let engine = ExclusionEngine::from_defaults();
         assert_eq!(
             engine.check(Some("ai.corivo.desktopclone")),
+            ExclusionVerdict::Allow,
+        );
+        assert_eq!(
+            engine.check(Some("corivo-app-helper.exe")),
             ExclusionVerdict::Allow,
         );
     }

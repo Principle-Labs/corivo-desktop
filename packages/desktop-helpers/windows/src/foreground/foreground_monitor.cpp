@@ -16,6 +16,9 @@ namespace corivo::foreground {
 
 namespace {
 
+// Custom WM_USER message to break the GetMessage loop on shutdown.
+constexpr UINT WM_FG_SHUTDOWN = WM_USER + 1;
+
 std::string utf16_to_utf8(const wchar_t* w, int wlen) {
     if (!w || wlen == 0) return {};
     int len = WideCharToMultiByte(CP_UTF8, 0, w, wlen, nullptr, 0,
@@ -62,21 +65,70 @@ Monitor& Monitor::instance() {
     return m;
 }
 
+Monitor::~Monitor() {
+    stop();
+}
+
 bool Monitor::start() {
-    if (hook_.load() != nullptr) return true;
+    bool expected = false;
+    if (!running_.compare_exchange_strong(expected, true)) {
+        return true;  // already running
+    }
+
+    std::promise<bool> hook_ready;
+    std::future<bool> hook_ready_fut = hook_ready.get_future();
+
+    pump_thread_ = std::thread(&Monitor::pump_thread_main, this,
+                                std::move(hook_ready));
+
+    bool ok = hook_ready_fut.get();
+    if (!ok) {
+        // Hook registration failed; pump_thread_main returned on its own.
+        if (pump_thread_.joinable()) pump_thread_.join();
+        running_.store(false);
+    }
+    return ok;
+}
+
+void Monitor::stop() {
+    if (!running_.exchange(false)) return;
+    DWORD tid = pump_thread_id_.load(std::memory_order_acquire);
+    if (tid) PostThreadMessageW(tid, WM_FG_SHUTDOWN, 0, 0);
+    if (pump_thread_.joinable()) pump_thread_.join();
+}
+
+void Monitor::pump_thread_main(std::promise<bool> hook_ready) {
+    pump_thread_id_.store(GetCurrentThreadId(), std::memory_order_release);
+
+    // OUT_OF_CONTEXT: callback runs on this thread (the registering one),
+    // so we need a message pump here. SKIPOWNPROCESS: don't fire for
+    // events from this helper process.
     HWINEVENTHOOK h = SetWinEventHook(
         EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,
         nullptr, &Monitor::win_event_proc,
         /* idProcess */ 0, /* idThread */ 0,
         WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
-    if (!h) return false;
-    hook_.store(h);
-    return true;
-}
 
-void Monitor::stop() {
-    HWINEVENTHOOK h = hook_.exchange(nullptr);
-    if (h) UnhookWinEvent(h);
+    if (!h) {
+        log::warn("foreground_monitor: SetWinEventHook failed err=" +
+                  std::to_string(GetLastError()));
+        pump_thread_id_.store(0, std::memory_order_release);
+        hook_ready.set_value(false);
+        return;
+    }
+    hook_ready.set_value(true);
+
+    MSG msg;
+    while (running_.load(std::memory_order_acquire)) {
+        BOOL r = GetMessageW(&msg, nullptr, 0, 0);
+        if (r == 0 || r == -1) break;
+        if (msg.message == WM_FG_SHUTDOWN) break;
+        TranslateMessage(&msg);
+        DispatchMessageW(&msg);
+    }
+
+    UnhookWinEvent(h);
+    pump_thread_id_.store(0, std::memory_order_release);
 }
 
 void Monitor::win_event_proc(HWINEVENTHOOK, DWORD event, HWND hwnd,

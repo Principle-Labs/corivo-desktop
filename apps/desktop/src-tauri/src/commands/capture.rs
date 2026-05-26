@@ -21,7 +21,9 @@ use crate::{
     commands::config::AppState,
     services::{
         capture_pipeline::CaptureStatus,
-        exclusion::{default_blocked_bundles, self_bundle_prefixes, ExclusionEngine},
+        exclusion::{
+            default_blocked_bundles, self_bundle_prefixes, self_executable_names, ExclusionEngine,
+        },
     },
 };
 
@@ -250,6 +252,10 @@ pub async fn exclusion_list(state: State<'_, AppState>) -> Result<Vec<ExclusionE
             source: "default".to_string(),
         })
         .collect();
+    out.extend(self_executable_names().iter().map(|exe| ExclusionEntry {
+        bundle_id: (*exe).to_string(),
+        source: "default".to_string(),
+    }));
     out.extend(default_blocked_bundles().iter().map(|id| ExclusionEntry {
         bundle_id: (*id).to_string(),
         source: "default".to_string(),
@@ -262,10 +268,7 @@ pub async fn exclusion_list(state: State<'_, AppState>) -> Result<Vec<ExclusionE
         if default_blocked_bundles().iter().any(|d| *d == bundle_id) {
             continue;
         }
-        if crate::services::exclusion::SELF_BUNDLE_PREFIXES
-            .iter()
-            .any(|p| bundle_id == p || bundle_id.starts_with(&format!("{p}.")))
-        {
+        if crate::services::exclusion::matches_self(bundle_id) {
             continue;
         }
         out.push(ExclusionEntry {
