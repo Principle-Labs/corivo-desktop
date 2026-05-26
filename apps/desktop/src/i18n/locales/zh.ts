@@ -923,9 +923,11 @@ export const zh = {
     skills: {
       title: "技能库",
       description:
-        "把本机已安装的 Claude / Agents skill 通过 symlink 暴露给 Corivo 内置的执行引擎。来源自动从 ~/.agents/skills/ 与 ~/.claude/skills/ 扫描，按名称去重。",
+        "把本机已安装的 Claude / Agents skill 通过 symlink 暴露给 Corivo 内置的执行引擎。来源自动从 ~/.agents/skills/、~/.claude/skills/ 与 ~/.corivo/skills/market/ 扫描，按名称去重。",
       onlyCorivoMode:
         "仅 “使用 Corivo 配置” 模式生效。当前模式不会启用本机 skill。",
+      tabLocal: "本地",
+      tabMarket: "市场",
       availableTitle: "可用 skill",
       checkedSummary: (enabled: number, total: number) =>
         `已勾选 ${enabled} / ${total}`,
@@ -934,6 +936,26 @@ export const zh = {
         "未在 ~/.agents/skills/ 或 ~/.claude/skills/ 找到 skill。安装后点 “重新扫描”。",
       footnote:
         "勾选后立即写入 $APPDATA/claude-config/skills/ 的 symlink;下次对话即生效。已勾选但本机暂时不存在的 skill 会保留勾选状态，等 skill 重新出现自动恢复。",
+      market: {
+        description:
+          "浏览 Corivo 维护的 skill 集合，一键安装到 ~/.corivo/skills/market/。安装后会自动出现在 “本地” 标签的 “可用 skill” 列表里，勾选启用即可。",
+        loading: "正在加载市场目录…",
+        empty: "市场暂时没有可见的 skill。",
+        loadFailed: "市场目录加载失败，请稍后重试。",
+        install: "安装",
+        installing: "安装中…",
+        installed: "已安装",
+        updateAvailable: "可升级",
+        uninstall: "卸载",
+        refresh: "刷新",
+        visibilityInternal: "内部",
+        hasScriptsBadge: "含脚本",
+        installFailed: (slug: string, err: string) =>
+          `安装 ${slug} 失败：${err}`,
+        uninstallFailed: (slug: string, err: string) =>
+          `卸载 ${slug} 失败：${err}`,
+        installSuccess: (slug: string) => `${slug} 安装完成`,
+      },
     },
     about: {
       title: "关于",

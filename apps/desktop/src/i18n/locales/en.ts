@@ -912,9 +912,11 @@ export const en: LocaleDict = {
     skills: {
       title: "Skills library",
       description:
-        "Symlinks Claude / Agents skills you've installed locally into Corivo's bundled Claude. Sources are auto-scanned from ~/.agents/skills/ and ~/.claude/skills/, deduplicated by name.",
+        "Symlinks Claude / Agents skills you've installed locally into Corivo's bundled Claude. Sources are auto-scanned from ~/.agents/skills/, ~/.claude/skills/, and ~/.corivo/skills/market/, deduplicated by name.",
       onlyCorivoMode:
         "Only the \"Use Corivo\" mode applies. The current mode does not load local skills.",
+      tabLocal: "Local",
+      tabMarket: "Market",
       availableTitle: "Available skills",
       checkedSummary: (enabled: number, total: number) =>
         `Selected ${enabled} / ${total}`,
@@ -923,6 +925,26 @@ export const en: LocaleDict = {
         "No skills found in ~/.agents/skills/ or ~/.claude/skills/. Install some, then click Rescan.",
       footnote:
         "Toggling a skill writes the symlink under $APPDATA/claude-config/skills/ instantly; the next conversation picks it up. Skills you've enabled but that have temporarily disappeared from disk stay enabled — they restore automatically when the source returns.",
+      market: {
+        description:
+          "Browse Corivo-maintained skills and one-click install them into ~/.corivo/skills/market/. Installed skills appear in the \"Available skills\" list under the Local tab — enable them there.",
+        loading: "Loading market catalog…",
+        empty: "No skills currently visible in the market.",
+        loadFailed: "Could not load market catalog. Please retry.",
+        install: "Install",
+        installing: "Installing…",
+        installed: "Installed",
+        updateAvailable: "Update",
+        uninstall: "Uninstall",
+        refresh: "Refresh",
+        visibilityInternal: "Internal",
+        hasScriptsBadge: "Scripts",
+        installFailed: (slug: string, err: string) =>
+          `Install ${slug} failed: ${err}`,
+        uninstallFailed: (slug: string, err: string) =>
+          `Uninstall ${slug} failed: ${err}`,
+        installSuccess: (slug: string) => `${slug} installed`,
+      },
     },
     about: {
       title: "About",
