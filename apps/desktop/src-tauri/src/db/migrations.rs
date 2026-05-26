@@ -302,13 +302,39 @@ const PRESERVED_CHAT_MESSAGES: &str = "__preserved_chat_messages";
 /// Below those cutoffs we let the purge take the rows; the user has no
 /// recoverable data anyway.
 fn preserve_chat_tables(conn: &DbConnection, from_version: i64) -> Result<()> {
-    // A previous migration that crashed mid-way could leave preserved
-    // names sitting around. Clear them before we rename, otherwise the
-    // ALTER would fail with "table __preserved_* already exists".
-    for stale in [PRESERVED_CHAT_THREADS, PRESERVED_CHAT_MESSAGES] {
-        let sql = format!("DROP TABLE IF EXISTS {stale}");
-        if let Err(error) = conn.execute(&sql, []) {
-            tracing::warn!(table = stale, %error, "stale preserve table drop failed");
+    // Handle pre-existing __preserved_* tables. Two cases:
+    //
+    //   - from_version > 0: schema_version still exists, so the prior
+    //     migration didn't crash mid-purge. Any __preserved_* sitting
+    //     around is genuinely stale (older data superseded by the
+    //     current chat_threads). Drop them to clear the way for our
+    //     fresh rename.
+    //
+    //   - from_version == 0: schema_version is gone — likely a prior
+    //     migration crashed after preserve_chat_tables but before
+    //     restore_chat_tables. The __preserved_* tables hold the
+    //     most-recent chat data; DON'T drop them. Just clear any
+    //     orphan indexes that would collide with schema.sql's
+    //     `CREATE INDEX idx_chat_threads_*`, and let
+    //     restore_chat_tables recover the rows after the schema
+    //     rebuild.
+    if from_version > 0 {
+        for stale in [PRESERVED_CHAT_THREADS, PRESERVED_CHAT_MESSAGES] {
+            let sql = format!("DROP TABLE IF EXISTS {stale}");
+            if let Err(error) = conn.execute(&sql, []) {
+                tracing::warn!(table = stale, %error, "stale preserve table drop failed");
+            }
+        }
+    } else {
+        for stale in [PRESERVED_CHAT_THREADS, PRESERVED_CHAT_MESSAGES] {
+            if table_exists(conn, stale)? {
+                drop_indexes_on_table(conn, stale)?;
+                tracing::info!(
+                    table = stale,
+                    "found preserved chat table from crashed migration; \
+                     keeping data for restore"
+                );
+            }
         }
     }
 
@@ -320,6 +346,13 @@ fn preserve_chat_tables(conn: &DbConnection, from_version: i64) -> Result<()> {
         .map_err(|error| {
             CorivoError::Internal(format!("preserve chat_threads rename failed: {error}"))
         })?;
+        // SQLite's ALTER TABLE RENAME re-points indexes to the new table
+        // name but keeps the index names in the global namespace. That
+        // means `idx_chat_threads_*` are still defined here, attached to
+        // `__preserved_chat_threads` — and schema.sql's `CREATE INDEX`
+        // would collide. Drop them now; schema.sql will re-create fresh
+        // ones on the rebuilt `chat_threads`.
+        drop_indexes_on_table(conn, PRESERVED_CHAT_THREADS)?;
     }
 
     if from_version >= 1200 && table_exists(conn, "chat_messages")? {
@@ -330,8 +363,41 @@ fn preserve_chat_tables(conn: &DbConnection, from_version: i64) -> Result<()> {
         .map_err(|error| {
             CorivoError::Internal(format!("preserve chat_messages rename failed: {error}"))
         })?;
+        drop_indexes_on_table(conn, PRESERVED_CHAT_MESSAGES)?;
     }
 
+    Ok(())
+}
+
+/// Drop every non-autoindex sitting on `table`. Used after preserving a
+/// table via ALTER TABLE RENAME so the index names free up before
+/// schema.sql re-CREATEs them on the rebuilt table.
+fn drop_indexes_on_table(conn: &DbConnection, table: &str) -> Result<()> {
+    let indexes: Vec<String> = {
+        let mut stmt = conn
+            .prepare(
+                "SELECT name FROM sqlite_master
+                   WHERE type = 'index'
+                     AND tbl_name = ?1
+                     AND name NOT LIKE 'sqlite_autoindex_%'",
+            )
+            .map_err(|error| {
+                CorivoError::Internal(format!("index scan({table}) prepare failed: {error}"))
+            })?;
+        let rows = stmt
+            .query_map([table], |row| row.get::<_, String>(0))
+            .map_err(|error| {
+                CorivoError::Internal(format!("index scan({table}) query failed: {error}"))
+            })?;
+        rows.collect::<rusqlite::Result<Vec<_>>>().map_err(|error| {
+            CorivoError::Internal(format!("index scan({table}) collect failed: {error}"))
+        })?
+    };
+    for idx in indexes {
+        if let Err(error) = conn.execute(&format!("DROP INDEX IF EXISTS \"{idx}\""), []) {
+            tracing::warn!(table, index = %idx, %error, "drop preserved-table index failed");
+        }
+    }
     Ok(())
 }
 
