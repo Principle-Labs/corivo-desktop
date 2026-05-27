@@ -2,8 +2,11 @@
 import type { PiiLabel } from "./PiiLabel";
 
 /**
- * 一条 PII span。落盘形态：JSON 数组中的一项，存在
- * `frames.ax_text_pii_spans` 列里。
+ * 一条 PII span。**v1600 起仅在内存中存在**：classify 输出 →
+ * `services::privacy_filter::cache` LRU 缓存 → `redact::redact`
+ * 消费。不再落盘到任何表(v1500 曾持久化到 `frames.ax_text_pii_spans`,
+ * v1600 撤销)。结构仍然 derive Serialize/Deserialize/TS,前端如果
+ * 将来需要在 UI 里高亮 redact 区段还会用到。
  *
  * **`start` / `end` 是 char offset** —— 不是 byte offset。这样前端
  * highlight 不会把中文字符切成半个，Rust 端用 `text.chars().nth(...)`
