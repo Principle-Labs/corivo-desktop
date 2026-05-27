@@ -160,6 +160,16 @@ export interface SidecarInput {
    */
   bundled_skills_dir?: string;
   /**
+   * Allow-list snapshot of `Config.exec_agent.skill_share.enabled` —
+   * skill names the user toggled on in Settings → 技能. When present,
+   * `loadCorivoSkills` filters the merged skill set down to this list
+   * so the sidecar advertises the same surface that
+   * `SkillShareService::sync` bridges to the bundled `claude` CLI.
+   * Omitted by callers that pre-date the toggle plumbing (e.g.
+   * test fixtures) — in that case no filter is applied.
+   */
+  enabled_skills?: string[];
+  /**
    * External-service connectors (Gmail / Notion / Slack / …) enabled
    * for this turn. Optional — when omitted, the agent simply registers
    * no connector tools. Tokens here are spawn-time snapshots; if a

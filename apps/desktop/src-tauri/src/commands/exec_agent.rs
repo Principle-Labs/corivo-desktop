@@ -537,6 +537,11 @@ pub async fn exec_agent_send(
         }),
         sessions_dir,
         bundled_skills_dir,
+        // Settings → 技能 开关：把当前 enabled 列表打个快照传进 sidecar。
+        // sidecar 端 `loadCorivoSkills` 会按这个列表过滤合并后的 skill
+        // 集合，跟 `SkillShareService::sync` 桥接给 bundled `claude`
+        // CLI 的语义一致。
+        enabled_skills: Some(cfg_snapshot.exec_agent.skill_share.enabled.clone()),
         connectors_snapshot,
         mcp_server_specs,
         deps,

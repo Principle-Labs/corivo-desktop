@@ -226,6 +226,14 @@ pub async fn run<T: BackgroundAgentTask + ?Sized>(
                 None,
                 sessions_dir,
                 bundled_skills_dir,
+                // Background tasks don't carry the user's per-turn
+                // `skill_share.enabled` snapshot through `TaskDeps`
+                // today — pass `None` so the sidecar keeps its legacy
+                // "no filter" behavior for now. Wire `TaskDeps` to
+                // capture it at scheduler time if/when background
+                // turns need to respect the same toggles as user
+                // chats.
+                None,
                 Vec::new(),
                 Vec::<Value>::new(),
                 rpc_deps,

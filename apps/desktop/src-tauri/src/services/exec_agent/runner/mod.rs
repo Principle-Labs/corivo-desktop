@@ -53,6 +53,16 @@ pub struct CorivoRunInput {
     /// resource isn't on disk — the sidecar then falls back to
     /// user-only skill sources.
     pub bundled_skills_dir: Option<PathBuf>,
+    /// Snapshot of `Config.exec_agent.skill_share.enabled` — the names
+    /// of skills the user toggled on in Settings. The sidecar filters
+    /// its merged skill list against this so an off-toggle in the UI
+    /// hides the skill from corivo-agent (not just from the bundled
+    /// `claude` CLI, which `SkillShareService::sync` already covers).
+    /// `None` means "don't filter" — used by callers that pre-date the
+    /// toggle plumbing (e.g. unit-test fixtures). User-facing turns
+    /// always populate this with a fresh snapshot to avoid the
+    /// stale-after-Settings-flip class of bug.
+    pub enabled_skills: Option<Vec<String>>,
     /// Snapshot of enabled + connected third-party connectors. Each
     /// entry carries a fresh `access_token` (just refreshed by
     /// `ConnectorRegistry::enabled_snapshot` if it was close to
@@ -205,6 +215,7 @@ pub async fn run_turn(
         input.focus_context,
         input.sessions_dir,
         input.bundled_skills_dir,
+        input.enabled_skills,
         input.connectors_snapshot,
         input.mcp_server_specs,
         input.deps,

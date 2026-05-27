@@ -65,6 +65,17 @@ export interface LoadCorivoSkillsOptions {
   /** App-private bundled skills root resolved by Rust. When omitted
    *  (mock-mode, missing resource), no bundled skills are loaded. */
   bundledSkillsDir?: string;
+  /**
+   * Snapshot of `Config.exec_agent.skill_share.enabled` —
+   * `SidecarInput.enabled_skills`. When `undefined`, no filter is
+   * applied (legacy callers, mock-mode). When an array — including
+   * the empty array — only skills whose `name` is present pass through.
+   *
+   * Filtering happens AFTER the four-source merge so that a skill the
+   * user disabled in Settings stays hidden even if it ships from the
+   * higher-precedence bundled / agent sources.
+   */
+  enabledSkills?: string[];
 }
 
 /**
@@ -73,6 +84,9 @@ export interface LoadCorivoSkillsOptions {
  * with precedence agent > bundled > claude > market. Returns the
  * unified list plus all validation diagnostics. Diagnostics are also
  * logged via `log.warn` so they surface in the daily log.
+ *
+ * If `enabledSkills` is supplied the merged list is filtered down to
+ * those names — see `LoadCorivoSkillsOptions.enabledSkills`.
  */
 export function loadCorivoSkills(
   opts: LoadCorivoSkillsOptions = {},
@@ -182,7 +196,21 @@ export function loadCorivoSkills(
     merged.set(skill.name, skill);
   }
 
-  const skills = [...merged.values()];
+  const mergedSkills = [...merged.values()];
+
+  // Apply the Settings → 技能 allow-list AFTER merging. We do it here
+  // rather than per-source so that a user-disabled skill stays hidden
+  // even when it has higher-precedence variants — the toggle reflects
+  // user intent on the *name*, not on a particular source. `undefined`
+  // means the caller didn't pass the snapshot (e.g. tests / mock-mode),
+  // in which case we preserve the legacy "no filter" behavior.
+  const skills =
+    opts.enabledSkills === undefined
+      ? mergedSkills
+      : (() => {
+          const allow = new Set(opts.enabledSkills);
+          return mergedSkills.filter((s) => allow.has(s.name));
+        })();
 
   log.info("agent.skills.loaded", {
     agent_config_dir: agentConfigDir,
@@ -193,7 +221,10 @@ export function loadCorivoSkills(
     bundled_skill_count: bundledRes.skills.length,
     claude_skill_count: claudeRes.skills.length,
     market_skill_count: marketRes.skills.length,
-    merged_count: skills.length,
+    merged_count: mergedSkills.length,
+    enabled_filter:
+      opts.enabledSkills === undefined ? null : opts.enabledSkills.length,
+    skills_after_filter: skills.length,
     diagnostic_count: diagnostics.length,
   });
 

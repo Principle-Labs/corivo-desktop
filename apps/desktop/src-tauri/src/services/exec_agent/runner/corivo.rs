@@ -123,6 +123,7 @@ pub async fn run_turn(
     focus_context: Option<FocusContextInput>,
     sessions_dir: PathBuf,
     bundled_skills_dir: Option<PathBuf>,
+    enabled_skills: Option<Vec<String>>,
     connectors_snapshot: Vec<crate::services::connector::ConnectorTokenSnapshot>,
     mcp_server_specs: Vec<Value>,
     deps: RpcDeps,
@@ -142,6 +143,7 @@ pub async fn run_turn(
         focus_context,
         sessions_dir,
         bundled_skills_dir,
+        enabled_skills,
         connectors_snapshot,
         mcp_server_specs,
         deps,
@@ -173,6 +175,9 @@ pub async fn run_turn_with_tools(
     // source). `None` when the resource isn't shipped — the sidecar
     // falls back to user-only skill sources.
     bundled_skills_dir: Option<PathBuf>,
+    // Snapshot of `Config.exec_agent.skill_share.enabled` — see
+    // `CorivoRunInput::enabled_skills`. `None` skips filtering.
+    enabled_skills: Option<Vec<String>>,
     connectors_snapshot: Vec<crate::services::connector::ConnectorTokenSnapshot>,
     // mcp_server_specs: one JSON object per enabled `mcpServer`-shape
     // connector (`name`, `transport`, `url`, `token_cache_dir`). Goes
@@ -291,6 +296,7 @@ pub async fn run_turn_with_tools(
         focus_context.as_ref(),
         &sessions_dir,
         bundled_skills_dir.as_deref(),
+        enabled_skills.as_deref(),
         &connectors_snapshot,
         &mcp_server_specs,
         &socket_path,
@@ -736,6 +742,7 @@ fn build_sidecar_input(
     focus_context: Option<&FocusContextInput>,
     sessions_dir: &Path,
     bundled_skills_dir: Option<&Path>,
+    enabled_skills: Option<&[String]>,
     connectors_snapshot: &[crate::services::connector::ConnectorTokenSnapshot],
     mcp_server_specs: &[Value],
     rpc_socket: &Path,
@@ -803,6 +810,15 @@ fn build_sidecar_input(
     }
     if let Some(dir) = bundled_skills_dir {
         input["bundled_skills_dir"] = json!(dir.to_string_lossy());
+    }
+    // Snapshot of the user's Settings → 技能 toggles. `None` means "no
+    // filter": the sidecar advertises every skill it discovers (legacy
+    // behavior, preserved for callers like unit tests that haven't been
+    // taught about this field). `Some(list)` — including `Some(vec![])`
+    // — switches the sidecar to allow-list mode: skills whose `name` is
+    // not in the list are excluded from the system prompt.
+    if let Some(list) = enabled_skills {
+        input["enabled_skills"] = json!(list);
     }
     // Per-turn connector snapshot. Only emit the `connectors` block when
     // the user has at least one connector enabled — older agent builds
@@ -1031,6 +1047,7 @@ mod tests {
             }),
             &sessions,
             Some(&bundled_skills),
+            None,
             &[],
             &[],
             &socket,
@@ -1077,6 +1094,7 @@ mod tests {
             None,
             &sessions,
             None,
+            None,
             &[],
             &[],
             &socket,
@@ -1109,6 +1127,7 @@ mod tests {
             None,
             None,
             &sessions,
+            None,
             None,
             &[],
             &[],
@@ -1148,6 +1167,7 @@ mod tests {
             None,
             &sessions,
             None,
+            None,
             &[],
             &[],
             &socket,
@@ -1157,5 +1177,51 @@ mod tests {
         assert_eq!(input["auth"]["base_url"], "https://gateway.example.com/v1");
         assert_eq!(input["auth"]["token"], "sk-upstream-key");
         assert_eq!(input["compaction_model"]["id"], "claude-haiku-4-5");
+    }
+
+    /// `enabled_skills` has three observable states:
+    ///   - `None`        → key is absent (sidecar reads as "no filter")
+    ///   - `Some(&[])`   → key is `[]` (sidecar reads as "filter to
+    ///                     nothing"; useful for tests + a panic-button
+    ///                     "disable all skills" UI affordance)
+    ///   - `Some(&list)` → key is the verbatim allow-list
+    #[test]
+    fn build_sidecar_input_enabled_skills_three_states() {
+        let socket = PathBuf::from("/tmp/foo.sock");
+        let sessions = sessions();
+
+        let make = |enabled: Option<&[String]>| {
+            build_sidecar_input(
+                "01ABCD",
+                "hi",
+                &byok("sk"),
+                "claude-sonnet-4-5-20250929",
+                ApiShape::Anthropic,
+                ThinkingLevel::Medium,
+                DEFAULT_COMPACTION_MODEL_ANTHROPIC,
+                None,
+                None,
+                &sessions,
+                None,
+                enabled,
+                &[],
+                &[],
+                &socket,
+                DEFAULT_NATIVE_TOOLS,
+            )
+        };
+
+        assert!(make(None).get("enabled_skills").is_none());
+
+        let empty: &[String] = &[];
+        let with_empty = make(Some(empty));
+        assert_eq!(with_empty["enabled_skills"], serde_json::json!([]));
+
+        let list = vec!["seo-check".to_string(), "wxwork-decrypt".to_string()];
+        let with_list = make(Some(&list));
+        assert_eq!(
+            with_list["enabled_skills"],
+            serde_json::json!(["seo-check", "wxwork-decrypt"])
+        );
     }
 }

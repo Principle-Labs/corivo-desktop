@@ -143,14 +143,17 @@ export function buildSystemPrompt(input: SidecarInput): string {
   }
 
   // Agent Skills — merge of ~/.agents/skills, the app-private
-  // bundled-skills resource (passed in via SidecarInput), and
-  // ~/.claude/skills. `formatSkillsForPrompt` returns "" when no
-  // skills are visible (empty list, or all are
-  // disable-model-invocation); concat is safe in that case. Skills
-  // showing up here means the model can `read` the SKILL.md and
-  // follow its instructions — they're not auto-executed.
+  // bundled-skills resource (passed in via SidecarInput),
+  // ~/.claude/skills, and ~/.corivo/skills/market. The merged set is
+  // then filtered by `input.enabled_skills` so a user-disabled skill
+  // in Settings → 技能 doesn't leak through. `formatSkillsForPrompt`
+  // returns "" when no skills are visible (empty list, all are
+  // disable-model-invocation, or all filtered out); concat is safe.
+  // Skills showing up here means the model can `read` the SKILL.md
+  // and follow its instructions — they're not auto-executed.
   const { skills } = loadCorivoSkills({
     bundledSkillsDir: input.bundled_skills_dir,
+    enabledSkills: input.enabled_skills,
   });
   prompt += formatSkillsForPrompt(skills);
 
