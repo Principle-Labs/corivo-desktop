@@ -56,7 +56,7 @@ function bootstrap(): void {
     // pi's config.js doesn't NPE on `pkg.piConfig?.configDir`.
     piConfig: {
       name: "corivo-agent",
-      configDir: ".agent",
+      configDir: ".agents",
     },
   };
   fs.writeFileSync(

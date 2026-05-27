@@ -142,7 +142,7 @@ export function buildSystemPrompt(input: SidecarInput): string {
     prompt += `\n\n${input.system_prompt_extra}`;
   }
 
-  // Agent Skills — merge of ~/.agent/skills, the app-private
+  // Agent Skills — merge of ~/.agents/skills, the app-private
   // bundled-skills resource (passed in via SidecarInput), and
   // ~/.claude/skills. `formatSkillsForPrompt` returns "" when no
   // skills are visible (empty list, or all are

@@ -1,7 +1,7 @@
 // Load Agent Skills (https://agentskills.io) from four locations and
 // merge them into a single list the system prompt can advertise:
 //
-//   1. `~/.agent/skills/`         — corivo's user-scope skill dir.
+//   1. `~/.agents/skills/`         — corivo's user-scope skill dir.
 //      Loaded via the higher-level `loadSkills` so it picks up
 //      project-local skills too if we ever introduce a workspace
 //      concept (today cwd=homedir, so the project hook is a no-op).
@@ -19,11 +19,11 @@
 //      unix-only and targets the bundled `claude` CLI's config dir,
 //      not this loader).
 //
-// Skills with the same `name` collide. Precedence: user `~/.agent` >
+// Skills with the same `name` collide. Precedence: user `~/.agents` >
 // bundled > `~/.claude` > market. The user's local override stays
 // strongest; bundled shadows `~/.claude` so a host-wide skill named
 // `corivo-feedback` (or similar) can't replace the version we ship;
-// market is last so a hand-edited override under `~/.agent` or
+// market is last so a hand-edited override under `~/.agents` or
 // `~/.claude` still wins over whatever the published version is.
 
 import os from "node:os";
@@ -44,7 +44,7 @@ import { log } from "./log.js";
  * inspect which paths were probed.
  */
 export interface SkillRoots {
-  /** `~/.agent` — corivo agent config dir (sibling of `~/.claude`, `~/.pi`). */
+  /** `~/.agents` — corivo agent config dir (sibling of `~/.claude`, `~/.pi`). */
   agentConfigDir: string;
   /** `~/.claude/skills` — Claude Code's user-skills directory. */
   claudeSkillsDir: string;
@@ -55,7 +55,7 @@ export interface SkillRoots {
 export function resolveSkillRoots(): SkillRoots {
   const home = os.homedir();
   return {
-    agentConfigDir: path.join(home, ".agent"),
+    agentConfigDir: path.join(home, ".agents"),
     claudeSkillsDir: path.join(home, ".claude", "skills"),
     marketSkillsDir: path.join(home, ".corivo", "skills", "market"),
   };
@@ -68,7 +68,7 @@ export interface LoadCorivoSkillsOptions {
 }
 
 /**
- * Load skills from `~/.agent/skills/`, the bundled-skills resource dir,
+ * Load skills from `~/.agents/skills/`, the bundled-skills resource dir,
  * `~/.claude/skills/`, and `~/.corivo/skills/market/`; merge by name
  * with precedence agent > bundled > claude > market. Returns the
  * unified list plus all validation diagnostics. Diagnostics are also
@@ -108,7 +108,7 @@ export function loadCorivoSkills(
   // Merge with precedence: agent > bundled > claude > market.
   // Collisions surface as diagnostics so a user who unintentionally
   // shadows a bundled skill (e.g. by dropping
-  // `~/.agent/skills/corivo-feedback/`) can see why their override is
+  // `~/.agents/skills/corivo-feedback/`) can see why their override is
   // taking effect — and a host-wide ~/.claude skill that gets
   // overridden by something we ship is also visible.
   const merged = new Map<string, Skill>();
@@ -126,7 +126,7 @@ export function loadCorivoSkills(
     if (existing) {
       diagnostics.push({
         type: "collision",
-        message: `bundled skill "${skill.name}" shadowed by ~/.agent/skills`,
+        message: `bundled skill "${skill.name}" shadowed by ~/.agents/skills`,
         path: skill.filePath,
         collision: {
           resourceType: "skill",
