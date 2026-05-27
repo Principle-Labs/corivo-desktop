@@ -214,7 +214,13 @@ impl SkillShareService {
 }
 
 fn dirs_home() -> Option<PathBuf> {
-    std::env::var_os("HOME").map(PathBuf::from)
+    // `HOME` is the canonical env var on Unix-likes; `USERPROFILE` is
+    // Windows' default — `HOME` is not normally set on Windows and we
+    // were silently returning `None`, which made every skill scan a
+    // no-op (sync would then wipe nothing and create nothing).
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
 }
 
 fn scan_dir(root: &Path, source: SkillSource) -> Vec<DiscoveredSkill> {

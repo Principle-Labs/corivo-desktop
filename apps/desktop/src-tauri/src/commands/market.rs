@@ -75,9 +75,13 @@ struct ListResp {
 }
 
 fn market_dir() -> Result<PathBuf, TauriError> {
-    let home = std::env::var_os("HOME").ok_or_else(|| TauriError::Unknown {
-        message: "HOME env var is not set; skill market install requires it".to_string(),
-    })?;
+    // Windows 默认没有 HOME；fallback 到 USERPROFILE。两者都缺才报错。
+    let home = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .ok_or_else(|| TauriError::Unknown {
+            message: "HOME/USERPROFILE env var is not set; skill market install requires it"
+                .to_string(),
+        })?;
     Ok(PathBuf::from(home).join(MARKET_SUBPATH))
 }
 
