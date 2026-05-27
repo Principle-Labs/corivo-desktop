@@ -180,6 +180,11 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 window-vibrancy = "0.6"
+# `services::skill_share::sync()` 桥接 host skill 目录 → `$APPDATA/claude-config/skills/`。
+# Unix 用 `std::os::unix::fs::symlink`；Windows 选 NTFS junction 而非 symlink，
+# 因为创建 symlink 要求管理员权限或开发者模式（普通用户跑不通），junction 没有
+# 这个限制。`junction` crate 是薄薄的 winapi 包装，自带 create/exists/delete。
+junction = "1"
 windows-sys = { version = "0.61.2", features = [
     "Win32_Foundation",
     "Win32_System_Threading",

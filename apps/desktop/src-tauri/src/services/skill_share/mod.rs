@@ -132,11 +132,16 @@ impl SkillShareService {
     }
 
     /// Reconcile `$APPDATA/claude-config/skills/` with `enabled`:
-    ///   - Each enabled skill that the host still provides → symlink.
-    ///   - Existing symlinks not in `enabled` (or whose source vanished)
+    ///   - Each enabled skill that the host still provides → managed
+    ///     link (symlink on Unix, NTFS junction on Windows). Junctions
+    ///     are used on Windows because real symlinks require admin /
+    ///     developer mode while junctions don't.
+    ///   - Existing managed links not in `enabled` (or whose source
+    ///     vanished, or pointing elsewhere than we'd point now)
     ///     → removed.
-    ///   - Non-symlink entries are preserved untouched (defensive: we
-    ///     never delete a real directory we didn't create).
+    ///   - Non-link entries (real dirs, files, foreign reparse points)
+    ///     are preserved untouched: defensive — we never delete
+    ///     anything we didn't create.
     pub fn sync(&self, enabled: &[String]) -> Result<()> {
         let dst_root = self
             .app_data_dir
@@ -153,31 +158,29 @@ impl SkillShareService {
         let by_name: HashMap<String, &DiscoveredSkill> =
             available.iter().map(|s| (s.name.clone(), s)).collect();
 
-        // 1. Walk current dst entries, drop any symlink we no longer
-        //    want (not enabled, or source vanished, or pointed
-        //    elsewhere than we'd point now).
+        // 1. Walk current dst entries, drop any managed link we no
+        //    longer want (not enabled, source vanished, or pointing
+        //    elsewhere than we'd point now). Non-link entries are
+        //    skipped.
         if let Ok(entries) = fs::read_dir(&dst_root) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                let Ok(meta) = fs::symlink_metadata(&path) else {
+                let Some(current_target) = read_managed_link(&path) else {
                     continue;
                 };
-                if !meta.file_type().is_symlink() {
-                    continue;
-                }
                 let name = entry.file_name().to_string_lossy().to_string();
                 let want = enabled.contains(&name)
                     && by_name.get(&name).is_some_and(|skill| {
-                        fs::read_link(&path).is_ok_and(|cur| cur == skill.path)
+                        link_target_matches(&current_target, &skill.path)
                     });
                 if !want {
-                    let _ = fs::remove_file(&path);
+                    let _ = remove_managed_link(&path);
                 }
             }
         }
 
-        // 2. Create any missing enabled symlinks. Skills enabled but
-        //    not currently on host stay missing (silent — they pop back
+        // 2. Create any missing enabled links. Skills enabled but not
+        //    currently on host stay missing (silent — they pop back
         //    when the host reinstalls).
         for name in enabled {
             let Some(skill) = by_name.get(name) else {
@@ -185,28 +188,25 @@ impl SkillShareService {
             };
             let dst = dst_root.join(name);
             if dst.exists() || fs::symlink_metadata(&dst).is_ok() {
-                // Already correct or someone else owns this slot — covered
-                // by the cleanup pass above.
+                // Already correct or someone else owns this slot —
+                // covered by the cleanup pass above.
                 continue;
             }
-            #[cfg(unix)]
-            {
-                std::os::unix::fs::symlink(&skill.path, &dst).map_err(|e| {
-                    CorivoError::Internal(format!(
-                        "skill_share: symlink {} → {} 失败：{e}",
-                        dst.display(),
-                        skill.path.display()
-                    ))
-                })?;
-            }
-            #[cfg(not(unix))]
-            {
-                let _ = skill;
-                return Err(CorivoError::Internal(
-                    "skill_share: symlink bridging is not yet supported on this platform"
-                        .to_string(),
-                ));
-            }
+            create_managed_link(&skill.path, &dst).map_err(|e| {
+                // Windows junctions require src + dst to live on the
+                // same NTFS volume — surface a hint so a cross-drive
+                // setup doesn't read as a mysterious OS error.
+                #[cfg(windows)]
+                let hint =
+                    " (Windows junctions require source and destination on the same NTFS volume)";
+                #[cfg(not(windows))]
+                let hint = "";
+                CorivoError::Internal(format!(
+                    "skill_share: link {} → {} 失败：{e}{hint}",
+                    dst.display(),
+                    skill.path.display()
+                ))
+            })?;
         }
 
         Ok(())
@@ -221,6 +221,102 @@ fn dirs_home() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .or_else(|| std::env::var_os("USERPROFILE"))
         .map(PathBuf::from)
+}
+
+/// Read the target of a "managed link" — a symlink on Unix or an NTFS
+/// junction on Windows. Returns `None` when `path` is not such a link
+/// (real directory, regular file, missing, or any reparse-point flavor
+/// we don't manage — e.g. a foreign symlink the user dropped in).
+///
+/// `SkillShareService::sync` uses this to distinguish links we created
+/// (and may rewrite/delete) from anything else under the dst dir.
+fn read_managed_link(path: &Path) -> Option<PathBuf> {
+    #[cfg(unix)]
+    {
+        let meta = fs::symlink_metadata(path).ok()?;
+        if !meta.file_type().is_symlink() {
+            return None;
+        }
+        fs::read_link(path).ok()
+    }
+    #[cfg(windows)]
+    {
+        // `junction::exists` returns true only for NTFS junctions — not
+        // symlinks, not regular dirs. Anything that isn't a junction we
+        // leave alone (we never created it).
+        match junction::exists(path) {
+            Ok(true) => junction::get_target(path).ok(),
+            _ => None,
+        }
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = path;
+        None
+    }
+}
+
+/// Remove a managed link previously created by `create_managed_link`.
+/// On Windows, junctions live in the namespace as directories — plain
+/// `fs::remove_file` fails with "Access is denied". `junction::delete`
+/// tears down the reparse point without recursing into the target.
+fn remove_managed_link(path: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        fs::remove_file(path)
+    }
+    #[cfg(windows)]
+    {
+        junction::delete(path)
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = path;
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "managed link removal not supported on this platform",
+        ))
+    }
+}
+
+/// Create a managed link `dst → src` (i.e. `dst` is the new entry that
+/// will resolve to the contents of `src`). Symlink on Unix, NTFS
+/// junction on Windows.
+fn create_managed_link(src: &Path, dst: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(src, dst)
+    }
+    #[cfg(windows)]
+    {
+        junction::create(src, dst)
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = (src, dst);
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "managed link creation not supported on this platform",
+        ))
+    }
+}
+
+/// Check whether an existing link's `current` target points at the same
+/// place as `expected`. Fast path is raw byte equality (preserves the
+/// pre-Windows-port behavior on Unix). Slow path canonicalizes both
+/// sides — necessary on Windows because `junction::get_target` returns
+/// a normalized absolute Win32 path that may not byte-match the original
+/// `expected` we passed to `create_managed_link`. When either side
+/// fails to canonicalize, treat as mismatch: the cleanup pass will
+/// remove + recreate on the next sync, which is idempotent.
+fn link_target_matches(current: &Path, expected: &Path) -> bool {
+    if current == expected {
+        return true;
+    }
+    match (fs::canonicalize(current), fs::canonicalize(expected)) {
+        (Ok(ca), Ok(cb)) => ca == cb,
+        _ => false,
+    }
 }
 
 fn scan_dir(root: &Path, source: SkillSource) -> Vec<DiscoveredSkill> {
