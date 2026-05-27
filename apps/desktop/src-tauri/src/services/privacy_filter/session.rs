@@ -19,6 +19,7 @@
 //! "走原文出去"而不是"拒绝服务"。
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use ort::session::{builder::GraphOptimizationLevel, Session};
 use ort::value::TensorRef;
@@ -39,11 +40,23 @@ const SCORE_THRESHOLD: f32 = 0.3;
 /// 安全上限,超过的尾巴丢弃 + emit warning,后续支持滑窗。
 const MAX_TOKENS: usize = 4096;
 
+/// 单次 ONNX forward 的 intra-op 线程上限。ort 默认会拿满所有 CPU 核,
+/// 这在桌面端会跟 capture pipeline / OCR / extractor 抢核,严重时让
+/// tokio 工作线程饿死(observed:hang 一次 8 分钟,见 PRIVACY_FILTER_TIMEOUT
+/// 边的故事)。2 个线程对 q4f16 q ~770MB 量级的模型在 CPU 上跑一次
+/// 推理是亚秒级的,留下足够 headroom 给系统其他部分。
+const ORT_INTRA_THREADS: usize = 2;
+
 /// `PrivacySession` —— 模型生命周期容器。`PrivacyFilter` 持一份
 /// `Arc<PrivacySession>`,在第一次 classify 时触发 load。
+///
+/// `inner` 包 `Arc<Loaded>` 而不是裸 `Loaded`,目的是 classify 路径
+/// 能在 read lock 下 cheap-clone 一份 strong reference,然后**释放
+/// lock**、把 Arc 搬进 `tokio::task::spawn_blocking` 跑同步推理 ——
+/// tokio worker 不再被 ort `run()` pin 住。
 pub struct PrivacySession {
     model_dir: PathBuf,
-    inner: RwLock<Option<Loaded>>,
+    inner: RwLock<Option<Arc<Loaded>>>,
 }
 
 struct Loaded {
@@ -83,52 +96,109 @@ impl PrivacySession {
     /// 任何错误路径(model 文件缺失 / ort 抛 / 维度不符)都返回空 vec
     /// 并 emit warning。调用方应当处理"空 spans = 没有 PII 或模型不可
     /// 用"两种语义合一的情况。
+    ///
+    /// 两段都在 `spawn_blocking` 上跑:**load**(770MB ONNX commit_from_file
+    /// 含图优化是同步阻塞 syscall)+ **inference**(`Session::run` CPU
+    /// 密集 + 内部线程池)。tokio worker 不再被 pin。
     pub async fn classify(&self, text: &str) -> Vec<PiiSpan> {
         if text.is_empty() {
             return Vec::new();
         }
 
-        // Lazy-load fast path: read lock, peek for Some.
-        {
-            let g = self.inner.read().await;
-            if let Some(loaded) = g.as_ref() {
-                return classify_with(loaded, text);
-            }
-        }
-
-        // Slow path: upgrade to write lock and try to load.
-        {
-            let mut g = self.inner.write().await;
-            if g.is_none() {
-                match load_from_dir(&self.model_dir) {
-                    Ok(loaded) => {
-                        tracing::info!(
-                            target: "privacy_filter",
-                            model_dir = %self.model_dir.display(),
-                            "session.loaded"
-                        );
-                        *g = Some(loaded);
-                    }
-                    Err(error) => {
-                        tracing::warn!(
-                            target: "privacy_filter",
-                            ?error,
-                            model_dir = %self.model_dir.display(),
-                            "session.load_failed"
-                        );
-                        return Vec::new();
-                    }
-                }
-            }
-        }
-
-        // Re-acquire read lock now that load succeeded.
-        let g = self.inner.read().await;
-        let loaded = match g.as_ref() {
+        // 拿到 Arc<Loaded>(快路径 read,慢路径 write+load),
+        // 然后**释放所有锁**再去跑推理 —— 推理时不再持有 RwLock,
+        // 别的 task(unload / Settings 诊断 is_loaded)能正常推进。
+        let loaded = match self.get_or_load().await {
             Some(l) => l,
             None => return Vec::new(),
         };
-        classify_with(loaded, text)
+
+        let text_owned = text.to_string();
+        let infer_started_at = std::time::Instant::now();
+        let join = tokio::task::spawn_blocking(move || classify_with(&loaded, &text_owned)).await;
+        let inference_ms = infer_started_at.elapsed().as_millis() as u64;
+        match join {
+            Ok(spans) => {
+                tracing::info!(
+                    target: "privacy_filter",
+                    inference_ms,
+                    span_count = spans.len(),
+                    text_len = text.len(),
+                    "session.classify_done"
+                );
+                spans
+            }
+            Err(join_err) => {
+                // spawn_blocking 抛 panic 才会走这里(JoinError)。ort 自己
+                // 的错误已在 classify_inner 内部 catch 成空 vec + warn。
+                tracing::warn!(
+                    target: "privacy_filter",
+                    error = %join_err,
+                    inference_ms,
+                    "session.classify_panicked"
+                );
+                Vec::new()
+            }
+        }
+    }
+
+    /// 拿到一份 `Arc<Loaded>` —— 已加载就 cheap clone,未加载就在
+    /// `spawn_blocking` 上跑 [`load_from_dir`](自身有几百 MB 文件 IO
+    /// + ONNX 图优化,**必须** off-runtime)。返回 `None` 表示模型不
+    /// 可用,classify 路径应当降级成空 spans。
+    async fn get_or_load(&self) -> Option<Arc<Loaded>> {
+        // Fast path: read lock, peek for Some, clone the Arc.
+        {
+            let g = self.inner.read().await;
+            if let Some(loaded) = g.as_ref() {
+                return Some(loaded.clone());
+            }
+        }
+
+        // Slow path: write lock, recheck (someone else may have raced us),
+        // then `spawn_blocking` the actual load.
+        let mut g = self.inner.write().await;
+        if let Some(loaded) = g.as_ref() {
+            return Some(loaded.clone());
+        }
+        let model_dir = self.model_dir.clone();
+        let load_started_at = std::time::Instant::now();
+        let load_join =
+            tokio::task::spawn_blocking(move || load_from_dir(&model_dir)).await;
+        let load_ms = load_started_at.elapsed().as_millis() as u64;
+        match load_join {
+            Ok(Ok(loaded)) => {
+                tracing::info!(
+                    target: "privacy_filter",
+                    model_dir = %self.model_dir.display(),
+                    load_ms,
+                    "session.loaded"
+                );
+                let arc = Arc::new(loaded);
+                *g = Some(arc.clone());
+                Some(arc)
+            }
+            Ok(Err(error)) => {
+                tracing::warn!(
+                    target: "privacy_filter",
+                    ?error,
+                    model_dir = %self.model_dir.display(),
+                    load_ms,
+                    "session.load_failed"
+                );
+                None
+            }
+            Err(join_err) => {
+                tracing::warn!(
+                    target: "privacy_filter",
+                    error = %join_err,
+                    model_dir = %self.model_dir.display(),
+                    load_ms,
+                    "session.load_panicked"
+                );
+                None
+            }
+        }
     }
 }
 
@@ -157,6 +227,8 @@ fn load_from_dir(model_dir: &Path) -> Result<Loaded> {
         .map_err(|e| CorivoError::Internal(format!("ort SessionBuilder: {e}")))?
         .with_optimization_level(GraphOptimizationLevel::Level1)
         .map_err(|e| CorivoError::Internal(format!("ort optimization_level: {e}")))?
+        .with_intra_threads(ORT_INTRA_THREADS)
+        .map_err(|e| CorivoError::Internal(format!("ort intra_threads: {e}")))?
         .commit_from_file(&onnx_path)
         .map_err(|e| {
             CorivoError::Internal(format!("ort commit_from_file {}: {e}", onnx_path.display()))

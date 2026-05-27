@@ -2,7 +2,17 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
+
+/// Hard ceiling for a single `PrivacyFilter::classify_and_enforce` call
+/// at egress. Local ONNX inference on a healthy machine is sub-second;
+/// when it blows past this it's almost certainly a system-level issue
+/// (memory pressure → swap-thrash, ort op deadlock, antivirus on the
+/// model file). 5s is long enough that a normal slow path still
+/// finishes, short enough that a hung enforce no longer blocks the
+/// whole turn for minutes. Timeout falls back to the original text +
+/// WARN log so the user always gets a response.
+const PRIVACY_FILTER_TIMEOUT: Duration = Duration::from_secs(5);
 
 use serde::Deserialize;
 use tauri::ipc::Channel;
@@ -444,12 +454,53 @@ pub async fn exec_agent_send(
                 );
                 None
             } else {
-                let primary = state
-                    .privacy_filter
-                    .classify_and_enforce(&focus.primary_text)
-                    .await;
+                // Wrap each enforce call in `tokio::time::timeout` —— a hung
+                // ort run() (memory-swap thrash / op deadlock) used to block
+                // the turn here for 8+ minutes with zero log breadcrumbs.
+                // On timeout we fall back to the original text: missing PII
+                // redaction is strictly less harmful than the user staring
+                // at a frozen spinner for the rest of the session.
+                let primary = match tokio::time::timeout(
+                    PRIVACY_FILTER_TIMEOUT,
+                    state.privacy_filter.classify_and_enforce(&focus.primary_text),
+                )
+                .await
+                {
+                    Ok(out) => out,
+                    Err(_) => {
+                        tracing::warn!(
+                            target: "privacy_filter",
+                            frame_id = %focus.frame_id,
+                            field = "primary_text",
+                            text_len = focus.primary_text.len(),
+                            timeout_ms = PRIVACY_FILTER_TIMEOUT.as_millis() as u64,
+                            "enforce.timeout"
+                        );
+                        focus.primary_text.clone()
+                    }
+                };
                 let selection = match focus.selection.as_deref() {
-                    Some(s) => Some(state.privacy_filter.classify_and_enforce(s).await),
+                    Some(s) => Some(
+                        match tokio::time::timeout(
+                            PRIVACY_FILTER_TIMEOUT,
+                            state.privacy_filter.classify_and_enforce(s),
+                        )
+                        .await
+                        {
+                            Ok(out) => out,
+                            Err(_) => {
+                                tracing::warn!(
+                                    target: "privacy_filter",
+                                    frame_id = %focus.frame_id,
+                                    field = "selection",
+                                    text_len = s.len(),
+                                    timeout_ms = PRIVACY_FILTER_TIMEOUT.as_millis() as u64,
+                                    "enforce.timeout"
+                                );
+                                s.to_string()
+                            }
+                        },
+                    ),
                     None => None,
                 };
                 tracing::debug!(

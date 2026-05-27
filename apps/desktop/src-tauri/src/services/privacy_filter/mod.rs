@@ -123,6 +123,17 @@ impl PrivacyFilter {
         let toggles = snap.categories.clone();
         drop(snap);
 
+        // Phase timing at INFO so the daily log file (filter = INFO) shows
+        // where egress time goes. Debug-level `enforce.spans` below carries
+        // the label histogram but never reaches the file layer; without
+        // these two start/end lines a hung enforce was invisible.
+        let started_at = std::time::Instant::now();
+        tracing::info!(
+            target: "privacy_filter",
+            text_len = text.len(),
+            "enforce.start"
+        );
+
         let key = self.cache.key_for(text);
         let (spans, cache_hit) = if let Some(cached) = self.cache.get(&key) {
             (cached, true)
@@ -133,6 +144,16 @@ impl PrivacyFilter {
         };
 
         let out = redact::redact(text, &spans, &toggles);
+
+        tracing::info!(
+            target: "privacy_filter",
+            text_len = text.len(),
+            cache_hit,
+            span_count = spans.len(),
+            changed = out != text,
+            phase_ms = started_at.elapsed().as_millis() as u64,
+            "enforce.end"
+        );
 
         // Per-call diagnostic. **Never** log original text, redacted output,
         // or span text slices — that would leak the very PII the model just
