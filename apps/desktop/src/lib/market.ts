@@ -37,13 +37,12 @@ export interface MarketMeta {
 /**
  * Fetch the catalog of skills visible to the current user.
  *
- * `authToken` is optional — pass undefined for anonymous (sees public skills
- * only). When the closed-overlay (corivo-cloud) build has a live corivo
- * session, pass the bearer token here so the API will include internal
- * skills the user is entitled to.
+ * Auth: Rust automatically attaches the live `corivo_session.access_token`
+ * from Config when present. Signed-out users get the anonymous view
+ * (public skills only). Token never leaves the Rust process.
  */
-export async function marketList(authToken?: string): Promise<MarketSkill[]> {
-  return invoke<MarketSkill[]>("skill_market_list", { authToken });
+export async function marketList(): Promise<MarketSkill[]> {
+  return invoke<MarketSkill[]>("skill_market_list");
 }
 
 /**
@@ -51,14 +50,11 @@ export async function marketList(authToken?: string): Promise<MarketSkill[]> {
  * Returns the local meta record (slug, commit_sha, sha256, installed_at).
  *
  * Rust verifies the sha256 against the API's `X-Content-SHA256` header
- * before writing anything to disk, so a successful resolve is a strong
- * integrity guarantee.
+ * before writing anything to disk; auth is attached the same way as
+ * `marketList`.
  */
-export async function marketInstall(
-  slug: string,
-  authToken?: string,
-): Promise<MarketMeta> {
-  return invoke<MarketMeta>("skill_market_install", { slug, authToken });
+export async function marketInstall(slug: string): Promise<MarketMeta> {
+  return invoke<MarketMeta>("skill_market_install", { slug });
 }
 
 /** Remove the install dir for one slug. No-op if not installed. */

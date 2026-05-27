@@ -28,8 +28,10 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tar::Archive;
+use tauri::State;
 use ts_rs::TS;
 
+use crate::commands::config::AppState;
 use crate::domain::ipc_error::TauriError;
 use crate::env::api_base;
 
@@ -109,17 +111,32 @@ fn http_client() -> Client {
         .expect("reqwest Client::build infallible with defaults")
 }
 
+/// Pull the live corivo session access token off Config. None when the
+/// user is signed out — calls then go through anonymous and the API
+/// returns only public skills.
+fn session_token(state: &AppState) -> Option<String> {
+    state
+        .config_service
+        .get()
+        .corivo_session
+        .access_token
+        .filter(|t| !t.is_empty())
+}
+
+fn apply_auth(req: reqwest::RequestBuilder, token: Option<&str>) -> reqwest::RequestBuilder {
+    match token {
+        Some(t) if !t.is_empty() => req.bearer_auth(t),
+        _ => req,
+    }
+}
+
 #[tauri::command]
 pub async fn skill_market_list(
-    auth_token: Option<String>,
+    state: State<'_, AppState>,
 ) -> Result<Vec<MarketSkill>, TauriError> {
+    let token = session_token(&state);
     let url = format!("{}/v1/market/skills", api_base());
-    let mut req = http_client().get(&url);
-    if let Some(token) = auth_token.as_deref() {
-        if !token.is_empty() {
-            req = req.bearer_auth(token);
-        }
-    }
+    let req = apply_auth(http_client().get(&url), token.as_deref());
     let resp = req.send().await.map_err(|e| TauriError::Unknown {
         message: format!("market.list request failed: {e}"),
     })?;
@@ -136,17 +153,13 @@ pub async fn skill_market_list(
 
 #[tauri::command]
 pub async fn skill_market_install(
+    state: State<'_, AppState>,
     slug: String,
-    auth_token: Option<String>,
 ) -> Result<MarketMeta, TauriError> {
     validate_slug(&slug)?;
+    let token = session_token(&state);
     let url = format!("{}/v1/market/skills/{}/download", api_base(), slug);
-    let mut req = http_client().get(&url);
-    if let Some(token) = auth_token.as_deref() {
-        if !token.is_empty() {
-            req = req.bearer_auth(token);
-        }
-    }
+    let req = apply_auth(http_client().get(&url), token.as_deref());
     let resp = req.send().await.map_err(|e| TauriError::Unknown {
         message: format!("market.install request failed: {e}"),
     })?;
