@@ -531,6 +531,7 @@ fn parse_api_shape(raw: &str) -> Option<ApiShape> {
     match raw {
         "anthropic" => Some(ApiShape::Anthropic),
         "openai" => Some(ApiShape::Openai),
+        "openai_responses" => Some(ApiShape::OpenaiResponses),
         _ => None,
     }
 }
