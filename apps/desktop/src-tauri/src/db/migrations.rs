@@ -245,6 +245,7 @@ pub fn apply_migrations(conn: &DbConnection) -> Result<()> {
     let current = get_current_version(conn)?;
     if current == TARGET_SCHEMA_VERSION {
         tracing::info!(version = TARGET_SCHEMA_VERSION, "DB schema up to date");
+        backfill_system_thread_kinds(conn)?;
         return Ok(());
     }
 
@@ -281,6 +282,46 @@ pub fn apply_migrations(conn: &DbConnection) -> Result<()> {
     }
 
     tracing::info!(version = after, "DB schema bootstrap complete");
+    backfill_system_thread_kinds(conn)?;
+    Ok(())
+}
+
+/// One-shot data fix: re-tag any `chat_threads` rows that were created
+/// by an older binary build where `BackgroundAgentTask` runs forgot to
+/// set `kind='system'` + `system_task=…`. Identifies them by the title
+/// prefix the runner writes (`[<task_name>] <ulid>`) and back-fills
+/// the columns so they stop leaking into the `/ask` sidebar.
+///
+/// Idempotent — runs on every boot but is a no-op once everything is
+/// already tagged correctly. Safe to keep in place permanently as a
+/// belt-and-suspenders guard against future runner regressions.
+fn backfill_system_thread_kinds(conn: &DbConnection) -> Result<()> {
+    let mut total = 0u64;
+    for task in &["persona_distill", "session_memory_learning", "scheduled_workflow"] {
+        let pattern = format!("[{task}] %");
+        let n = conn
+            .execute(
+                "UPDATE chat_threads
+                    SET kind        = 'system',
+                        system_task = ?1
+                  WHERE kind = 'user'
+                    AND title LIKE ?2",
+                rusqlite::params![task, pattern],
+            )
+            .map_err(|e| {
+                CorivoError::Internal(format!("backfill_system_thread_kinds {task}: {e}"))
+            })?;
+        if n > 0 {
+            tracing::info!(task = task, rows = n, "chat_threads.backfill_system_kind");
+        }
+        total += n as u64;
+    }
+    if total > 0 {
+        tracing::info!(
+            total_rows = total,
+            "chat_threads.backfill_system_kind.complete"
+        );
+    }
     Ok(())
 }
 
