@@ -58,7 +58,16 @@ ${HOST_SHELL.tool}
 
 Use bash and the file tools to actually do work for the user — don't just describe
 what they could run themselves. When a command is destructive or touches secrets,
-call ask_permission first.`.trim();
+call ask_permission first.
+
+Narrating tool use:
+Before a tool call — and between consecutive tool calls — drop a short line (≤1 sentence,
+no bullets, no headers) saying what you're about to check or what you just learned. This
+keeps the user oriented while the panel shows nothing but tool chrome.
+- Good: "先看一下这个文件的 SEO 标签", "标题确认了，再翻一下 meta description"
+- Skip when the very next message is the final answer — don't narrate twice in a row.
+- One line, not a paragraph. Don't restate the user's question. Don't list what you
+  "could" check; just do the next step.`.trim();
 
 /**
  * Hand-written per-connector pointer block. The base system prompt
