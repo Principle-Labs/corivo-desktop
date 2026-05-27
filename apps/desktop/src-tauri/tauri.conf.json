@@ -43,6 +43,26 @@
         "visible": false,
         "focus": false,
         "shadow": true
+      },
+      {
+        "label": "notification-overlay",
+        "url": "notification-overlay.html",
+        "title": "Corivo Notification",
+        "width": 360,
+        "height": 96,
+        "minWidth": 320,
+        "minHeight": 80,
+        "maxWidth": 420,
+        "maxHeight": 280,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visibleOnAllWorkspaces": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "focus": false,
+        "shadow": true
       }
     ],
     "security": {

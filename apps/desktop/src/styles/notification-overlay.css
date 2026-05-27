@@ -1,0 +1,173 @@
+/* ===========================================================================
+ * Notification overlay theme.
+ *
+ * Compact right-corner toast for scheduled-workflow run completions
+ * (v1700). Standalone Tauri window — see
+ * `src-tauri/src/services/notification_overlay_window.rs` for the
+ * panel-mode configuration and `notification-overlay.html` for the
+ * mount point. Transparent body, rounded card, follows system
+ * Appearance via prefers-color-scheme.
+ * =========================================================================== */
+
+:root[data-notification-overlay-root="true"],
+body[data-notification-overlay-root="true"] {
+  --no-text: rgba(245, 245, 245, 0.96);
+  --no-text-secondary: rgba(245, 245, 245, 0.78);
+  --no-text-muted: rgba(245, 245, 245, 0.6);
+  --no-surface: rgba(28, 26, 23, 0.78);
+  --no-surface-hover: rgba(38, 36, 32, 0.86);
+  --no-stroke: rgba(255, 255, 255, 0.08);
+  --no-accent: #c0894a;
+  --no-success: #6cbf73;
+  --no-failure: #e68682;
+  --no-close-bg: rgba(255, 255, 255, 0.08);
+  --no-close-bg-hover: rgba(255, 255, 255, 0.16);
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-notification-overlay-root="true"],
+  body[data-notification-overlay-root="true"] {
+    --no-text: rgba(20, 14, 10, 0.95);
+    --no-text-secondary: rgba(20, 14, 10, 0.7);
+    --no-text-muted: rgba(20, 14, 10, 0.55);
+    --no-surface: rgba(252, 251, 248, 0.92);
+    --no-surface-hover: rgba(255, 255, 255, 0.98);
+    --no-stroke: rgba(20, 14, 10, 0.08);
+    --no-accent: #a86b22;
+    --no-success: #2f8a3a;
+    --no-failure: #b91c1c;
+    --no-close-bg: rgba(20, 14, 10, 0.06);
+    --no-close-bg-hover: rgba(20, 14, 10, 0.12);
+  }
+}
+
+:root[data-notification-overlay-root="true"],
+body[data-notification-overlay-root="true"] {
+  background: transparent;
+  color: var(--no-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body[data-notification-overlay-root="true"] {
+  width: 100vw;
+  height: 100vh;
+}
+
+body[data-notification-overlay-root="true"] #root {
+  width: 100%;
+  height: 100%;
+}
+
+.notification-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 12px 14px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 14px;
+  background: var(--no-surface);
+  border: 1px solid var(--no-stroke);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  cursor: pointer;
+  animation: notification-slide-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.notification-card:hover {
+  background: var(--no-surface-hover);
+}
+
+.notification-card[data-state="hiding"] {
+  animation: notification-slide-out 200ms ease forwards;
+}
+
+@keyframes notification-slide-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes notification-slide-out {
+  to {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+.notification-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.notification-status-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.notification-status-dot[data-success="true"] {
+  background: var(--no-success);
+}
+
+.notification-status-dot[data-success="false"] {
+  background: var(--no-failure);
+}
+
+.notification-name {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--no-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notification-close {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--no-close-bg);
+  color: var(--no-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+  font-size: 11px;
+  padding: 0;
+}
+
+.notification-close:hover {
+  background: var(--no-close-bg-hover);
+  color: var(--no-text);
+}
+
+.notification-summary {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--no-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

@@ -21,6 +21,7 @@ pub mod log;
 pub mod market;
 pub mod memory;
 pub mod models;
+pub mod notification_overlay;
 pub mod onboarding;
 pub mod privacy;
 pub mod quick_ask;

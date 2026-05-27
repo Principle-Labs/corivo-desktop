@@ -1488,6 +1488,13 @@ pub fn run() {
             if let Some(window) = app.get_webview_window(QUICK_ASK_WINDOW_LABEL) {
                 apply_quick_ask_overlay_window_mode(&window);
             }
+            if let Some(window) = app.get_webview_window(
+                commands::notification_overlay::NOTIFICATION_OVERLAY_WINDOW_LABEL,
+            ) {
+                crate::services::notification_overlay_window::apply_notification_overlay_window_mode(
+                    &window,
+                );
+            }
 
             // Quick Ask is summoned by double-tapping a bare modifier:
             // ⌥ Option on macOS, Alt on Windows. Install the platform
@@ -1763,6 +1770,9 @@ pub fn run() {
             commands::workflows::workflows_set_enabled,
             commands::workflows::workflows_run_now,
             commands::workflows::workflows_cancel_run,
+            commands::notification_overlay::notification_overlay_show,
+            commands::notification_overlay::notification_overlay_dismiss,
+            commands::notification_overlay::notification_overlay_open_run,
             // Hidden developer-mode tools (unlocked by triple-clicking
             // the Settings dialog title; surfaced in the "Developer" tab).
             commands::dev::dev_open_devtools,

@@ -19,6 +19,10 @@ export default defineConfig(async () => ({
       input: {
         main: path.resolve(__dirname, "index.html"),
         quickAsk: path.resolve(__dirname, "quick-ask.html"),
+        notificationOverlay: path.resolve(
+          __dirname,
+          "notification-overlay.html",
+        ),
       },
     },
   },

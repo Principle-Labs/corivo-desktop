@@ -21,6 +21,7 @@ pub mod hotkey;
 pub mod macos_system_surface;
 pub mod memory;
 pub mod model_catalog;
+pub mod notification_overlay_window;
 pub mod oauth_loopback;
 pub mod persona;
 pub mod privacy_filter;
