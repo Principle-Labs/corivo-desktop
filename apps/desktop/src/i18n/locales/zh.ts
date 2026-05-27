@@ -1067,11 +1067,6 @@ export const zh = {
       // `ask.threadList.workflow.statusSuccess` / `.statusFailure`.
       empty: "还没有运行记录",
     },
-    toast: {
-      openAction: "查看",
-      running: "正在运行…",
-      dismiss: "收起",
-    },
     picker: {
       intro: "挑一个常用模板，或者自己写一个。",
       backToPicker: "← 换一个模板",

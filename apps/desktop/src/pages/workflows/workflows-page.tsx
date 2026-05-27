@@ -18,14 +18,12 @@ import { useWorkflowRuns } from "@/hooks/use-workflows";
 import { useTranslation } from "@/i18n";
 import {
   fromInvokeError,
-  workflowsCancelRun,
   workflowsDelete,
   workflowsList,
   workflowsRunNow,
   workflowsSetEnabled,
 } from "@/lib/tauri";
 import { useActiveThreadStore } from "@/stores/active-thread-store";
-import { useWorkflowInFlightStore } from "@/stores/workflow-in-flight-store";
 import { WorkflowDrawer } from "@/pages/workflows/workflow-drawer";
 import { WorkflowListItem } from "@/pages/workflows/workflow-list-item";
 
@@ -42,8 +40,6 @@ export function WorkflowsPage() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const router = useRouter();
-  const startInFlight = useWorkflowInFlightStore((s) => s.start);
-  const finishInFlight = useWorkflowInFlightStore((s) => s.finish);
   const selectWorkflowRun = useActiveThreadStore((s) => s.selectWorkflowRun);
 
   const { data: workflows } = useQuery({
@@ -72,69 +68,13 @@ export function WorkflowsPage() {
     onError: (error) => toast.error(fromInvokeError(error)),
   });
 
-  // "立即运行" — optimistic UI: mark in-flight + open a persistent
-  // loading toast the moment the user clicks, BEFORE the IPC call
-  // even returns. The backend usually takes 10–60s to dispatch
-  // (single-flight queue + sidecar spawn), and the old "已加入运行
-  // 队列" → silence experience left users staring at nothing wondering
-  // if anything happened. The workflow:started listener later sees
-  // this slug already in-flight and skips creating a second toast.
+  // "立即运行" — just enqueue. The button briefly shows pending state
+  // via `runNow.isPending` (the IPC enqueue is fast); the actual
+  // execution result surfaces later via the notification-overlay
+  // toast. No in-flight UI on the row.
   const runNow = useMutation({
     mutationFn: workflowsRunNow,
-    onMutate: (slug: string) => {
-      const view = workflows?.find((w) => w.definition.slug === slug);
-      const name = view?.definition.name ?? slug;
-      // Two affordances on the toast, unequal in weight on purpose:
-      //   * action「取消」  — DESTRUCTIVE. Actually interrupts the
-      //     run (calls the cancel IPC). Styled with `text-destructive`
-      //     so the red color warns before the click — the previous
-      //     version rendered with the same neutral foreground as
-      //     「收起」 and users couldn't tell which one would kill the
-      //     task (Nielsen "error prevention").
-      //   * cancel「收起」  — Safe. Closes just the toast UI; the run
-      //     keeps going (in-flight indicator on the /workflows row +
-      //     the "我的工作流" sidebar nav still shows it).
-      // The transition to success/failure (when the run actually
-      // ends) reuses the same toast id from the in-flight store.
-      const toastId: string | number = toast.loading(name, {
-        description: t.workflows.toast.running,
-        duration: Infinity,
-        action: {
-          label: t.workflows.list.cancel,
-          onClick: () => {
-            cancelRun.mutate(slug);
-            toast.dismiss(toastId);
-          },
-        },
-        cancel: {
-          label: t.workflows.toast.dismiss,
-          onClick: () => toast.dismiss(toastId),
-        },
-        classNames: {
-          actionButton:
-            "!text-destructive hover:!bg-destructive/10 hover:!text-destructive",
-        },
-      });
-      startInFlight({
-        slug,
-        // Real run_id arrives via workflow:started; the optimistic
-        // claim only needs a placeholder.
-        runId: `optimistic-${slug}-${Date.now()}`,
-        name,
-        toastId,
-      });
-      return { slug, toastId };
-    },
-    onError: (error, _slug, context) => {
-      if (context) {
-        finishInFlight(context.slug);
-        toast.dismiss(context.toastId);
-      }
-      // Surface the backend's actual message ("已经在运行队列中"
-      // when dedup kicks in, network errors, etc.) instead of a
-      // generic "失败".
-      toast.error(fromInvokeError(error));
-    },
+    onError: (error) => toast.error(fromInvokeError(error)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workflows-list"] });
     },
@@ -143,18 +83,6 @@ export function WorkflowsPage() {
   const remove = useMutation({
     mutationFn: workflowsDelete,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["workflows-list"] }),
-    onError: (error) => toast.error(fromInvokeError(error)),
-  });
-
-  // Cancel a running / queued workflow. Backend's on_dispatch_aborted
-  // hook handles cleanup (failure run row + workflow:completed event);
-  // the listener clears in-flight state + transitions the toast. Here
-  // we just invalidate so the row repaints quickly.
-  const cancelRun = useMutation({
-    mutationFn: workflowsCancelRun,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["workflows-list"] });
-    },
     onError: (error) => toast.error(fromInvokeError(error)),
   });
 
@@ -243,7 +171,6 @@ export function WorkflowsPage() {
                 })
               }
               onRunNow={() => runNow.mutate(view.definition.slug)}
-              onCancel={() => cancelRun.mutate(view.definition.slug)}
               onEdit={() => {
                 setDrawerSlug(view.definition.slug);
                 setDrawerOpen(true);

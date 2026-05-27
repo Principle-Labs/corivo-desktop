@@ -1,18 +1,15 @@
 import type { WorkflowView } from "@corivo/shared-types";
-import { Loader2 } from "lucide-react";
 
 import { Button } from "@repo/ui/components/button";
 import { Switch } from "@repo/ui/components/switch";
 
 import { useTranslation } from "@/i18n";
 import { describeTrigger, formatDateTime } from "@/pages/workflows/format";
-import { useWorkflowInFlightStore } from "@/stores/workflow-in-flight-store";
 
 interface Props {
   view: WorkflowView;
   onToggle: (enabled: boolean) => void;
   onRunNow: () => void;
-  onCancel: () => void;
   onEdit: () => void;
   onShowHistory: () => void;
   onDelete: () => void;
@@ -27,7 +24,6 @@ export function WorkflowListItem({
   view,
   onToggle,
   onRunNow,
-  onCancel,
   onEdit,
   onShowHistory,
   onDelete,
@@ -35,21 +31,11 @@ export function WorkflowListItem({
   const { t } = useTranslation();
   const { definition, schedule } = view;
   const enabled = schedule?.enabled ?? false;
-  const inFlight = useWorkflowInFlightStore((s) =>
-    s.entries.has(definition.slug),
-  );
   const triggerLabel = schedule ? describeTrigger(schedule.trigger, t) : null;
-  // While a run is in flight, hide both `lastRunLabel` and
-  // `nextRunLabel`. They describe historical state — "尚未运行" /
-  // "上次失败 · 2 分钟前" — and reading "正在运行… · 尚未运行" on
-  // the same line reads as a contradiction. The amber chip is the
-  // only state the user needs right now; the schedule metadata
-  // comes back the moment the run finishes.
-  const lastRunLabel = inFlight ? null : formatLastRun(view, t);
-  const nextRunLabel =
-    !inFlight && schedule?.next_run_at
-      ? t.workflows.list.nextRun(formatDateTime(schedule.next_run_at))
-      : null;
+  const lastRunLabel = formatLastRun(view, t);
+  const nextRunLabel = schedule?.next_run_at
+    ? t.workflows.list.nextRun(formatDateTime(schedule.next_run_at))
+    : null;
 
   return (
     <li className="flex flex-col gap-2 rounded-lg border border-border/40 p-4">
@@ -77,12 +63,6 @@ export function WorkflowListItem({
             </p>
           ) : null}
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
-            {inFlight ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                {t.workflows.list.running}
-              </span>
-            ) : null}
             {triggerLabel ? <span>{triggerLabel}</span> : null}
             {nextRunLabel ? <span>· {nextRunLabel}</span> : null}
             {lastRunLabel ? <span>· {lastRunLabel}</span> : null}
@@ -133,30 +113,14 @@ export function WorkflowListItem({
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 pt-1">
-        {inFlight ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={onCancel}
-            // Slightly destructive coloring — Cancel is a stop
-            // action; match the same red ghost used for 删除 so the
-            // user reads it as "interrupt this" not "secondary
-            // alternative to Run Now".
-            className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-          >
-            {t.workflows.list.cancel}
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={onRunNow}
-          >
-            {t.workflows.list.runNow}
-          </Button>
-        )}
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={onRunNow}
+        >
+          {t.workflows.list.runNow}
+        </Button>
         <Button type="button" size="sm" variant="ghost" onClick={onEdit}>
           {t.workflows.list.edit}
         </Button>

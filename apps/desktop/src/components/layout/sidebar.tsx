@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter, useRouterState } from "@tanstack/react-router"
-import { Loader2, Plus, Search, Workflow, X } from "lucide-react"
+import { Plus, Search, Workflow, X } from "lucide-react"
 import { Mascot } from "@/components/brand/mascot"
 import { SidebarThreadList } from "@/components/layout/sidebar-thread-list"
 import { StatusIndicator } from "@/components/layout/status-indicator"
 import { UserCard } from "@/components/layout/user-card"
-import { useWorkflowInFlightStore } from "@/stores/workflow-in-flight-store"
 import { useTranslation } from "@/i18n"
 import { useActiveThreadStore } from "@/stores/active-thread-store"
 
@@ -168,12 +167,6 @@ function WorkflowsNav({ onSearch }: { onSearch: () => void }) {
   const router = useRouter()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const active = pathname.startsWith("/workflows")
-  // Tiny in-flight indicator next to the nav label. Replaces the
-  // dedicated "CORIVO 提议" sidebar section — that block confused
-  // users ("what's this 提议 thing?") and duplicated information the
-  // /workflows page already surfaces. A pulsing spinner inline here
-  // keeps the "Corivo is busy" signal without the noise.
-  const inFlightCount = useWorkflowInFlightStore((s) => s.entries.size)
   return (
     <div
       className={`group flex items-center gap-1 rounded-sm transition-colors ${
@@ -203,15 +196,6 @@ function WorkflowsNav({ onSearch }: { onSearch: () => void }) {
         >
           {t.sidebar.workflows}
         </span>
-        {inFlightCount > 0 ? (
-          <span
-            className="flex shrink-0 items-center gap-0.5 text-[10.5px] text-muted-foreground"
-            title={t.workflows.toast.running}
-          >
-            <Loader2 className="h-3 w-3 animate-spin" />
-            {inFlightCount}
-          </span>
-        ) : null}
       </button>
       <button
         type="button"

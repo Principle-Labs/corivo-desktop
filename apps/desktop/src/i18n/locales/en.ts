@@ -1054,11 +1054,6 @@ export const en: LocaleDict = {
     history: {
       empty: "No runs yet",
     },
-    toast: {
-      openAction: "Open",
-      running: "Running…",
-      dismiss: "Dismiss",
-    },
     picker: {
       intro: "Pick a common template, or write your own.",
       backToPicker: "← Pick another template",
