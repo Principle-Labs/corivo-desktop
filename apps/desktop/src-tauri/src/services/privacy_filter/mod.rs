@@ -102,6 +102,14 @@ impl PrivacyFilter {
         self.session.unload().await;
     }
 
+    /// 预热 ONNX session —— app boot 时 fire-and-forget 调一次,关掉
+    /// "用户冷启动后第一条 Quick Ask 撞首次加载 → 超 `PRIVACY_FILTER_TIMEOUT`
+    /// → fallback 原文(漏 redact)"这个 UX 洞。调用方应当先 check
+    /// `settings.enabled`,关着的时候没必要白付 1.5GB RSS。
+    pub async fn warm_up(&self) -> bool {
+        self.session.warm_up().await
+    }
+
     /// Egress classify + redact —— exec_agent.rs 出口处调这个。
     ///
     /// 流程:

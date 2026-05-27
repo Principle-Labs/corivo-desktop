@@ -1411,6 +1411,25 @@ pub fn run() {
                 privacy_model_dir,
             ));
 
+            // Fire-and-forget 预热 ONNX session —— 只在用户已经开启
+            // privacy_filter 时跑。冷启动后第一条 Quick Ask 不会再撞
+            // `commit_from_file` 770MB 首次加载(Windows + Defender 首次
+            // 扫描下常 >5s),从而避免 `PRIVACY_FILTER_TIMEOUT` 在第一条
+            // 消息上 fallback 原文导致漏 redact。失败只 warn,不影响 boot。
+            if config_service.get().privacy_filter.enabled {
+                let pf = privacy_filter.clone();
+                tauri::async_runtime::spawn(async move {
+                    let started_at = std::time::Instant::now();
+                    let ok = pf.warm_up().await;
+                    tracing::info!(
+                        target: "privacy_filter",
+                        ok,
+                        warmup_ms = started_at.elapsed().as_millis() as u64,
+                        "warm_up.done"
+                    );
+                });
+            }
+
             app.manage(AppState {
                 db,
                 capture_store,

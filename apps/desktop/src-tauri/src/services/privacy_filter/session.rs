@@ -91,6 +91,17 @@ impl PrivacySession {
         *self.inner.write().await = None;
     }
 
+    /// 触发模型加载(若尚未加载)。app boot 时 fire-and-forget 调一次,
+    /// 让用户第一条 Quick Ask 不再撞首次 ONNX commit_from_file —— 770MB
+    /// 模型在 Windows + Defender 首次扫描下可能 >5 秒,会被 egress
+    /// `PRIVACY_FILTER_TIMEOUT` 命中 fallback 原文(漏 redact)。
+    ///
+    /// 返回 `true` 表示加载成功(或之前就已加载)。失败(模型文件缺失
+    /// /corrupt)只 emit warning,classify 路径继续优雅降级到空 spans。
+    pub async fn warm_up(&self) -> bool {
+        self.get_or_load().await.is_some()
+    }
+
     /// 对 `text` 跑一次 PII classification,返回 char-level spans。
     ///
     /// 任何错误路径(model 文件缺失 / ort 抛 / 维度不符)都返回空 vec
