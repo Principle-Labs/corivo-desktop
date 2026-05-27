@@ -10,6 +10,7 @@ use tauri::{AppHandle, Manager, State};
 use tokio::sync::Notify;
 
 use crate::commands::config::AppState;
+use crate::domain::chat::ChatThreadKind;
 use crate::domain::config::{ApiShape, ExecAgentAuthMode, Language};
 use crate::services::exec_agent::rpc_server::RpcDeps;
 use crate::services::exec_agent::runner::FocusContextInput;
@@ -201,6 +202,26 @@ pub async fn exec_agent_send(
         .await
         .map_err(|e| format!("Failed to load chat thread: {e}"))?
         .ok_or_else(|| format!("chat thread not found: {thread_id}"))?;
+
+    // Guard: a kind='system' thread is owned by a background agent task
+    // (session learner, persona distill, scheduled workflow). Its session
+    // jsonl carries the task's private instructions and tool results;
+    // letting a user chat send reuse that context produces garbled
+    // assistant output (real incident 2026-05-26 13:19). The sidebar
+    // already filters these out, so the only way to get here is a
+    // stale-data row or a programmatic caller — refuse explicitly so
+    // the failure is loud instead of silently corrupting the run.
+    if !matches!(thread.kind, ChatThreadKind::User) {
+        tracing::warn!(
+            thread_id = %thread_id,
+            kind = ?thread.kind,
+            system_task = ?thread.system_task,
+            "exec_agent.send.rejected_system_thread"
+        );
+        return Err(format!(
+            "chat thread {thread_id} is owned by a background task and can't accept user sends"
+        ));
+    }
 
     // Strip the legacy `corivo:` prefix from any bound_model_id rows
     // written before we discovered the gateway (llm.eiart.top) is a
