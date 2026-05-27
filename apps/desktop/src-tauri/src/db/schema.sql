@@ -543,16 +543,6 @@ CREATE TABLE workflow_schedules (
     -- itself is still meaningful).
     created_by_thread_id TEXT
         REFERENCES chat_threads(id) ON DELETE SET NULL,
-    -- v1512: notification policy chosen by the workflow author (UI
-    -- drawer / schedule_task tool parameter / WORKFLOW.md frontmatter).
-    --   'always'    — fire macOS banner + in-app toast every successful run
-    --   'on_change' — only when this run's content_hash differs from the
-    --                 previous run for this slug (suppresses "same weekly
-    --                 summary again" spam)
-    --   'silent'    — never push; still write to workflow_runs and the
-    --                 sidebar Corivo 提议 section
-    notify_policy TEXT NOT NULL DEFAULT 'always'
-        CHECK (notify_policy IN ('always', 'on_change', 'silent')),
     created_at    TEXT NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
         CHECK (created_at GLOB '????-??-??T??:??:??.???Z'),
@@ -595,32 +585,14 @@ CREATE TABLE workflow_runs (
     finished_at     TEXT NOT NULL
         CHECK (finished_at GLOB '????-??-??T??:??:??.???Z'),
     error_message   TEXT,
-    -- v1512: notification payload + read tracking.
-    --   summary       — short body text (~140 chars) used for macOS
-    --                   banner / in-app toast / sidebar preview.
-    --                   Truncated assistant final text on success;
-    --                   error_message on failure.
-    --   content_hash  — sha256 of the raw assistant output. Used by
-    --                   notify_policy='on_change' to skip duplicate
-    --                   pushes when this run produced the same content
-    --                   as the previous run for this slug.
-    --   acknowledged_at — when the user opened/read this run via the
-    --                   sidebar "Corivo 提议" section or the history
-    --                   dialog. NULL = unread (feeds the sidebar dot).
+    -- summary — short body text (~140 chars). Truncated assistant final
+    -- text on success; error_message on failure. Used by the
+    -- notification-overlay toast + history preview.
     summary         TEXT,
-    content_hash    TEXT,
-    acknowledged_at TEXT
-        CHECK (acknowledged_at IS NULL OR acknowledged_at GLOB '????-??-??T??:??:??.???Z'),
     created_at      TEXT NOT NULL
         DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
         CHECK (created_at GLOB '????-??-??T??:??:??.???Z')
 );
-
--- Sidebar 's unread badge query: COUNT(*) WHERE acknowledged_at IS NULL.
--- Partial index keeps the lookup cheap once most rows have been read.
-CREATE INDEX idx_workflow_runs_unread
-    ON workflow_runs(slug, started_at DESC)
-    WHERE acknowledged_at IS NULL;
 
 CREATE INDEX idx_workflow_runs_slug
     ON workflow_runs(slug, started_at DESC);
@@ -685,6 +657,11 @@ CREATE INDEX idx_workflow_runs_slug
 --               * chat_messages 加 search_tokens 列 + chat_messages_fts
 --                 虚表(仅 status='complete' 入索引)。
 --               * 统一召回层 services::memory 上线。
+--   1700      → 砍掉 workflow notify_policy / content_hash / acknowledged_at。
+--               通知机制重做：成功默认通知、失败必通知、不分档位、不做
+--               sidebar 未读 dot。运行结果落地仍在 workflow_runs (summary
+--               保留),具体呈现由独立的 notification-overlay 窗口接管,
+--               不再走 macOS 系统通知。purge-and-apply,旧列直接抹掉。
 --   1513      → workflow_runs.slug 不再 FK 到 workflow_schedules。
 --               run-now 一个没排时间的 workflow(WORKFLOW.md 在磁盘上、
 --               schedules 表里没行)是合法路径,旧的 FK ON DELETE CASCADE
@@ -693,10 +670,7 @@ CREATE INDEX idx_workflow_runs_slug
 --               清理 workflow_runs 行(参见 store.rs::delete_schedule)。
 --   1512      → workflow_schedules 增 notify_policy; workflow_runs
 --               增 summary / content_hash / acknowledged_at 三列。
---               支撑 PR6：macOS banner + in-app toast + sidebar 「Corivo 提议」
---               未读分区。notify_policy ∈ ('always','on_change','silent')
---               让 workflow 作者控制噪声;on_change 用 content_hash 比上
---               一次同 slug 的输出来去重。
+--               (v1700 后保留的只有 summary;其余在 v1700 砍掉。)
 --   1511      → workflow_schedules 增 source + created_by_thread_id 两列。
 --               source ∈ ('user','agent') 区分定时任务是用户在 /workflows
 --               UI 手写的,还是 agent 通过 `schedule_task` native tool
@@ -741,4 +715,4 @@ CREATE TABLE schema_version (
         CHECK (applied_at GLOB '????-??-??T??:??:??.???Z')
 );
 
-INSERT INTO schema_version (version) VALUES (1600);
+INSERT INTO schema_version (version) VALUES (1700);

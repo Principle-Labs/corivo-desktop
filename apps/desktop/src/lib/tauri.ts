@@ -584,19 +584,6 @@ export async function workflowsCancelRun(slug: string): Promise<boolean> {
   return invoke<boolean>("workflows_cancel_run", { slug });
 }
 
-/** Flip `workflow_runs.acknowledged_at` from NULL → now for one run.
- *  Used by the sidebar "Corivo 提议" section when the user opens a
- *  card, and by the history dialog auto-ack-on-open path. */
-export async function workflowsAcknowledgeRun(runId: string): Promise<void> {
-  return invoke<void>("workflows_acknowledge_run", { runId });
-}
-
-/** Total unread (`acknowledged_at IS NULL`) run count across every
- *  workflow. Feeds the sidebar "Corivo 提议" section's red dot. */
-export async function workflowsUnreadCount(): Promise<number> {
-  return invoke<number>("workflows_unread_count");
-}
-
 // --------------------------------------------------------------------------
 // Connectors (Settings → Integrations)
 //

@@ -144,7 +144,15 @@ const SCHEMA_SQL: &str = include_str!("schema.sql");
 ///   * purge-and-apply,frames 历史照常被丢弃(pre-release 期可弃)。
 ///   * 模型 manifest 同 commit 锁到具体 HF revision +
 ///     填实 sha256,download.rs MODEL_MANIFEST 见同 PR。
-pub const TARGET_SCHEMA_VERSION: i64 = 1600;
+/// v1700 — workflow 通知机制重做:砍掉策略 + hash + 已读三件套。
+///   * `workflow_schedules` 删 `notify_policy` 列。成功默认通知、失败必通知,
+///     不再让 workflow 作者选档位。
+///   * `workflow_runs` 删 `content_hash` (语义去重靠 hash 文本意义不大) 和
+///     `acknowledged_at` (不做 sidebar 未读 dot)。保留 `summary`。
+///   * 同时撤掉 macOS 系统通知 (`tauri-plugin-notification`),完成反馈走
+///     独立的 `notification-overlay` 浮窗,不再依赖系统 banner。
+///   purge-and-apply,旧列在 pre-release 期可弃。
+pub const TARGET_SCHEMA_VERSION: i64 = 1700;
 
 /// Every table name that any ancestor of this schema introduced. Drop
 /// order matters: children before parents (FKs) when foreign_keys are

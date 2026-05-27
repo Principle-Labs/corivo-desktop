@@ -1019,10 +1019,6 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        // v1432 — macOS banner for scheduled-workflow runs. The user
-        // gets a system prompt the first time we call `.show()`; later
-        // calls are silent until the user explicitly revokes.
-        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             // Register the deep-link handler before anything else in
             // setup runs — `on_open_url` is callback-based and the
@@ -1767,8 +1763,6 @@ pub fn run() {
             commands::workflows::workflows_set_enabled,
             commands::workflows::workflows_run_now,
             commands::workflows::workflows_cancel_run,
-            commands::workflows::workflows_acknowledge_run,
-            commands::workflows::workflows_unread_count,
             // Hidden developer-mode tools (unlocked by triple-clicking
             // the Settings dialog title; surfaced in the "Developer" tab).
             commands::dev::dev_open_devtools,

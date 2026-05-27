@@ -30,8 +30,8 @@ use ulid::Ulid;
 use crate::db::pool::{run_blocking, DbPool};
 use crate::db::time::DbInstant;
 use crate::domain::workflow::{
-    Trigger, TriggerKind, WorkflowDefinition, WorkflowNotifyPolicy, WorkflowRun,
-    WorkflowRunStatus, WorkflowSchedule, WorkflowScheduleSource,
+    Trigger, TriggerKind, WorkflowDefinition, WorkflowRun, WorkflowRunStatus, WorkflowSchedule,
+    WorkflowScheduleSource,
 };
 use crate::error::{CorivoError, Result};
 
@@ -54,8 +54,6 @@ pub struct DispatchedSchedule {
 /// Input to `WorkflowStore::upsert_schedule`. `source` +
 /// `created_by_thread_id` are only honoured on INSERT — the ON
 /// CONFLICT path preserves whatever was already on the row.
-/// `notify_policy` is part of the canonical row and updates on every
-/// upsert (cached from the WORKFLOW.md frontmatter).
 #[derive(Debug, Clone)]
 pub struct UpsertSchedule {
     pub slug: String,
@@ -63,7 +61,6 @@ pub struct UpsertSchedule {
     pub enabled: bool,
     pub source: WorkflowScheduleSource,
     pub created_by_thread_id: Option<String>,
-    pub notify_policy: WorkflowNotifyPolicy,
 }
 
 pub struct WorkflowStore {
@@ -245,7 +242,7 @@ impl WorkflowStore {
                 .prepare(
                     "SELECT slug, trigger_kind, trigger_expr, enabled,
                             last_run_at, next_run_at, last_status,
-                            source, created_by_thread_id, notify_policy,
+                            source, created_by_thread_id,
                             created_at, updated_at
                        FROM workflow_schedules
                        ORDER BY slug",
@@ -266,7 +263,7 @@ impl WorkflowStore {
             conn.query_row(
                 "SELECT slug, trigger_kind, trigger_expr, enabled,
                         last_run_at, next_run_at, last_status,
-                        source, created_by_thread_id, notify_policy,
+                        source, created_by_thread_id,
                         created_at, updated_at
                    FROM workflow_schedules WHERE slug = ?1",
                 params![slug],
@@ -301,7 +298,6 @@ impl WorkflowStore {
             enabled,
             source,
             created_by_thread_id,
-            notify_policy,
             ..
         } = spec;
         let pool = self.pool.clone();
@@ -311,15 +307,14 @@ impl WorkflowStore {
             conn.execute(
                 "INSERT INTO workflow_schedules
                    (slug, trigger_kind, trigger_expr, enabled, next_run_at,
-                    source, created_by_thread_id, notify_policy,
+                    source, created_by_thread_id,
                     created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)
                  ON CONFLICT(slug) DO UPDATE SET
                    trigger_kind  = excluded.trigger_kind,
                    trigger_expr  = excluded.trigger_expr,
                    enabled       = excluded.enabled,
                    next_run_at   = excluded.next_run_at,
-                   notify_policy = excluded.notify_policy,
                    updated_at    = excluded.updated_at",
                 params![
                     stored_slug,
@@ -329,7 +324,6 @@ impl WorkflowStore {
                     next_run_db,
                     source.as_str(),
                     created_by_thread_id,
-                    notify_policy.as_str(),
                     now,
                 ],
             )
@@ -358,7 +352,6 @@ impl WorkflowStore {
             enabled,
             source: current.source,
             created_by_thread_id: current.created_by_thread_id,
-            notify_policy: current.notify_policy,
         })
         .await
         .map(|_| ())
@@ -476,8 +469,8 @@ impl WorkflowStore {
             tx.execute(
                 "INSERT INTO workflow_runs
                    (id, slug, thread_id, status, started_at, finished_at,
-                    error_message, summary, content_hash, acknowledged_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                    error_message, summary)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                 params![
                     run.id,
                     run.slug,
@@ -487,8 +480,6 @@ impl WorkflowStore {
                     finished_db,
                     run.error_message,
                     run.summary,
-                    run.content_hash,
-                    run.acknowledged_at.map(DbInstant::from),
                 ],
             )
             .map_err(|e| CorivoError::Internal(format!("record_run insert: {e}")))?;
@@ -508,61 +499,6 @@ impl WorkflowStore {
         .await
     }
 
-    /// Latest run for `slug` regardless of status. Used by the notify
-    /// path to compute "did this run produce different content?" for
-    /// `notify_policy = 'on_change'`.
-    pub async fn latest_run_for_slug(&self, slug: &str) -> Result<Option<WorkflowRun>> {
-        let slug = slug.to_string();
-        run_blocking(self.pool.clone(), move |conn| {
-            conn.query_row(
-                "SELECT id, slug, thread_id, status, started_at, finished_at,
-                        error_message, summary, content_hash, acknowledged_at
-                   FROM workflow_runs WHERE slug = ?1
-                   ORDER BY started_at DESC LIMIT 1",
-                params![slug],
-                row_to_run,
-            )
-            .optional()
-            .map_err(|e| CorivoError::Internal(format!("latest_run: {e}")))
-        })
-        .await
-    }
-
-    /// Flip `acknowledged_at` from NULL → now for one run. Idempotent
-    /// — re-acknowledging an already-read row is a no-op (the WHERE
-    /// clause filters it out).
-    pub async fn acknowledge_run(&self, run_id: String) -> Result<()> {
-        let now = DbInstant::now();
-        run_blocking(self.pool.clone(), move |conn| {
-            conn.execute(
-                "UPDATE workflow_runs
-                    SET acknowledged_at = ?2
-                  WHERE id = ?1 AND acknowledged_at IS NULL",
-                params![run_id, now],
-            )
-            .map_err(|e| CorivoError::Internal(format!("acknowledge_run: {e}")))?;
-            Ok(())
-        })
-        .await
-    }
-
-    /// Total unread (`acknowledged_at IS NULL`) run count across all
-    /// slugs. Feeds the sidebar "Corivo 提议" section's red dot.
-    pub async fn unread_count(&self) -> Result<u32> {
-        run_blocking(self.pool.clone(), move |conn| {
-            let count: i64 = conn
-                .query_row(
-                    "SELECT COUNT(*) FROM workflow_runs
-                      WHERE acknowledged_at IS NULL",
-                    [],
-                    |row| row.get(0),
-                )
-                .map_err(|e| CorivoError::Internal(format!("unread_count: {e}")))?;
-            Ok(count.max(0) as u32)
-        })
-        .await
-    }
-
     pub async fn list_runs(
         &self,
         slug: Option<String>,
@@ -574,7 +510,7 @@ impl WorkflowStore {
                 let mut stmt = conn
                     .prepare(
                         "SELECT id, slug, thread_id, status, started_at, finished_at,
-                                error_message, summary, content_hash, acknowledged_at
+                                error_message, summary
                            FROM workflow_runs WHERE slug = ?1
                            ORDER BY started_at DESC LIMIT ?2",
                     )
@@ -589,7 +525,7 @@ impl WorkflowStore {
                 let mut stmt = conn
                     .prepare(
                         "SELECT id, slug, thread_id, status, started_at, finished_at,
-                                error_message, summary, content_hash, acknowledged_at
+                                error_message, summary
                            FROM workflow_runs ORDER BY started_at DESC LIMIT ?1",
                     )
                     .map_err(|e| CorivoError::Internal(format!("list_runs prepare: {e}")))?;
@@ -607,7 +543,7 @@ impl WorkflowStore {
         run_blocking(self.pool.clone(), move |conn| {
             conn.query_row(
                 "SELECT id, slug, thread_id, status, started_at, finished_at,
-                        error_message, summary, content_hash, acknowledged_at
+                        error_message, summary
                    FROM workflow_runs WHERE id = ?1",
                 params![id],
                 row_to_run,
@@ -703,9 +639,6 @@ fn row_to_schedule(row: &rusqlite::Row<'_>) -> rusqlite::Result<WorkflowSchedule
     let last_status = last_status_raw.and_then(|s| WorkflowRunStatus::parse(&s));
     let source_raw: String = row.get("source")?;
     let source = WorkflowScheduleSource::parse(&source_raw).unwrap_or(WorkflowScheduleSource::User);
-    let notify_raw: String = row.get("notify_policy")?;
-    let notify_policy =
-        WorkflowNotifyPolicy::parse(&notify_raw).unwrap_or(WorkflowNotifyPolicy::Always);
     Ok(WorkflowSchedule {
         slug: row.get("slug")?,
         trigger,
@@ -719,7 +652,6 @@ fn row_to_schedule(row: &rusqlite::Row<'_>) -> rusqlite::Result<WorkflowSchedule
         last_status,
         source,
         created_by_thread_id: row.get("created_by_thread_id")?,
-        notify_policy,
         created_at: row
             .get::<_, DbInstant>("created_at")?
             .into_inner(),
@@ -754,10 +686,6 @@ fn row_to_run(row: &rusqlite::Row<'_>) -> rusqlite::Result<WorkflowRun> {
             .into_inner(),
         error_message: row.get("error_message")?,
         summary: row.get("summary")?,
-        content_hash: row.get("content_hash")?,
-        acknowledged_at: row
-            .get::<_, Option<DbInstant>>("acknowledged_at")?
-            .map(DbInstant::into_inner),
     })
 }
 
@@ -773,11 +701,6 @@ fn render_workflow_md(def: &WorkflowDefinition) -> String {
         out.push_str(&format!("  - {}\n", quote_yaml_scalar(tool)));
     }
     out.push_str(&format!("max_turns: {}\n", def.max_turns));
-    // notify_policy only emitted when non-default so the file stays
-    // clean on the common case (`always`).
-    if def.notify_policy != WorkflowNotifyPolicy::Always {
-        out.push_str(&format!("notify_policy: {}\n", def.notify_policy.as_str()));
-    }
     out.push_str("---\n");
     // Body — exactly the system_prompt; the reader's `trim_start`
     // tolerates trailing/leading whitespace either way.
@@ -819,9 +742,6 @@ fn read_definition(manifest: &Path, slug: &str) -> std::io::Result<WorkflowDefin
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(DEFAULT_MAX_TURNS);
     let tool_whitelist = pick_list(&front, "tool_whitelist");
-    let notify_policy = pick_string(&front, "notify_policy")
-        .and_then(|s| WorkflowNotifyPolicy::parse(&s))
-        .unwrap_or_default();
 
     Ok(WorkflowDefinition {
         slug: slug.to_string(),
@@ -830,7 +750,6 @@ fn read_definition(manifest: &Path, slug: &str) -> std::io::Result<WorkflowDefin
         tool_whitelist,
         max_turns,
         system_prompt: body.trim_start().to_string(),
-        notify_policy,
     })
 }
 
@@ -969,7 +888,6 @@ mod tests {
             enabled,
             source: WorkflowScheduleSource::User,
             created_by_thread_id: None,
-            notify_policy: WorkflowNotifyPolicy::Always,
         }
     }
 
@@ -1074,8 +992,6 @@ mod tests {
             finished_at: now,
             error_message: None,
             summary: Some("test run".to_string()),
-            content_hash: Some("abc123".to_string()),
-            acknowledged_at: None,
         };
         store.record_run(run.clone()).await.unwrap();
         let runs = store.list_runs(Some("demo".to_string()), 10).await.unwrap();
@@ -1094,7 +1010,6 @@ mod tests {
             description: Some("一段:带冒号的描述".to_string()),
             tool_whitelist: vec!["save_note".into(), "memory_search".into()],
             max_turns: 9,
-            notify_policy: WorkflowNotifyPolicy::OnChange,
             system_prompt: "请按提示工作\n第二行".to_string(),
         };
         let rendered = render_workflow_md(&def);
@@ -1107,7 +1022,6 @@ mod tests {
         assert_eq!(parsed.tool_whitelist, def.tool_whitelist);
         assert_eq!(parsed.max_turns, def.max_turns);
         assert_eq!(parsed.system_prompt.trim(), def.system_prompt.trim());
-        assert_eq!(parsed.notify_policy, def.notify_policy);
     }
 
     #[test]

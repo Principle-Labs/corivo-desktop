@@ -1072,17 +1072,6 @@ export const zh = {
       running: "正在运行…",
       dismiss: "收起",
     },
-    sidebarSection: {
-      title: "Corivo 提议",
-      empty: "暂无新提议",
-      unread: (count: number) => `${count} 条未读`,
-    },
-    drawer_notify: {
-      label: "通知策略",
-      always: "每次都通知",
-      onChange: "只在内容变化时通知",
-      silent: "只进侧栏，不弹通知",
-    },
     picker: {
       intro: "挑一个常用模板，或者自己写一个。",
       backToPicker: "← 换一个模板",

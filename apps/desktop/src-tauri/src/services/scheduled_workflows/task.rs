@@ -16,9 +16,7 @@ use chrono::{DateTime, Utc};
 
 use crate::db::time::now_utc;
 use crate::domain::chat::SystemTaskKind;
-use crate::domain::workflow::{
-    WorkflowDefinition, WorkflowNotifyPolicy, WorkflowRun, WorkflowRunStatus,
-};
+use crate::domain::workflow::{WorkflowDefinition, WorkflowRun, WorkflowRunStatus};
 use crate::error::Result;
 use crate::services::background_agent_task::{
     runner::TaskOutcome, BackgroundAgentTask, TaskDeps,
@@ -102,19 +100,6 @@ impl BackgroundAgentTask for ScheduledWorkflowTask {
         Some(self.slug.clone())
     }
 
-    fn before_run(&self, deps: &TaskDeps, _thread_id: &str) {
-        // The sidecar turn itself can take 10–120 seconds for an
-        // LLM-heavy workflow; the frontend uses this event to flip
-        // the row into "正在运行..." and pin the toast so the user
-        // doesn't think nothing happened.
-        crate::services::scheduled_workflows::notify::dispatch_started(
-            &deps.app,
-            &self.definition.name,
-            &self.slug,
-            &self.run_id,
-        );
-    }
-
     fn on_dispatch_aborted(&self, reason: &str) {
         // Scheduler gave up before runner::run could complete (deps
         // never became ready, runner crashed, etc.). Without this
@@ -163,8 +148,6 @@ impl BackgroundAgentTask for ScheduledWorkflowTask {
                     "scheduler aborted dispatch: {reason_owned}"
                 )),
                 summary: Some(summary.clone()),
-                content_hash: None,
-                acknowledged_at: None,
             };
             if let Err(error) = store.record_run(run).await {
                 tracing::warn!(
@@ -197,25 +180,6 @@ impl BackgroundAgentTask for ScheduledWorkflowTask {
         };
         let summary =
             summarize_for_notification(&output, outcome.success, outcome.error_detail.as_deref());
-        let content_hash = if outcome.success {
-            Some(hash_content(&output))
-        } else {
-            None
-        };
-
-        // notify_policy = on_change skips push when the hash matches
-        // the previous successful run. The DB row is still written
-        // either way (so it shows in the sidebar with the unread dot).
-        let suppress_push = if outcome.success
-            && self.definition.notify_policy == WorkflowNotifyPolicy::OnChange
-        {
-            match self.store.latest_run_for_slug(&self.slug).await {
-                Ok(Some(prev)) => prev.content_hash.as_deref() == content_hash.as_deref(),
-                _ => false,
-            }
-        } else {
-            false
-        };
 
         let run = WorkflowRun {
             id: self.run_id.clone(),
@@ -241,8 +205,6 @@ impl BackgroundAgentTask for ScheduledWorkflowTask {
                 )
             },
             summary: Some(summary.clone()),
-            content_hash: content_hash.clone(),
-            acknowledged_at: None,
         };
         // Record the run row, but DO NOT abort on persistence failure.
         // The previous early-return left the frontend hanging on "正在
@@ -272,40 +234,23 @@ impl BackgroundAgentTask for ScheduledWorkflowTask {
         // the next cron tick / run-now click should be able to proceed.
         self.store.release_slug(&self.slug);
 
-        // Push the macOS banner + emit the Tauri event. Failures are
-        // always pushed (the user wants to know things broke);
-        // successes obey notify_policy. Both code paths leave the
-        // workflow_runs row + sidebar dot intact, so a suppressed run
-        // is still discoverable, just not noisy.
-        let should_push = match (outcome.success, self.definition.notify_policy) {
-            (false, _) => true,
-            (true, WorkflowNotifyPolicy::Silent) => false,
-            (true, WorkflowNotifyPolicy::OnChange) => !suppress_push,
-            (true, WorkflowNotifyPolicy::Always) => true,
-        };
-        if should_push {
-            crate::services::scheduled_workflows::notify::dispatch(
-                &deps.app,
-                &self.definition.name,
-                &self.slug,
-                &self.run_id,
-                outcome.thread_id.as_str(),
-                &summary,
-                outcome.success,
-            );
-        } else {
-            tracing::debug!(
-                slug = %self.slug,
-                run_id = %self.run_id,
-                "scheduled_workflow.notify_suppressed"
-            );
-        }
+        // Always emit the completion event. Success and failure both
+        // surface in the notification-overlay toast (visual variants
+        // differ; treatment is uniform here).
+        crate::services::scheduled_workflows::notify::dispatch(
+            &deps.app,
+            &self.definition.name,
+            &self.slug,
+            &self.run_id,
+            outcome.thread_id.as_str(),
+            &summary,
+            outcome.success,
+        );
 
         tracing::info!(
             slug = %self.slug,
             run_id = %self.run_id,
             success = outcome.success,
-            pushed = should_push,
             persisted = persist_error.is_none(),
             "scheduled_workflow.recorded"
         );
@@ -356,15 +301,6 @@ fn truncate_summary(text: &str) -> String {
     } else {
         head
     }
-}
-
-/// Hex-encoded SHA-256 of the raw assistant output. Used by
-/// `notify_policy = 'on_change'` to detect a re-emitted-identical run.
-fn hash_content(output: &str) -> String {
-    use sha2::{Digest, Sha256};
-    let mut hasher = Sha256::new();
-    hasher.update(output.as_bytes());
-    hex::encode(hasher.finalize())
 }
 
 /// Render `{{slot}}` placeholders inside the workflow's system-prompt

@@ -7,19 +7,9 @@ import type { WorkflowRunStatus } from "./WorkflowRunStatus";
  */
 export type WorkflowRun = { id: string, slug: string, thread_id: string | null, status: WorkflowRunStatus, started_at: string, finished_at: string, error_message: string | null, 
 /**
- * v1512 — short body text used by macOS banner / in-app toast /
- * sidebar preview. `None` for legacy rows; populated going
- * forward by `ScheduledWorkflowTask::consume_output`.
+ * Short body text (~140 chars). Populated by
+ * `ScheduledWorkflowTask::consume_output` — truncated assistant
+ * final text on success, error_message on failure. Used by the
+ * notification-overlay toast + history preview.
  */
-summary: string | null, 
-/**
- * v1512 — sha256 of the raw assistant output. Used by
- * `notify_policy = 'on_change'` to skip duplicate pushes.
- */
-content_hash: string | null, 
-/**
- * v1512 — when the user opened / read this run via the sidebar
- * "Corivo 提议" section or the workflow history dialog. `None`
- * means unread; the count of unread rows drives the sidebar dot.
- */
-acknowledged_at: string | null, };
+summary: string | null, };

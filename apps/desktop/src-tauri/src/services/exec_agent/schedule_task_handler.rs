@@ -24,9 +24,7 @@ use std::sync::Arc;
 
 use serde_json::{json, Value};
 
-use crate::domain::workflow::{
-    Trigger, WorkflowDefinition, WorkflowNotifyPolicy, WorkflowScheduleSource,
-};
+use crate::domain::workflow::{Trigger, WorkflowDefinition, WorkflowScheduleSource};
 use crate::error::{CorivoError, Result};
 use crate::services::scheduled_workflows::{UpsertSchedule, WorkflowStore};
 
@@ -79,11 +77,6 @@ pub async fn schedule_task_handler(
         .get("enabled")
         .and_then(Value::as_bool)
         .unwrap_or(true);
-    let notify_policy = params
-        .get("notify")
-        .and_then(Value::as_str)
-        .and_then(WorkflowNotifyPolicy::parse)
-        .unwrap_or_default();
 
     let slug = store.generate_unique_slug(&name).await?;
     let definition = WorkflowDefinition {
@@ -93,7 +86,6 @@ pub async fn schedule_task_handler(
         tool_whitelist: tools,
         max_turns,
         system_prompt: prompt,
-        notify_policy,
     };
     store.write_definition(&definition)?;
     let schedule = store
@@ -103,7 +95,6 @@ pub async fn schedule_task_handler(
             enabled,
             source: WorkflowScheduleSource::Agent,
             created_by_thread_id: Some(thread_id.to_string()),
-            notify_policy,
         })
         .await?;
 
@@ -223,12 +214,6 @@ pub async fn update_scheduled_task_handler(
         .get("enabled")
         .and_then(Value::as_bool)
         .unwrap_or(existing_schedule.enabled);
-    let notify_policy = params
-        .get("notify")
-        .and_then(Value::as_str)
-        .and_then(WorkflowNotifyPolicy::parse)
-        .unwrap_or(existing_schedule.notify_policy);
-    definition.notify_policy = notify_policy;
 
     store.write_definition(&definition)?;
     let schedule = store
@@ -238,7 +223,6 @@ pub async fn update_scheduled_task_handler(
             enabled,
             source: existing_schedule.source,
             created_by_thread_id: existing_schedule.created_by_thread_id,
-            notify_policy,
         })
         .await?;
 
@@ -482,7 +466,6 @@ mod tests {
             tool_whitelist: vec![],
             max_turns: 5,
             system_prompt: "x".into(),
-            notify_policy: WorkflowNotifyPolicy::Always,
         }).unwrap();
         store
             .upsert_schedule(UpsertSchedule {
@@ -491,7 +474,6 @@ mod tests {
                 enabled: true,
                 source: WorkflowScheduleSource::User,
                 created_by_thread_id: None,
-                notify_policy: WorkflowNotifyPolicy::Always,
             })
             .await
             .unwrap();

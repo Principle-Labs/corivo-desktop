@@ -170,55 +170,8 @@ pub struct WorkflowSchedule {
     /// schedules and for agent-created ones whose originating thread
     /// has been deleted (the FK is `ON DELETE SET NULL`).
     pub created_by_thread_id: Option<String>,
-    /// v1512 — when to push a macOS banner + in-app toast after a run.
-    /// Mirrored into the WORKFLOW.md frontmatter so the file is the
-    /// source of truth; the DB column is just the cached value the
-    /// Ticker / consume_output read at fire time.
-    pub notify_policy: WorkflowNotifyPolicy,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-/// How loudly to surface a successful run (v1512). Failures notify
-/// independently — a failed run is always interesting, regardless of
-/// the policy.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, TS, Default)]
-#[ts(export, export_to = "../../../../packages/shared-types/src/generated/")]
-#[serde(rename_all = "snake_case")]
-pub enum WorkflowNotifyPolicy {
-    /// Banner + toast every successful run. Default — most workflows
-    /// the user explicitly creates exist *because* they want to see
-    /// the result.
-    #[default]
-    Always,
-    /// Banner + toast only when this run's `content_hash` differs from
-    /// the previous run for this slug. Suppresses duplicate-output
-    /// noise from recurring summaries.
-    OnChange,
-    /// Never push. Run still lands in `workflow_runs` and the sidebar
-    /// "Corivo 提议" section (where the unread dot is the only signal).
-    /// Right for fire-and-forget cleanup jobs and side-effect-only
-    /// workflows.
-    Silent,
-}
-
-impl WorkflowNotifyPolicy {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Always => "always",
-            Self::OnChange => "on_change",
-            Self::Silent => "silent",
-        }
-    }
-
-    pub fn parse(raw: &str) -> Option<Self> {
-        match raw {
-            "always" => Some(Self::Always),
-            "on_change" => Some(Self::OnChange),
-            "silent" => Some(Self::Silent),
-            _ => None,
-        }
-    }
 }
 
 /// Who created a schedule. Stored in `workflow_schedules.source`.
@@ -289,17 +242,11 @@ pub struct WorkflowRun {
     pub started_at: DateTime<Utc>,
     pub finished_at: DateTime<Utc>,
     pub error_message: Option<String>,
-    /// v1512 — short body text used by macOS banner / in-app toast /
-    /// sidebar preview. `None` for legacy rows; populated going
-    /// forward by `ScheduledWorkflowTask::consume_output`.
+    /// Short body text (~140 chars). Populated by
+    /// `ScheduledWorkflowTask::consume_output` — truncated assistant
+    /// final text on success, error_message on failure. Used by the
+    /// notification-overlay toast + history preview.
     pub summary: Option<String>,
-    /// v1512 — sha256 of the raw assistant output. Used by
-    /// `notify_policy = 'on_change'` to skip duplicate pushes.
-    pub content_hash: Option<String>,
-    /// v1512 — when the user opened / read this run via the sidebar
-    /// "Corivo 提议" section or the workflow history dialog. `None`
-    /// means unread; the count of unread rows drives the sidebar dot.
-    pub acknowledged_at: Option<DateTime<Utc>>,
 }
 
 /// Frontmatter-derived definition loaded from
@@ -321,9 +268,4 @@ pub struct WorkflowDefinition {
     /// `{{date}}` (yesterday's local date) — additional slots land
     /// with the editor UI.
     pub system_prompt: String,
-    /// v1512 — notification policy. The WORKFLOW.md frontmatter is
-    /// the source of truth (the DB column on `workflow_schedules` is
-    /// just a cache for the Ticker). `Default` = `Always`.
-    #[serde(default)]
-    pub notify_policy: WorkflowNotifyPolicy,
 }

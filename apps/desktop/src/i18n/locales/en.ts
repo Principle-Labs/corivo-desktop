@@ -1059,17 +1059,6 @@ export const en: LocaleDict = {
       running: "Running…",
       dismiss: "Dismiss",
     },
-    sidebarSection: {
-      title: "Corivo suggestions",
-      empty: "No new suggestions",
-      unread: (count: number) => `${count} unread`,
-    },
-    drawer_notify: {
-      label: "Notification policy",
-      always: "Notify on every run",
-      onChange: "Notify only when content changes",
-      silent: "Sidebar only, never push",
-    },
     picker: {
       intro: "Pick a common template, or write your own.",
       backToPicker: "← Pick another template",

@@ -13,7 +13,7 @@
 
 use std::fs;
 
-use crate::domain::workflow::{WorkflowDefinition, WorkflowNotifyPolicy};
+use crate::domain::workflow::WorkflowDefinition;
 use crate::services::scheduled_workflows::WorkflowStore;
 
 const SEED_MARKER: &str = ".seeded";
@@ -64,9 +64,6 @@ fn daily_review() -> WorkflowDefinition {
         tool_whitelist: vec!["memory_search".to_string(), "save_note".to_string()],
         max_turns: 12,
         system_prompt: DAILY_REVIEW_PROMPT.to_string(),
-        // The whole point of a daily review is to surface it — keep
-        // the default loud policy.
-        notify_policy: WorkflowNotifyPolicy::Always,
     }
 }
 

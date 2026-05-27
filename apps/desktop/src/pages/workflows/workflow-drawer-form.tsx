@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import type {
   Trigger,
-  WorkflowNotifyPolicy,
   WorkflowSaveSpec,
   WorkflowView,
 } from "@corivo/shared-types"
@@ -46,7 +45,6 @@ interface FormState {
   maxTurns: number
   trigger: Trigger
   enabled: boolean
-  notifyPolicy: WorkflowNotifyPolicy
   /** Custom-preset-only: the user's free-text "做什么" lives here and
    *  becomes `systemPrompt` verbatim on save. */
   intent: string
@@ -65,7 +63,6 @@ function emptyFormForPreset(preset: WorkflowPreset): FormState {
     maxTurns: preset.maxTurns,
     trigger: preset.trigger,
     enabled: true,
-    notifyPolicy: preset.notifyPolicy,
     intent: "",
     reminderText: "",
   }
@@ -81,7 +78,6 @@ function formFromView(view: WorkflowView): FormState {
     maxTurns: view.definition.max_turns,
     trigger: view.schedule?.trigger ?? defaultsForKind("daily"),
     enabled: view.schedule?.enabled ?? true,
-    notifyPolicy: view.definition.notify_policy,
     intent: view.definition.system_prompt,
     reminderText: "",
   }
@@ -162,7 +158,6 @@ export function WorkflowDrawerForm({
       system_prompt: systemPrompt,
       trigger: form.trigger,
       enabled: form.enabled,
-      notify_policy: form.notifyPolicy,
     }
     save.mutate(spec)
   }
@@ -264,16 +259,6 @@ export function WorkflowDrawerForm({
         />
       </FieldRow>
 
-      <FieldRow>
-        <Label>{t.workflows.drawer_notify.label}</Label>
-        <NotifyPolicyPicker
-          value={form.notifyPolicy}
-          onChange={(notifyPolicy) =>
-            setForm((prev) => ({ ...prev, notifyPolicy }))
-          }
-        />
-      </FieldRow>
-
       <label className="flex items-center gap-2 text-[12.5px] text-foreground">
         <input
           type="checkbox"
@@ -299,49 +284,6 @@ export function WorkflowDrawerForm({
 
 function FieldRow({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col gap-1.5">{children}</div>
-}
-
-const NOTIFY_OPTIONS: ReadonlyArray<{
-  value: WorkflowNotifyPolicy
-  key: "always" | "onChange" | "silent"
-}> = [
-  { value: "always", key: "always" },
-  { value: "on_change", key: "onChange" },
-  { value: "silent", key: "silent" },
-]
-
-function NotifyPolicyPicker({
-  value,
-  onChange,
-}: {
-  value: WorkflowNotifyPolicy
-  onChange: (next: WorkflowNotifyPolicy) => void
-}) {
-  const { t } = useTranslation()
-  return (
-    <div className="flex flex-col gap-1">
-      {NOTIFY_OPTIONS.map((opt) => (
-        <label
-          key={opt.value}
-          className={`flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-[12px] transition-colors ${
-            value === opt.value
-              ? "border-foreground/40 bg-foreground/5 text-foreground"
-              : "border-border/40 text-muted-foreground hover:border-border/70"
-          }`}
-        >
-          <input
-            type="radio"
-            name="notify-policy"
-            value={opt.value}
-            checked={value === opt.value}
-            onChange={() => onChange(opt.value)}
-            className="accent-foreground"
-          />
-          <span>{t.workflows.drawer_notify[opt.key]}</span>
-        </label>
-      ))}
-    </div>
-  )
 }
 
 function parseToolList(raw: string): string[] {

@@ -21,8 +21,7 @@ use crate::commands::config::AppState;
 use crate::db::time::now_utc;
 use crate::domain::ipc_error::TauriError;
 use crate::domain::workflow::{
-    Trigger, WorkflowDefinition, WorkflowNotifyPolicy, WorkflowRun, WorkflowSchedule,
-    WorkflowScheduleSource,
+    Trigger, WorkflowDefinition, WorkflowRun, WorkflowSchedule, WorkflowScheduleSource,
 };
 use crate::services::scheduled_workflows::UpsertSchedule;
 
@@ -50,10 +49,6 @@ pub struct WorkflowSaveSpec {
     pub system_prompt: String,
     pub trigger: Trigger,
     pub enabled: bool,
-    /// v1432 — notification policy chosen in the drawer. Defaults to
-    /// `Always` when the field is omitted by an older client.
-    #[serde(default)]
-    pub notify_policy: WorkflowNotifyPolicy,
 }
 
 /// Pure validator output used by the trigger picker. `next_run_at`
@@ -167,7 +162,6 @@ pub async fn workflows_save(
             .collect(),
         max_turns: spec.max_turns,
         system_prompt: spec.system_prompt,
-        notify_policy: spec.notify_policy,
     };
 
     store.write_definition(&definition).map_err(internal)?;
@@ -178,7 +172,6 @@ pub async fn workflows_save(
             enabled: spec.enabled,
             source: WorkflowScheduleSource::User,
             created_by_thread_id: None,
-            notify_policy: spec.notify_policy,
         })
         .await
         .map_err(internal)?;
@@ -252,23 +245,6 @@ pub async fn workflows_cancel_run(
         .ok_or_else(|| not_ready("bg_scheduler"))?
         .clone();
     Ok(scheduler.cancel(&slug).await)
-}
-
-#[tauri::command]
-pub async fn workflows_acknowledge_run(
-    state: State<'_, AppState>,
-    run_id: String,
-) -> Result<(), TauriError> {
-    let store = workflow_store(&state)?;
-    store.acknowledge_run(run_id).await.map_err(internal)
-}
-
-#[tauri::command]
-pub async fn workflows_unread_count(
-    state: State<'_, AppState>,
-) -> Result<u32, TauriError> {
-    let store = workflow_store(&state)?;
-    store.unread_count().await.map_err(internal)
 }
 
 // ---------------------------------------------------------------------------

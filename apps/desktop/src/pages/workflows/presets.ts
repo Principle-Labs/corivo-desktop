@@ -1,4 +1,4 @@
-import type { Trigger, WorkflowNotifyPolicy } from "@corivo/shared-types"
+import type { Trigger } from "@corivo/shared-types"
 
 import { guessLocalTimezone } from "@/pages/workflows/format"
 
@@ -39,8 +39,6 @@ export interface WorkflowPreset {
   /** Suggested trigger. The form lets the user adjust HH:MM / day /
    *  interval but keeps the kind locked to what the preset implies. */
   trigger: Trigger
-  /** Default notification policy. */
-  notifyPolicy: WorkflowNotifyPolicy
 }
 
 const TZ = guessLocalTimezone()
@@ -101,7 +99,6 @@ export const PRESETS: WorkflowPreset[] = [
     tools: ["memory_search", "save_note"],
     maxTurns: 12,
     trigger: { kind: "daily", hour: 9, minute: 0, tz: TZ },
-    notifyPolicy: "always",
   },
   {
     id: "weekly-summary",
@@ -120,7 +117,6 @@ export const PRESETS: WorkflowPreset[] = [
     tools: ["memory_search", "save_note"],
     maxTurns: 15,
     trigger: { kind: "weekly", weekdays: ["mon"], hour: 10, minute: 0, tz: TZ },
-    notifyPolicy: "always",
   },
   {
     id: "once",
@@ -143,7 +139,6 @@ export const PRESETS: WorkflowPreset[] = [
       kind: "once",
       at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     },
-    notifyPolicy: "always",
   },
   {
     id: "custom",
@@ -171,7 +166,6 @@ export const PRESETS: WorkflowPreset[] = [
     ],
     maxTurns: 12,
     trigger: { kind: "daily", hour: 9, minute: 0, tz: TZ },
-    notifyPolicy: "always",
   },
 ]
 
