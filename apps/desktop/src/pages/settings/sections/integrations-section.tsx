@@ -402,7 +402,6 @@ function CliInstallRow({
   const name = pickLocalized(connector.manifest.name, lang)
   const description = pickLocalized(connector.manifest.description, lang)
   const router = useRouter()
-  const openNew = useActiveThreadStore((s) => s.openNew)
   const setPendingAutoSend = useActiveThreadStore(
     (s) => s.setPendingAutoSend,
   )
@@ -422,10 +421,12 @@ function CliInstallRow({
   const handleInstall = () => {
     if (!auth) return
     const prompt = pickLocalized(auth.installPrompt, lang)
-    openNew()
     setPendingAutoSend(prompt)
     closeSettingsDialog()
-    void router.navigate({ to: "/ask" })
+    // Navigate to `/ask` with no `?threadId` — that is the draft slot
+    // in the URL-as-truth model. AskPage's auto-send effect fires the
+    // prompt on mount, materializing a fresh thread.
+    void router.navigate({ to: "/ask", search: {} })
   }
 
   return (

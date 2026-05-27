@@ -54,7 +54,11 @@ export function MessageStream({
   const setInputDraft = useActiveThreadStore((s) => s.setInputDraft);
   const setInput = (value: string) => setInputDraft(inputKey, value);
   // Read-only mode: when the active thread is a workflow run thread,
-  // the sidebar set this via `selectWorkflowRun`. We render a banner
+  // the workflow entry points (sidebar workflow row, /workflows "查看
+  // 历史") stamped `readOnlyContext` with that thread's id before
+  // navigating. AskPage clears it whenever the URL threadId stops
+  // matching `ctx.threadId`, so by the time we read it here it's
+  // either pinned to the on-screen thread or null. We render a banner
   // above the transcript and swap the composer for a static hint so
   // the user can't (and isn't tempted to) push new turns into a
   // system thread that the agent won't service anyway.

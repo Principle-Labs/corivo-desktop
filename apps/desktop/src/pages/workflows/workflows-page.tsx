@@ -40,7 +40,9 @@ export function WorkflowsPage() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const router = useRouter();
-  const selectWorkflowRun = useActiveThreadStore((s) => s.selectWorkflowRun);
+  const setReadOnlyContext = useActiveThreadStore(
+    (s) => s.setReadOnlyContext,
+  );
 
   const { data: workflows } = useQuery({
     queryKey: ["workflows-list"],
@@ -113,10 +115,15 @@ export function WorkflowsPage() {
     const latest = runs.find((r) => r.slug === slug && r.thread_id !== null);
     if (!latest || !latest.thread_id) {
       toast.message(t.workflows.history.empty);
-      void router.navigate({ to: "/ask" });
+      void router.navigate({ to: "/ask", search: {} });
       return;
     }
-    selectWorkflowRun(latest.thread_id, {
+    // Stamp the read-only context BEFORE navigating so it's in place
+    // by the time AskPage observes the new threadId; the context is
+    // pinned to this threadId and self-invalidates if the user later
+    // navigates to a different thread.
+    setReadOnlyContext({
+      threadId: latest.thread_id,
       kind: "workflow_run",
       workflowName,
       slug,
@@ -124,7 +131,10 @@ export function WorkflowsPage() {
       startedAt: latest.started_at,
       finishedAt: latest.finished_at,
     });
-    void router.navigate({ to: "/ask" });
+    void router.navigate({
+      to: "/ask",
+      search: { threadId: latest.thread_id },
+    });
   };
 
   return (

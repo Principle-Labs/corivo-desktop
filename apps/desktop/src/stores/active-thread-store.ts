@@ -1,10 +1,15 @@
 import { create } from "zustand";
 
 /**
- * Sentinel id surfaced in the sidebar after a "+ 新会话" click. Never
- * persisted; replaced by a real thread id on first send via
- * `chat_thread_create`. Mirrors the constant the ask-page used before
- * the sidebar refactor.
+ * Sentinel id used to key the composer draft (CO-63) when the user is
+ * on `/ask` with no `?threadId=…` — i.e. the type-to-create slot.
+ * Replaced by a real thread id on first send via `chat_thread_create`.
+ * Never persisted.
+ *
+ * Routing note: the "is the user on a draft?" question is answered by
+ * the URL alone (`pathname === "/ask" && !search.threadId`). This
+ * constant only governs the per-row identity of the in-memory composer
+ * text and the sidebar's draft placeholder row.
  */
 export const DRAFT_THREAD_ID = "__draft__";
 
@@ -19,8 +24,19 @@ export const DRAFT_THREAD_ID = "__draft__";
  *     run's final status + duration, so the user knows the context
  *     ("this is the result of 每日回顾 from 11:31, succeeded in 24s")
  *     rather than seeing a bare conversation.
+ *
+ * `threadId` ties this context to a specific thread so it self-
+ * invalidates when the user navigates to a different thread: consumers
+ * check `ctx.threadId === currentThreadId` before rendering, and
+ * AskPage clears the slot on any threadId mismatch. This replaces the
+ * old "atomically write activeId + readOnlyContext" handshake — there
+ * is no activeId in the store anymore, the URL is the truth.
  */
 export interface ReadOnlyWorkflowRunContext {
+  /** The chat_threads row this context applies to. Set by the workflow
+   *  entry points (sidebar workflow row, /workflows "查看历史" button)
+   *  alongside the navigation to `/ask?threadId=…`. */
+  threadId: string;
   kind: "workflow_run";
   workflowName: string;
   /** slug of the workflow definition; used by the banner's "go back
@@ -32,35 +48,26 @@ export interface ReadOnlyWorkflowRunContext {
 }
 
 /**
- * Active-thread state lives at the layout level so the Sidebar (which
- * renders the thread list) and the AskPage (which renders the active
- * conversation) read from the same source.
+ * Cross-cutting UI state for the chat surfaces. Deliberately does NOT
+ * carry "which thread is active" — that lives in the URL
+ * (`/ask?threadId=…`) and is read via TanStack Router. Routing the
+ * active thread through both the URL and a store field was the root
+ * of a class of races where clicking "+ 新会话" landed the user inside
+ * the previously-selected thread (deep-link sync + auto-pick effects
+ * fought the freshly-cleared store state).
  *
- * Behavior:
- *   - `setActive(id)` selects a real thread (clears any prior
- *     read-only context — picking a regular chat thread is always a
- *     read/write surface).
- *   - `selectWorkflowRun(thread_id, ctx)` atomically sets activeId
- *     AND read-only context so the viewer switches into the
- *     workflow-run shape in one render.
- *   - `openNew()` flips `hasDraft` on and clears `activeId`. The DB
- *     row materializes only on first send.
- *   - `replaceDraftWith(id)` flips draft → real once the create-on-send
- *     path returns the new id.
- *   - `dismissDraft()` cancels a draft without sending (used by the
- *     "delete the draft entry" affordance in the sidebar).
+ * What's here:
+ *   - `readOnlyContext` — pinned to one specific threadId so it self-
+ *     invalidates when the user navigates away.
+ *   - `unreadThreadIds` — CO-62 unread set, populated when an off-screen
+ *     turn completes.
+ *   - `searchQuery` — sidebar search input value.
+ *   - `inputDrafts` — composer text per thread (CO-63), keyed by real
+ *     thread id or `DRAFT_THREAD_ID` for the type-to-create slot.
+ *   - `pendingAutoSend` — CO-68 one-shot prompt slot.
  */
 interface ActiveThreadState {
-  activeId: string | null;
-  hasDraft: boolean;
-  /** Set when `activeId` points at a workflow run thread; `null`
-   *  when it points at a normal user chat. The chat viewer reads
-   *  this to swap into read-only mode. */
   readOnlyContext: ReadOnlyWorkflowRunContext | null;
-  /** Whether the initial post-mount selection has run. The first
-   *  render picks the most-recent thread; afterwards we honor
-   *  whatever the user does. */
-  initialized: boolean;
   /** Thread ids that have completed activity the user hasn't viewed
    *  yet (CO-62). Populated when `useChatStream.sendMessage` finishes
    *  a turn whose thread is not currently active, and cleared when
@@ -90,108 +97,67 @@ interface ActiveThreadState {
    *  up the value so the send fires exactly once. */
   pendingAutoSend: string | null;
 
-  setActive: (id: string | null) => void;
-  /** Like `setActive`, but stamps the workflow-run context so the
-   *  viewer switches into read-only mode atomically. Used by the
-   *  unified sidebar when the user clicks a "⏰ 工作流" row, and by
-   *  the workflows page's "查看历史" button. */
-  selectWorkflowRun: (id: string, ctx: ReadOnlyWorkflowRunContext) => void;
-  openNew: () => void;
-  replaceDraftWith: (id: string) => void;
-  dismissDraft: () => void;
-  markInitialized: () => void;
+  setReadOnlyContext: (ctx: ReadOnlyWorkflowRunContext | null) => void;
   setSearchQuery: (query: string) => void;
   setInputDraft: (key: string, value: string) => void;
+  /** Move composer text from one key to another. Used when the draft
+   *  thread materializes into a real `chat_threads` row on first send
+   *  so a mid-flight reset (or a user switching away immediately) still
+   *  finds their text under the thread it belongs to. */
+  migrateInputDraft: (fromKey: string, toKey: string) => void;
   setPendingAutoSend: (value: string | null) => void;
   /** Flag a thread as having completed activity the user hasn't
    *  acknowledged. Called by `useChatStream.sendMessage` when a turn
    *  ends in a thread that is not currently active. */
   markUnread: (id: string) => void;
+  /** Clear a thread from the unread set. Called when AskPage observes
+   *  the URL threadId changing to `id` (the user is now looking at it). */
+  markRead: (id: string) => void;
 }
 
 export const useActiveThreadStore = create<ActiveThreadState>((set) => ({
-  activeId: null,
-  hasDraft: false,
-  initialized: false,
   readOnlyContext: null,
   searchQuery: "",
   inputDrafts: {},
   pendingAutoSend: null,
   unreadThreadIds: [],
 
-  setActive: (id) =>
-    set((s) => ({
-      activeId: id,
-      hasDraft: false,
-      // Picking a regular chat thread always exits read-only mode.
-      // A subsequent `selectWorkflowRun` call re-enters it for a
-      // workflow row.
-      readOnlyContext: null,
-      unreadThreadIds: id
-        ? s.unreadThreadIds.filter((other) => other !== id)
-        : s.unreadThreadIds,
-    })),
-  selectWorkflowRun: (id, ctx) =>
-    set((s) => ({
-      activeId: id,
-      hasDraft: false,
-      readOnlyContext: ctx,
-      unreadThreadIds: s.unreadThreadIds.filter((other) => other !== id),
-    })),
-  openNew: () =>
-    set({
-      activeId: null,
-      hasDraft: true,
-      initialized: true,
-      // Fresh draft is read/write by definition.
-      readOnlyContext: null,
-    }),
-  replaceDraftWith: (id) =>
-    set((s) => {
-      // Migrate the pre-send draft text from DRAFT_THREAD_ID onto the
-      // newly-minted real id so a stream that fails mid-flight (or a
-      // user who switches away immediately after sending) still finds
-      // their text under the thread it belongs to. We don't currently
-      // hit this in practice because `submit()` clears the input before
-      // awaiting send, but the migration keeps the contract clean for
-      // future flows that don't pre-clear.
-      const draftText = s.inputDrafts[DRAFT_THREAD_ID]
-      const nextDrafts = { ...s.inputDrafts }
-      delete nextDrafts[DRAFT_THREAD_ID]
-      if (draftText) nextDrafts[id] = draftText
-      return {
-        activeId: id,
-        hasDraft: false,
-        initialized: true,
-        inputDrafts: nextDrafts,
-      }
-    }),
-  dismissDraft: () =>
-    set((s) => {
-      const nextDrafts = { ...s.inputDrafts }
-      delete nextDrafts[DRAFT_THREAD_ID]
-      return { hasDraft: false, inputDrafts: nextDrafts }
-    }),
-  markInitialized: () => set({ initialized: true }),
+  setReadOnlyContext: (ctx) => set({ readOnlyContext: ctx }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setInputDraft: (key, value) =>
     set((s) => {
       // Skip empty writes that don't change anything to keep the
       // reducer churn-free; this matters because `MessageStream`'s
       // submit path calls setInputDraft(key, "") on every send.
-      if (!value && !s.inputDrafts[key]) return s
-      const nextDrafts = { ...s.inputDrafts }
+      if (!value && !s.inputDrafts[key]) return s;
+      const nextDrafts = { ...s.inputDrafts };
       if (value) {
-        nextDrafts[key] = value
+        nextDrafts[key] = value;
       } else {
-        delete nextDrafts[key]
+        delete nextDrafts[key];
       }
-      return { inputDrafts: nextDrafts }
+      return { inputDrafts: nextDrafts };
+    }),
+  migrateInputDraft: (fromKey, toKey) =>
+    set((s) => {
+      const text = s.inputDrafts[fromKey];
+      if (!text) return s;
+      const nextDrafts = { ...s.inputDrafts };
+      delete nextDrafts[fromKey];
+      nextDrafts[toKey] = text;
+      return { inputDrafts: nextDrafts };
     }),
   setPendingAutoSend: (value) => set({ pendingAutoSend: value }),
   markUnread: (id) =>
     set((s) => {
-      if (s.unreadThreadIds.includes(id)) return s
-      return { unreadThreadIds: [...s.unreadThreadIds, id] }
+      if (s.unreadThreadIds.includes(id)) return s;
+      return { unreadThreadIds: [...s.unreadThreadIds, id] };
+    }),
+  markRead: (id) =>
+    set((s) => {
+      if (!s.unreadThreadIds.includes(id)) return s;
+      return {
+        unreadThreadIds: s.unreadThreadIds.filter((other) => other !== id),
+      };
     }),
 }));

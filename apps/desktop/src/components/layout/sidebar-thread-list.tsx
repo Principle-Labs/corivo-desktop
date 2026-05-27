@@ -57,6 +57,14 @@ export function SidebarThreadList() {
   const { t } = useTranslation();
   const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // The URL `?threadId=…` is the single source of truth for which
+  // thread is on screen. The sidebar reads it to highlight rows and
+  // to decide whether to show the in-memory draft placeholder
+  // (rendered only when on `/ask` with no thread selected).
+  const urlThreadId = useRouterState({
+    select: (s) =>
+      (s.location.search as { threadId?: string }).threadId ?? null,
+  });
   const threadsQuery = useChatThreads();
   // Unified-history queries — see `UnifiedItem` notes below. Both load
   // in parallel with the chat thread list and run cheaply enough that
@@ -64,15 +72,26 @@ export function SidebarThreadList() {
   // loading, the sidebar just shows the chat side.
   const workflowRunsQuery = useWorkflowRuns(50);
   const workflowsQuery = useWorkflowsList();
-  const activeId = useActiveThreadStore((s) => s.activeId);
-  const hasDraft = useActiveThreadStore((s) => s.hasDraft);
-  const setActive = useActiveThreadStore((s) => s.setActive);
-  const selectWorkflowRun = useActiveThreadStore((s) => s.selectWorkflowRun);
-  const dismissDraft = useActiveThreadStore((s) => s.dismissDraft);
+  const setReadOnlyContext = useActiveThreadStore(
+    (s) => s.setReadOnlyContext,
+  );
+  const setInputDraft = useActiveThreadStore((s) => s.setInputDraft);
   const searchQuery = useActiveThreadStore((s) => s.searchQuery);
   const unreadThreadIds = useActiveThreadStore((s) => s.unreadThreadIds);
   const streamingByThreadId = useStreamingStore((s) => s.byThreadId);
   const [archivedOpen, setArchivedOpen] = useState(false);
+
+  // The draft placeholder row only makes sense on `/ask` with no
+  // thread selected — anywhere else, the empty URL is just "not
+  // viewing a chat" and shouldn't carry a phantom row.
+  const onDraftPage = pathname === "/ask" && urlThreadId === null;
+
+  // All thread/workflow row clicks route through here. From a non-`/ask`
+  // route a thread click must also flip the page so the selection
+  // actually surfaces; on `/ask` it's purely a `?threadId=…` swap.
+  const selectThread = (id: string) => {
+    void router.navigate({ to: "/ask", search: { threadId: id } });
+  };
 
   // CO-62: each row's activity badge is computed from two sources —
   // the per-thread streaming bucket (running indicator) and the
@@ -80,9 +99,9 @@ export function SidebarThreadList() {
   // indicator). `running` surfaces even on the active row so a user
   // who navigates to /settings (or another thread) and comes back can
   // still tell at a glance whether the agent is mid-turn. `unread`
-  // is suppressed on the active row because `setActive` already
-  // clears the thread out of the unread set — you can't be on the
-  // row AND have unviewed activity for it.
+  // is suppressed on the active row because AskPage clears the thread
+  // out of the unread set on URL change — you can't be on the row AND
+  // have unviewed activity for it.
   const resolveActivityKind = (
     thread: ChatThread,
     isActive: boolean,
@@ -90,16 +109,6 @@ export function SidebarThreadList() {
     if (streamingByThreadId[thread.id]?.isStreaming) return "running";
     if (!isActive && unreadThreadIds.includes(thread.id)) return "unread";
     return "idle";
-  };
-
-  // Clicking a thread row updates the active-thread store but the
-  // store is route-agnostic — when the user is parked on `/workflows`
-  // (or any non-chat route) we have to send them back to `/ask` for
-  // the selection to actually surface.
-  const ensureAskRoute = () => {
-    if (pathname !== "/ask") {
-      void router.navigate({ to: "/ask" });
-    }
   };
 
   const realThreads = threadsQuery.data ?? [];
@@ -177,14 +186,14 @@ export function SidebarThreadList() {
 
   const archivedExpanded = archivedOpen || isSearching;
 
-  // Synthesise a draft entry at the head of the recent list when
-  // the user has clicked "+ 新会话" but not yet sent. Stays in-memory
-  // only — `chat_thread_create` runs on the first send via the
-  // ask-page's `createThreadIfMissing` callback. Skip while searching
-  // so the placeholder doesn't show up under a query that doesn't
-  // match it.
+  // Synthesise a draft entry at the head of the recent list when the
+  // user is on `/ask` with no thread selected — i.e. the type-to-
+  // create slot. Stays in-memory only; `chat_thread_create` runs on
+  // the first send via the ask-page's `createThreadIfMissing` callback.
+  // Skip while searching so the placeholder doesn't show up under a
+  // query that doesn't match it.
   const recentWithDraft = useMemo<UnifiedItem[]>(() => {
-    if (!hasDraft || isSearching) return recent;
+    if (!onDraftPage || isSearching) return recent;
     const now = new Date().toISOString();
     const draftThread: ChatThread = {
       id: DRAFT_THREAD_ID,
@@ -197,9 +206,24 @@ export function SidebarThreadList() {
       updated_at: now,
     };
     return [{ kind: "chat", thread: draftThread }, ...recent];
-  }, [hasDraft, recent, isSearching]);
+  }, [onDraftPage, recent, isSearching]);
 
-  const displayActiveId = hasDraft ? DRAFT_THREAD_ID : activeId;
+  // What to highlight in the list. On the draft page the synthetic
+  // placeholder row carries the highlight; otherwise it's whichever
+  // thread the URL points at (which may be `null` on non-`/ask`
+  // routes, in which case nothing is highlighted).
+  const displayActiveId = onDraftPage ? DRAFT_THREAD_ID : urlThreadId;
+
+  // X icon on the draft row: clear the composer text under
+  // `DRAFT_THREAD_ID` and, if any real threads exist, jump to the
+  // most recent one. With no real threads the user just stays on
+  // `/ask` with the input cleared — there's nowhere else useful to
+  // send them.
+  const dismissDraft = () => {
+    setInputDraft(DRAFT_THREAD_ID, "");
+    const fallback = realThreads[0];
+    if (fallback) selectThread(fallback.id);
+  };
 
   const renderItem = (item: UnifiedItem) => {
     if (item.kind === "chat") {
@@ -219,32 +243,39 @@ export function SidebarThreadList() {
           activityKind={resolveActivityKind(thread, isActive)}
           onSelect={() => {
             if (thread.id === DRAFT_THREAD_ID) return;
-            ensureAskRoute();
-            setActive(thread.id);
+            selectThread(thread.id);
           }}
           onDismissDraft={dismissDraft}
-          // After deleting the active thread, advance to the next one.
+          // After deleting the currently-displayed thread, advance to
+          // the next one (or drop back to the draft slot when the
+          // list ends up empty).
           onAfterDelete={(deletedId) => {
-            if (deletedId === activeId) {
-              const fallback = realThreads.find((other) => other.id !== deletedId);
-              setActive(fallback?.id ?? null);
+            if (deletedId === urlThreadId) {
+              const fallback = realThreads.find(
+                (other) => other.id !== deletedId,
+              );
+              if (fallback) {
+                selectThread(fallback.id);
+              } else {
+                void router.navigate({ to: "/ask", search: {} });
+              }
             }
           }}
         />
       );
     }
-    // Workflow run row — read-only navigation target. Clicking
-    // stamps `readOnlyContext` so the chat viewer renders the
-    // transcript with a banner + no composer. Clicking the row
-    // can't put a workflow run on the active id in a writable
-    // way; the only way to "edit" is to go back to /workflows
-    // and either edit the definition or hit Run Now again.
+    // Workflow run row — read-only navigation target. Clicking writes
+    // the read-only context (pinned to this thread id) and then
+    // navigates; AskPage clears the context automatically if the URL
+    // ever moves to a different thread. Editing a run is intentionally
+    // impossible — go back to /workflows to edit the definition or
+    // hit Run Now again.
     const run = item.run;
     // run.thread_id is nullable when the runner failed before
     // creating its system chat thread. Skip the row in that case
     // — there's nothing to navigate to.
     if (!run.thread_id) return null;
-    const isActive = run.thread_id === activeId;
+    const isActive = run.thread_id === urlThreadId;
     return (
       <WorkflowRunRow
         key={run.id}
@@ -256,8 +287,8 @@ export function SidebarThreadList() {
           // for TS to narrow.
           const threadId = run.thread_id;
           if (!threadId) return;
-          ensureAskRoute();
-          selectWorkflowRun(threadId, {
+          setReadOnlyContext({
+            threadId,
             kind: "workflow_run",
             workflowName: item.workflowName,
             slug: run.slug,
@@ -265,6 +296,7 @@ export function SidebarThreadList() {
             startedAt: run.started_at,
             finishedAt: run.finished_at,
           });
+          selectThread(threadId);
         }}
       />
     );

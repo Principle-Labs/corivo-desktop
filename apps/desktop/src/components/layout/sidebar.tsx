@@ -32,25 +32,19 @@ import { useActiveThreadStore } from "@/stores/active-thread-store"
 export function Sidebar() {
   const { t } = useTranslation()
   const router = useRouter()
-  const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const openNew = useActiveThreadStore((s) => s.openNew)
-  const hasDraft = useActiveThreadStore((s) => s.hasDraft)
   const searchQuery = useActiveThreadStore((s) => s.searchQuery)
   const setSearchQuery = useActiveThreadStore((s) => s.setSearchQuery)
   const [searchOpen, setSearchOpen] = useState(false)
 
-  // "+ 新会话" and any thread-row click must bounce the user back to
-  // `/ask` when the user is parked on a non-chat route. The active-
-  // thread store is route-agnostic; without this jump the sidebar
-  // interaction would silently update state with no visible surface
-  // change.
-  const ensureAskRoute = () => {
-    if (pathname !== "/ask") {
-      void router.navigate({ to: "/ask" })
-    }
+  // "+ 新会话" is a single navigation: clear the `?threadId` search
+  // param. From `/ask?threadId=foo` it lands the user on `/ask` (the
+  // type-to-create slot); from anywhere else it routes back into
+  // `/ask` cleanly. There is no parallel "draft" state to update.
+  const openNewDraft = () => {
+    void router.navigate({ to: "/ask", search: {} })
   }
 
-  // Two rAFs: first lets `openNew` flush React state, second lands
+  // Two rAFs: first lets the router navigation flush, second lands
   // after `MessageStream` mounts/swaps the textarea for the new
   // `inputKey` so the focus call actually finds it.
   const focusComposer = () => {
@@ -92,15 +86,12 @@ export function Sidebar() {
       if (!event.metaKey && !event.ctrlKey) return
       if (event.shiftKey || event.altKey) return
       event.preventDefault()
-      if (pathname !== "/ask") {
-        void router.navigate({ to: "/ask" })
-      }
-      openNew()
+      openNewDraft()
       focusComposer()
     }
     document.addEventListener("keydown", onKey)
     return () => document.removeEventListener("keydown", onKey)
-  }, [openNew, pathname, router])
+  }, [router])
 
   const closeSearch = () => {
     setSearchQuery("")
@@ -120,12 +111,10 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => {
-            ensureAskRoute()
-            openNew()
+            openNewDraft()
             focusComposer()
           }}
-          disabled={hasDraft}
-          className="flex items-center gap-2 rounded-sm border border-[color-mix(in_oklab,var(--foreground)_13%,transparent)] bg-card px-2.5 py-1.5 text-[12.5px] font-medium tracking-[-0.005em] text-foreground transition-colors hover:border-[color-mix(in_oklab,var(--foreground)_22%,transparent)] disabled:opacity-50"
+          className="flex items-center gap-2 rounded-sm border border-[color-mix(in_oklab,var(--foreground)_13%,transparent)] bg-card px-2.5 py-1.5 text-[12.5px] font-medium tracking-[-0.005em] text-foreground transition-colors hover:border-[color-mix(in_oklab,var(--foreground)_22%,transparent)]"
         >
           <Plus className="h-3.5 w-3.5 text-muted-foreground" />
           {t.ask.threadList.newThread}

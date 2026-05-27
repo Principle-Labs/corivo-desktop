@@ -23,6 +23,7 @@ import {
   execAgentSend,
   type ExecAgentFocusContext,
 } from "@/lib/tauri";
+import { router } from "@/app/router";
 import { useActiveThreadStore } from "@/stores/active-thread-store";
 import {
   selectThreadStream,
@@ -536,10 +537,15 @@ export function useChatStream(
         // CO-62: if the user navigated away while this turn was
         // running, flag the thread as having unviewed activity so the
         // sidebar can surface the dot. Cancellations come from the
-        // user themselves, so we don't flag those.
+        // user themselves, so we don't flag those. The "currently on
+        // screen" check reads the URL — that is the single source of
+        // truth for which thread the user is viewing.
         if (!accumulator.cancelled) {
-          const activeNow = useActiveThreadStore.getState().activeId;
-          if (activeNow !== effectiveId) {
+          const search = router.state.location.search as {
+            threadId?: string;
+          };
+          const onScreen = search.threadId ?? null;
+          if (onScreen !== effectiveId) {
             useActiveThreadStore.getState().markUnread(effectiveId);
           }
         }
