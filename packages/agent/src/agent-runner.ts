@@ -60,6 +60,7 @@ import {
 } from "./auth.js";
 import { buildSystemPrompt } from "./system-prompt.js";
 import { resolveNativeTools } from "./native-tools/index.js";
+import { wrapToolsWithTimeout } from "./tool-timeout.js";
 import { buildMcpAgentTools } from "./mcp/runtime.js";
 import { registerConnectors } from "./connector/loader.js";
 import type { ConnectorRefreshBridge } from "./connector/types.js";
@@ -191,7 +192,14 @@ export async function runAgent(
     connectors_count: input.connectors?.enabled.length ?? 0,
     connector_tools_count: connectorTools.length,
   });
-  const tools = [...nativeTools, ...mcpTools, ...connectorTools];
+  // Bound every tool call with a deadline (see tool-timeout.ts). A single
+  // hung tool — observed in the wild as a `grep` over a pathological Windows
+  // path that never returned — must not be able to freeze the turn.
+  const tools = wrapToolsWithTimeout([
+    ...nativeTools,
+    ...mcpTools,
+    ...connectorTools,
+  ]);
 
   // Spec §8.1: open or create the jsonl session backed by Rust-supplied
   // sessions_dir (`$APPDATA/corivo-agent-sessions/`). Mock mode (Phase A
