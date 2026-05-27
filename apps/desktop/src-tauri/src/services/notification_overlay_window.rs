@@ -17,7 +17,8 @@
 //! * Has no hotkey or input; it just renders one toast at a time and
 //!   accepts a click to open the run's chat thread.
 
-#[cfg(target_os = "macos")]
+// Manager 是为了在所有平台调用 `window.app_handle()` / `app.primary_monitor()` /
+// `app.cursor_position()` —— Windows 也需要，因此不能 cfg 限制到 macOS。
 use tauri::Manager;
 use tauri::{LogicalPosition, LogicalSize, Runtime, WebviewWindow};
 
