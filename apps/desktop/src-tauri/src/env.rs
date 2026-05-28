@@ -21,11 +21,19 @@ pub const IS_DEV: bool = cfg!(debug_assertions);
 /// 编译期默认 API base。运行时仍然允许通过 `CORIVO_API_BASE`
 /// 环境变量临时覆盖（见 `api_base()`）—— 这条留作单次调试用，
 /// 避免每次切环境都要改代码重新编译。
+///
+/// OSS 构建默认 localhost —— 文件头注释里讲过 OSS 不和
+/// Corivo 托管服务通信。闭源构建（`corivo-cloud` feature）的 release
+/// 直接指向生产 API。
+#[cfg(feature = "corivo-cloud")]
 pub const DEFAULT_API_BASE: &str = if IS_DEV {
     "http://localhost:8787"
 } else {
-    "http://localhost:8787"
+    "https://api.corivo.ai"
 };
+
+#[cfg(not(feature = "corivo-cloud"))]
+pub const DEFAULT_API_BASE: &str = "http://localhost:8787";
 
 /// 取当前生效的 API base。优先 `CORIVO_API_BASE` env，回退到
 /// `DEFAULT_API_BASE`。空白字符串视为未设。
@@ -41,11 +49,15 @@ pub fn api_base() -> String {
 /// 这两个页面部署在 `apps/web` 里。
 ///
 /// 用 `CORIVO_WEB_BASE` 在运行时覆盖（dev 切到自部署 web 时用）。
+#[cfg(feature = "corivo-cloud")]
 pub const DEFAULT_WEB_BASE: &str = if IS_DEV {
     "http://localhost:3000"
 } else {
-    "http://localhost:3000"
+    "https://corivo.ai"
 };
+
+#[cfg(not(feature = "corivo-cloud"))]
+pub const DEFAULT_WEB_BASE: &str = "http://localhost:3000";
 
 pub fn web_base() -> String {
     std::env::var("CORIVO_WEB_BASE")
